@@ -1,0 +1,85 @@
+package com.doctorvet.model;
+
+import jakarta.persistence.*;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "posts")
+public class Post {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String authorName;
+    private String authorSpecialty;
+    private String authorCity;
+    private String authorAvatar;
+
+    private String postType;
+    private String badgeLabel;
+
+    @Column(length = 4000, nullable = false)
+    private String content;
+
+    private String imageUrl;
+    private String species;
+    private int likes = 0;
+    private int commentsCount = 0;
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    public Post() {}
+
+    public Post(String authorName, String authorSpecialty, String authorCity, String authorAvatar,
+                String postType, String badgeLabel, String content, String imageUrl, String species, int likes) {
+        this.authorName = authorName;
+        this.authorSpecialty = authorSpecialty;
+        this.authorCity = authorCity;
+        this.authorAvatar = authorAvatar;
+        this.postType = postType;
+        this.badgeLabel = badgeLabel;
+        this.content = content;
+        this.imageUrl = imageUrl;
+        this.species = species;
+        this.likes = likes;
+    }
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getAuthorName() { return authorName; }
+    public void setAuthorName(String authorName) { this.authorName = authorName; }
+
+    public String getAuthorSpecialty() { return authorSpecialty; }
+    public void setAuthorSpecialty(String authorSpecialty) { this.authorSpecialty = authorSpecialty; }
+
+    public String getAuthorCity() { return authorCity; }
+    public void setAuthorCity(String authorCity) { this.authorCity = authorCity; }
+
+    public String getAuthorAvatar() { return authorAvatar; }
+    public void setAuthorAvatar(String authorAvatar) { this.authorAvatar = authorAvatar; }
+
+    public String getPostType() { return postType; }
+    public void setPostType(String postType) { this.postType = postType; }
+
+    public String getBadgeLabel() { return badgeLabel; }
+    public void setBadgeLabel(String badgeLabel) { this.badgeLabel = badgeLabel; }
+
+    public String getContent() { return content; }
+    public void setContent(String content) { this.content = content; }
+
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+
+    public String getSpecies() { return species; }
+    public void setSpecies(String species) { this.species = species; }
+
+    public int getLikes() { return likes; }
+    public void setLikes(int likes) { this.likes = likes; }
+
+    public int getCommentsCount() { return commentsCount; }
+    public void setCommentsCount(int commentsCount) { this.commentsCount = commentsCount; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+}
