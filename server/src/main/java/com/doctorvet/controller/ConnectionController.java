@@ -22,7 +22,17 @@ public class ConnectionController {
     public record SendRequestDto(Long senderId, String senderName, String senderAvatar, String senderSpecialty, Long receiverId) {}
 
     @PostMapping("/request")
-    public ResponseEntity<?> sendRequest(@RequestBody SendRequestDto dto) {
+    public ResponseEntity<?> sendRequest(@RequestBody SendRequestDto dto, jakarta.servlet.http.HttpServletRequest request) {
+        Long authenticatedDoctorId = (Long) request.getAttribute("authenticatedDoctorId");
+        if (authenticatedDoctorId != null && !authenticatedDoctorId.equals(dto.senderId())) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Forbidden", "message", "You cannot send connection requests on behalf of another doctor."));
+        }
+
+        if (dto.senderId().equals(dto.receiverId())) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Cannot connect with yourself"));
+        }
+
         try {
             ConnectionRequest saved = connectionService.sendRequest(
                     dto.senderId(),

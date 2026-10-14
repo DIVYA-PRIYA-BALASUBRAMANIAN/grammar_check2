@@ -54,7 +54,10 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
         loggedInUser = await api.auth.login(formData.identifier, formData.password);
       }
 
-      if (formData.rememberMe && loggedInUser) {
+      if (loggedInUser?.token) {
+        localStorage.setItem('doctor_vet_token', loggedInUser.token);
+      }
+      if (loggedInUser) {
         localStorage.setItem('doctor_vet_user', JSON.stringify(loggedInUser));
       }
 

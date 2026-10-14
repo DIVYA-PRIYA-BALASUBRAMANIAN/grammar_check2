@@ -31,7 +31,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState('feed');
   const [globalSearch, setGlobalSearch] = useState('');
 
-  // Authentication State
+  // Authentication State: strictly initialized from stored session or null
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const saved = localStorage.getItem('doctor_vet_user');
@@ -56,8 +56,7 @@ export function App() {
   const [stories, setStories] = useState([]);
   const [conversations, setConversations] = useState([]);
   const [connectedMap, setConnectedMap] = useState({});
-
-  // Connection & Notification State
+  const [myConnections, setMyConnections] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [sentRequests, setSentRequests] = useState([]);
   const [notifications, setNotifications] = useState([]);
@@ -75,11 +74,40 @@ export function App() {
   // Active chat peer
   const [activeChatDoctor, setActiveChatDoctor] = useState(null);
 
-  // Sync with Spring Boot MySQL backend on startup
+  // 1. Validate session on startup with backend
+  useEffect(() => {
+    async function validateSession() {
+      const token = localStorage.getItem('doctor_vet_token');
+      if (currentUser && token) {
+        try {
+          const profile = await api.auth.getMe();
+          if (profile) {
+            setCurrentUser(prev => ({ ...prev, ...profile }));
+          }
+        } catch (e) {
+          console.warn('Session expired on startup. Logging out.');
+          handleLogout();
+        }
+      }
+    }
+    validateSession();
+  }, []);
+
+  // 2. Listen for 401 unauthorized events from API client
+  useEffect(() => {
+    const onUnauthorized = () => {
+      console.warn('Received unauthorized event from API. Resetting state.');
+      handleLogout();
+    };
+    window.addEventListener('auth:unauthorized', onUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', onUnauthorized);
+  }, []);
+
+  // 3. Sync public and private data based on authentication status
   useEffect(() => {
     async function loadBackendData() {
+      // Public catalogs
       try {
-        // Load doctors
         const docs = await api.doctors.getAll();
         if (docs && docs.length > 0) {
           setDoctors(docs);
@@ -98,7 +126,6 @@ export function App() {
       }
 
       try {
-        // Load feed posts
         const feedPosts = await api.feed.getPosts();
         if (feedPosts && feedPosts.length > 0) {
           setPosts(feedPosts);
@@ -115,7 +142,7 @@ export function App() {
             id: s.id,
             doctorName: s.doctorName || 'Doctor',
             fullDoctorName: s.doctorName || 'Doctor',
-            avatar: s.avatar || 'https://images.unsplash.com/photo-1594824813575-5858e94a5392?auto=format&fit=crop&w=300&q=80',
+            avatar: s.avatar || '',
             image: s.mediaUrl || 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=800&q=80',
             videoUrl: s.mediaType === 'VIDEO' ? s.mediaUrl : null,
             caption: s.caption || 'Moments from clinical practice',
@@ -146,79 +173,89 @@ export function App() {
         console.log('Using local short videos');
       }
 
-      try {
-        // Load notifications
-        if (currentUser?.id) {
-          const notifs = await api.notifications.getNotifications(currentUser.id);
-          if (notifs && notifs.length > 0) {
-            setNotifications(notifs);
-          }
-        }
-      } catch (e) {
-        console.log('Using local notifications');
-      }
+      // Private Endpoints: ONLY requested when user is authenticated
+      if (currentUser?.id) {
+        const rawId = currentUser.id;
+        const docId = typeof rawId === 'string' && rawId.startsWith('doc-')
+          ? parseInt(rawId.replace('doc-', ''), 10)
+          : Number(rawId);
 
-      try {
-        // Load connections
-        if (currentUser?.id) {
-          const myCons = await api.connections.getMy(currentUser.id);
-          if (myCons && myCons.length > 0) {
-            const map = {};
-            myCons.forEach(c => { map[c.id] = true; });
-            setConnectedMap(prev => ({ ...prev, ...map }));
-          }
-          const pending = await api.connections.getPending(currentUser.id);
-          if (pending && pending.length > 0) {
-            setPendingRequests(pending);
-          }
-          const sent = await api.connections.getSent(currentUser.id);
-          if (sent && sent.length > 0) {
-            setSentRequests(sent);
-          }
-        }
-      } catch (e) {
-        console.log('No connections yet');
-      }
+        if (!isNaN(docId) && docId > 0) {
+          try {
+            const notifs = await api.notifications.getNotifications(docId);
+            if (notifs) setNotifications(notifs);
+          } catch (e) {}
 
-      try {
-        // Load chat conversations
-        // Load chat conversations with dynamic message history
-        if (currentUser?.id) {
-          const convList = await api.chat.getConversations(currentUser.id);
-          if (convList && convList.length > 0) {
-            const fullConvs = await Promise.all(convList.map(async (c) => {
-              let msgs = [];
-              try {
-                msgs = await api.chat.getMessages(c.id);
-              } catch (e) {}
-              return {
-                id: c.id,
-                doctor: {
-                  id: c.doctor1Id === currentUser.id ? c.doctor2Id : c.doctor1Id,
-                  name: c.doctor1Id === currentUser.id ? c.doctor2Name : c.doctor1Name,
-                  avatar: c.doctor1Id === currentUser.id ? c.doctor2Avatar : c.doctor1Avatar,
-                  specialty: 'Veterinary Practitioner',
-                  city: 'Bengaluru'
-                },
-                lastMessage: c.lastMessage,
-                timestamp: 'Active',
-                unread: c.doctor1Id === currentUser.id ? c.unreadCountDoctor1 : c.unreadCountDoctor2,
-                messages: (msgs || []).map(m => ({
-                  id: m.id,
-                  sender: m.senderId === currentUser.id ? 'user' : 'doctor',
-                  senderId: m.senderId,
-                  text: m.text,
-                  attachmentUrl: m.attachmentUrl,
-                  attachmentType: m.attachmentType,
-                  time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Active'
-                }))
-              };
-            }));
-            setConversations(fullConvs);
+          try {
+            const myCons = await api.connections.getMy(docId);
+            if (myCons && myCons.length > 0) {
+              setMyConnections(myCons);
+              const map = {};
+              myCons.forEach(c => { map[c.id] = true; map[`doc-${c.id}`] = true; });
+              setConnectedMap(map);
+            } else {
+              setMyConnections([]);
+              setConnectedMap({});
+            }
+            const pending = await api.connections.getPending(docId);
+            if (pending) setPendingRequests(pending);
+          } catch (e) {
+            setMyConnections([]);
+            setConnectedMap({});
           }
+
+          try {
+            const convList = await api.chat.getConversations(docId);
+            if (convList && convList.length > 0) {
+              const fullConvs = await Promise.all(convList.map(async (c) => {
+                let msgs = [];
+                try {
+                  msgs = await api.chat.getMessages(c.id);
+                } catch (e) {}
+                return {
+                  id: c.id,
+                  doctor: {
+                    id: c.doctor1Id === docId ? c.doctor2Id : c.doctor1Id,
+                    name: c.doctor1Id === docId ? c.doctor2Name : c.doctor1Name,
+                    avatar: c.doctor1Id === docId ? c.doctor2Avatar : c.doctor1Avatar,
+                    specialty: 'Veterinary Practitioner',
+                    city: 'Bengaluru'
+                  },
+                  lastMessage: c.lastMessage,
+                  timestamp: 'Active',
+                  unread: c.doctor1Id === docId ? c.unreadCountDoctor1 : c.unreadCountDoctor2,
+                  messages: (msgs || []).map(m => ({
+                    id: m.id,
+                    sender: m.senderId === docId ? 'user' : 'doctor',
+                    senderId: m.senderId,
+                    text: m.text,
+                    attachmentUrl: m.attachmentUrl,
+                    attachmentType: m.attachmentType,
+                    time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Active'
+                  }))
+                };
+              }));
+              setConversations(fullConvs);
+            }
+          } catch (e) {
+            setConversations([]);
+          }
+
+          try {
+            const sent = await api.connections.getSent(docId);
+            if (sent && sent.length > 0) {
+              setSentRequests(sent);
+            }
+          } catch (e) {}
         }
-      } catch (e) {
-        console.log('No chat conversations yet');
+      } else {
+        // Cleanly wipe any private data from memory when not signed in
+        setConversations([]);
+        setConnectedMap({});
+        setMyConnections([]);
+        setPendingRequests([]);
+        setSentRequests([]);
+        setNotifications([]);
       }
     }
 
@@ -308,11 +345,25 @@ export function App() {
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
     setIsLoginView(false);
+    setActiveTab('feed');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await api.auth.logout();
+    } catch (e) {}
     localStorage.removeItem('doctor_vet_user');
+    localStorage.removeItem('doctor_vet_token');
     setCurrentUser(null);
+    setConversations([]);
+    setConnectedMap({});
+    setMyConnections([]);
+    setNotifications([]);
+    setPendingRequests([]);
+    setSentRequests([]);
+    setActiveChatDoctor(null);
+    setSelectedDoctor(null);
+    setActiveTab('feed');
   };
 
   const handleOpenCreatePost = (type = 'CLINICAL_CASE') => {
@@ -347,6 +398,10 @@ export function App() {
     const req = pendingRequests.find(r => r.id === requestId);
     if (req) {
       setConnectedMap(prev => ({ ...prev, [req.senderId]: true, [`doc-${req.senderId}`]: true }));
+      const doc = doctors.find(d => d.id === req.senderId);
+      if (doc) {
+        setMyConnections(prev => [...prev.filter(p => p.id !== doc.id), doc]);
+      }
     }
     setPendingRequests(prev => prev.filter(r => r.id !== requestId));
     setNotifications(prev => prev.filter(n => n.targetId !== requestId));
@@ -370,13 +425,14 @@ export function App() {
   const handleDisconnect = async (targetDoctorId) => {
     try {
       await api.connections.disconnect(currentUser?.id || 1, targetDoctorId);
-    } catch (e) {}
+    } catch (e) { }
     setConnectedMap(prev => {
       const copy = { ...prev };
       delete copy[targetDoctorId];
       delete copy[`doc-${targetDoctorId}`];
       return copy;
     });
+    setMyConnections(prev => prev.filter(c => c.id !== targetDoctorId && `doc-${c.id}` !== targetDoctorId));
     alert('Doctor removed from connections.');
   };
 
@@ -384,7 +440,7 @@ export function App() {
   const handleLikePost = async (postId) => {
     try {
       await api.feed.toggleLike(postId, currentUser?.id || 1, currentUser?.name || 'Dr. You');
-    } catch (e) {}
+    } catch (e) { }
 
     setPosts(prev => prev.map(p => {
       if (p.id === postId) {
@@ -411,7 +467,7 @@ export function App() {
         authorSpecialty,
         content
       });
-    } catch (e) {}
+    } catch (e) { }
 
     const newComment = {
       id: Date.now(),
@@ -439,14 +495,14 @@ export function App() {
     if (!window.confirm('Are you sure you want to delete this clinical post?')) return;
     try {
       await api.feed.deletePost(postId);
-    } catch (e) {}
+    } catch (e) { }
     setPosts(prev => prev.filter(p => p.id !== postId));
   };
 
   const handleBookmarkPost = async (postId) => {
     try {
       await api.feed.toggleBookmark(postId, currentUser?.id || 1);
-    } catch (e) {}
+    } catch (e) { }
 
     setPosts(prev => prev.map(p => {
       if (p.id === postId) {
@@ -461,7 +517,7 @@ export function App() {
     if (!reason) return;
     try {
       await api.feed.reportPost(postId, currentUser?.id || 1, reason);
-    } catch (e) {}
+    } catch (e) { }
     alert('Thank you. The post has been flagged for veterinary moderation review.');
   };
 
@@ -674,7 +730,7 @@ export function App() {
     const optimisticMsg = {
       id: Date.now(),
       sender: 'user',
-      senderId: currentUser?.id || 1,
+      senderId: currentUser?.id,
       text,
       attachmentUrl,
       attachmentType,
@@ -682,7 +738,7 @@ export function App() {
     };
 
     setConversations(prev => prev.map(conv => {
-      if (conv.id === conversationId || conv.id === targetConvId) {
+      if (conv.id === conversationId || conv.id === targetConvId || (conv.doctor?.id === receiverId)) {
         return {
           ...conv,
           id: targetConvId,
@@ -696,9 +752,9 @@ export function App() {
 
     try {
       await api.chat.sendMessage({
-        conversationId: typeof targetConvId === 'number' ? targetConvId : 1,
-        senderId: currentUser?.id || 1,
-        receiverId: receiverId || 2,
+        conversationId: typeof targetConvId === 'number' ? targetConvId : (typeof conversationId === 'number' ? conversationId : 1),
+        senderId: currentUser?.id,
+        receiverId: receiverId,
         text,
         attachmentUrl,
         attachmentType
@@ -712,14 +768,14 @@ export function App() {
   const handleMarkNotificationRead = async (id) => {
     try {
       await api.notifications.markAsRead(id);
-    } catch (e) {}
+    } catch (e) { }
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   };
 
   const handleMarkAllNotificationsRead = async () => {
     try {
       await api.notifications.markAllAsRead(currentUser?.id || 1);
-    } catch (e) {}
+    } catch (e) { }
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
@@ -786,107 +842,121 @@ export function App() {
           onOpenCreatePost={handleOpenCreatePost}
         />
 
-        {/* 2-Column Workspace Layout */}
-        <div className="workspace-two-column-layout">
-          {/* Main Feed Column */}
-          <main className="feed-main-column">
-            {activeTab === 'feed' && (
-              <FeedView
-                posts={posts}
-                stories={stories}
-                onOpenStory={(s) => setSelectedStory(s)}
-                onOpenCreatePost={handleOpenCreatePost}
-                onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
-                onOpenClinicalCase={(c) => setSelectedCase(c)}
-                onLikePost={handleLikePost}
-                onAddComment={handleAddComment}
-                onDeletePost={handleDeletePost}
-                onBookmarkPost={handleBookmarkPost}
-                onReportPost={handleReportPost}
-                currentUser={currentUser}
-              />
-            )}
+        {/* Workspace Layout */}
+        {activeTab === 'messages' ? (
+          <div className="messages-workspace-layout" style={{
+            display: 'flex',
+            width: '100%',
+            maxWidth: '1440px',
+            margin: '0 auto',
+            padding: '16px 20px',
+            boxSizing: 'border-box'
+          }}>
+            <MessagesView
+              conversations={conversations}
+              activeChatDoctor={activeChatDoctor}
+              onSelectConversation={(c) => setActiveChatDoctor(c.doctor)}
+              onSendMessage={handleSendMessage}
+              onOpenDoctorProfile={(doc) => setSelectedDoctor(doc)}
+              currentUser={currentUser}
+              doctors={doctors}
+              connectedDoctors={myConnections}
+              onOpenLogin={() => setIsLoginView(true)}
+              onNavigateTab={(tab) => setActiveTab(tab)}
+              onOpenCreateProfile={() => setIsCreateProfileOpen(true)}
+            />
+          </div>
+        ) : (
+          <div className="workspace-two-column-layout">
+            {/* Main Feed Column */}
+            <main className="feed-main-column">
+              {activeTab === 'feed' && (
+                <FeedView
+                  posts={posts}
+                  stories={stories}
+                  onOpenStory={(s) => setSelectedStory(s)}
+                  onOpenCreatePost={handleOpenCreatePost}
+                  onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
+                  onOpenClinicalCase={(c) => setSelectedCase(c)}
+                  onLikePost={handleLikePost}
+                  onAddComment={handleAddComment}
+                  onDeletePost={handleDeletePost}
+                  onBookmarkPost={handleBookmarkPost}
+                  onReportPost={handleReportPost}
+                  currentUser={currentUser}
+                />
+              )}
 
-            {activeTab === 'network' && (
-              <VetNetworkView
-                doctors={doctors}
-                onSelectDoctor={(doc) => setSelectedDoctor(doc)}
-                connectedDoctors={connectedMap}
-                pendingRequests={pendingRequests}
-                sentRequests={sentRequests}
-                onSendRequest={handleSendRequest}
-                onAcceptRequest={handleAcceptRequest}
-                onRejectRequest={handleRejectRequest}
-                onCancelRequest={handleCancelRequest}
-                onDisconnect={handleDisconnect}
-                onOpenChat={handleOpenDirectChat}
-                currentUser={currentUser}
-              />
-            )}
+              {activeTab === 'network' && (
+                <VetNetworkView
+                  doctors={doctors}
+                  onSelectDoctor={(doc) => setSelectedDoctor(doc)}
+                  connectedDoctors={connectedMap}
+                  pendingRequests={pendingRequests}
+                  sentRequests={sentRequests}
+                  onSendRequest={handleSendRequest}
+                  onAcceptRequest={handleAcceptRequest}
+                  onRejectRequest={handleRejectRequest}
+                  onCancelRequest={handleCancelRequest}
+                  onDisconnect={handleDisconnect}
+                  onOpenChat={handleOpenDirectChat}
+                  currentUser={currentUser}
+                />
+              )}
 
-            {activeTab === 'cases' && (
-              <ClinicalCasesView
-                clinicalCases={clinicalCases}
-                stories={stories}
-                onOpenStory={(s) => setSelectedStory(s)}
-                onOpenCreateCase={handleOpenCreatePost}
-                onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
-                onSelectCase={(c) => setSelectedCase(c)}
-              />
-            )}
+              {activeTab === 'cases' && (
+                <ClinicalCasesView
+                  clinicalCases={clinicalCases}
+                  stories={stories}
+                  onOpenStory={(s) => setSelectedStory(s)}
+                  onOpenCreateCase={handleOpenCreatePost}
+                  onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
+                  onSelectCase={(c) => setSelectedCase(c)}
+                />
+              )}
 
-            {activeTab === 'videos' && (
-              <ShortVideosView
-                videos={videos}
-                stories={stories}
-                onOpenStory={(s) => setSelectedStory(s)}
-                onOpenCreateVideo={handleOpenCreatePost}
-                onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
-                onSelectVideo={(v) => setSelectedVideo(v)}
-              />
-            )}
+              {activeTab === 'videos' && (
+                <ShortVideosView
+                  videos={videos}
+                  stories={stories}
+                  onOpenStory={(s) => setSelectedStory(s)}
+                  onOpenCreateVideo={handleOpenCreatePost}
+                  onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
+                  onSelectVideo={(v) => setSelectedVideo(v)}
+                />
+              )}
 
-            {activeTab === 'messages' && (
-              <MessagesView
-                conversations={conversations}
-                activeChatDoctor={activeChatDoctor}
-                onSelectConversation={handleSelectConversation}
-                onSendMessage={handleSendMessage}
-                onOpenDoctorProfile={(doc) => setSelectedDoctor(doc)}
-                currentUser={currentUser}
-              />
-            )}
+              {activeTab === 'search' && (
+                <SearchView
+                  doctors={doctors}
+                  onSelectDoctor={(doc) => setSelectedDoctor(doc)}
+                  onSelectCase={(c) => setSelectedCase(c)}
+                  onSelectVideo={(v) => setSelectedVideo(v)}
+                  onOpenChat={handleOpenDirectChat}
+                />
+              )}
 
-            {activeTab === 'search' && (
-              <SearchView
-                doctors={doctors}
-                onSelectDoctor={(doc) => setSelectedDoctor(doc)}
-                onSelectCase={(c) => setSelectedCase(c)}
-                onSelectVideo={(v) => setSelectedVideo(v)}
-                onOpenChat={handleOpenDirectChat}
-              />
-            )}
+              {activeTab === 'benefits' && (
+                <MemberBenefitsView
+                  onOpenCreateProfile={() => setIsCreateProfileOpen(true)}
+                />
+              )}
 
-            {activeTab === 'benefits' && (
-              <MemberBenefitsView
-                onOpenCreateProfile={() => setIsCreateProfileOpen(true)}
-              />
-            )}
+              {activeTab === 'advertise' && (
+                <AdvertiseView />
+              )}
+            </main>
 
-            {activeTab === 'advertise' && (
-              <AdvertiseView />
-            )}
-          </main>
-
-          {/* Right Rail Widgets (People to Know & Network Advantage) */}
-          <RightSidebar
-            doctors={doctors}
-            onSelectDoctor={(doc) => setSelectedDoctor(doc)}
-            onViewAllDoctors={() => setActiveTab('network')}
-            onSendRequest={handleSendRequest}
-            connectedDoctors={Object.keys(connectedMap).map(k => ({ id: isNaN(k) ? k : Number(k) }))}
-          />
-        </div>
+            {/* Right Rail Widgets (People to Know & Network Advantage) */}
+            <RightSidebar
+              doctors={doctors}
+              onSelectDoctor={(doc) => setSelectedDoctor(doc)}
+              onViewAllDoctors={() => setActiveTab('network')}
+              onSendRequest={handleSendRequest}
+              connectedDoctors={Object.keys(connectedMap).map(k => ({ id: isNaN(k) ? k : Number(k) }))}
+            />
+          </div>
+        )}
       </div>
 
       {/* Interactive Modals */}

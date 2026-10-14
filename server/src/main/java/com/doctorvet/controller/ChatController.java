@@ -19,6 +19,36 @@ public class ChatController {
         this.chatService = chatService;
     }
 
+    public record MessageViewDto(
+            Long id,
+            String sender,
+            Long senderId,
+            Long receiverId,
+            String text,
+            String time,
+            String attachmentUrl,
+            String attachmentType
+    ) {}
+
+    public record PeerDoctorDto(
+            Long id,
+            String name,
+            String specialty,
+            String city,
+            String avatar,
+            boolean isOnline,
+            String onlineStatus
+    ) {}
+
+    public record ConversationViewDto(
+            Long id,
+            PeerDoctorDto doctor,
+            String lastMessage,
+            String timestamp,
+            int unread,
+            List<MessageViewDto> messages
+    ) {}
+
     @GetMapping("/conversations")
     public List<Conversation> getConversations(@RequestParam Long doctorId) {
         return chatService.getConversations(doctorId);
