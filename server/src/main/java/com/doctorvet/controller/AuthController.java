@@ -44,19 +44,6 @@ public class AuthController {
             int casesCount) {
     }
 
-    public record AuthResponse(
-            String token,
-            Long id,
-            String name,
-            String email,
-            String specialty,
-            String city,
-            String state,
-            String avatar,
-            boolean verified,
-            int connectionsCount,
-            int casesCount) {
-    }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req) {
@@ -123,8 +110,7 @@ public class AuthController {
                 profile.getSpecialty() != null ? profile.getSpecialty() : "Veterinary Medicine",
                 profile.getCity() != null ? profile.getCity() : "Bengaluru",
                 profile.getState() != null ? profile.getState() : "Karnataka",
-                profile.getAvatar() != null ? profile.getAvatar()
-                        : "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80",
+                profile.getAvatar() != null ? profile.getAvatar() : "",
                 profile.isVerified(),
                 profile.getConnectionsCount(),
                 profile.getCasesCount()));
@@ -155,8 +141,7 @@ public class AuthController {
                 "Registered veterinary practitioner under VCI: "
                         + (req.vciNumber() != null ? req.vciNumber() : "VCI-REG-NEW"));
         newDoctor.setEmail(req.email() != null ? req.email() : null);
-
-        DoctorProfile saved = doctorService.createProfile(newDoctor);
+        DoctorProfile saved = doctorRepo.save(newDoctor);
 
         String token = tokenService.generateToken(saved.getId(), saved.getName(), saved.getEmail());
 
