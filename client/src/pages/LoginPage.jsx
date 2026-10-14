@@ -153,7 +153,7 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
               <PawPrint size={22} fill="#ffffff" />
             </div>
             <div>
-              <span className="brand-main-name">Doctor Vet™</span>
+              <span className="brand-main-name">Zenve Vet</span>
               <span className="brand-main-subtitle">The Professional Network</span>
             </div>
           </div>
@@ -410,7 +410,7 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
           <div className="login-footer-disclaimer">
             <ShieldCheck size={14} color="#059669" />
             <span>
-              Doctor Vet™ strictly authenticates licensed veterinary surgeons and clinical residents under State & National Veterinary Council frameworks.
+              Zenve Vet strictly authenticates licensed veterinary surgeons and clinical residents under State & National Veterinary Council frameworks.
             </span>
           </div>
         </div>

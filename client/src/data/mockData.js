@@ -1,4 +1,4 @@
-// Doctor Vet™ — Comprehensive Mock Data Ecosystem
+// Zenve Vet™ — Comprehensive Mock Data Ecosystem
 
 export const MOCK_DOCTORS = [
   {

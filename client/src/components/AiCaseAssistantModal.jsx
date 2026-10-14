@@ -94,7 +94,7 @@ export function AiCaseAssistantModal({ isOpen, onClose, onInsertCase }) {
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#121A15' }}>
                   Chief Complaint & Clinical Signs *
                 </label>
-                <textarea 
+                <textarea
                   rows="3"
                   className="custom-filter-select"
                   style={{ width: '100%', resize: 'vertical' }}
@@ -108,7 +108,7 @@ export function AiCaseAssistantModal({ isOpen, onClose, onInsertCase }) {
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#121A15' }}>
                   Physical Exam & Vitals (Optional)
                 </label>
-                <input 
+                <input
                   type="text"
                   className="custom-filter-select"
                   style={{ width: '100%' }}
@@ -123,7 +123,7 @@ export function AiCaseAssistantModal({ isOpen, onClose, onInsertCase }) {
                 <span>AI Case Assistant provides rapid diagnostic suggestions based on peer-reviewed veterinary literature. Clinical decision remains with the attending veterinarian.</span>
               </div>
 
-              <button 
+              <button
                 type="button"
                 className="btn-submit-post"
                 style={{ width: '100%', justifyContent: 'center', padding: '12px', marginTop: '6px' }}

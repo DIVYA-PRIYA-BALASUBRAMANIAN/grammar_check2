@@ -11,6 +11,7 @@ public class Post {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private Long authorId;
     private String authorName;
     private String authorSpecialty;
     private String authorCity;
@@ -23,6 +24,7 @@ public class Post {
     private String content;
 
     private String imageUrl;
+    private String videoUrl;
     private String species;
     private int likes = 0;
     private int commentsCount = 0;
@@ -42,10 +44,14 @@ public class Post {
         this.imageUrl = imageUrl;
         this.species = species;
         this.likes = likes;
+        this.createdAt = LocalDateTime.now();
     }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
+    public Long getAuthorId() { return authorId; }
+    public void setAuthorId(Long authorId) { this.authorId = authorId; }
 
     public String getAuthorName() { return authorName; }
     public void setAuthorName(String authorName) { this.authorName = authorName; }
@@ -70,6 +76,9 @@ public class Post {
 
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+
+    public String getVideoUrl() { return videoUrl; }
+    public void setVideoUrl(String videoUrl) { this.videoUrl = videoUrl; }
 
     public String getSpecies() { return species; }
     public void setSpecies(String species) { this.species = species; }

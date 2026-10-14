@@ -46,12 +46,23 @@ export function StoryModal({ story, onClose }) {
           </button>
         </div>
 
-        {/* Story Image */}
-        <img 
-          src={story.image} 
-          alt={story.caption}
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-        />
+        {/* Story Media (Image or Video) */}
+        {story.videoUrl || (story.image && (story.image.endsWith('.mp4') || story.image.startsWith('blob:') || story.image.startsWith('data:video'))) ? (
+          <video 
+            src={story.videoUrl || story.image}
+            autoPlay 
+            loop 
+            muted 
+            playsInline
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        ) : (
+          <img 
+            src={story.image} 
+            alt={story.caption}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        )}
 
         {/* Caption & Controls */}
         <div style={{

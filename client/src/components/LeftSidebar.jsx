@@ -1,13 +1,13 @@
 import React from 'react';
-import { 
-  Home, 
-  Users, 
-  FolderHeart, 
-  Video, 
-  MessageSquare, 
-  Search, 
-  Award, 
-  Megaphone, 
+import {
+  Home,
+  Users,
+  FolderHeart,
+  Video,
+  MessageSquare,
+  Search,
+  Award,
+  Megaphone,
   ExternalLink,
   Crown,
   ArrowRight,
@@ -19,14 +19,15 @@ import {
   ShieldCheck
 } from 'lucide-react';
 
-export function LeftSidebar({ 
-  activeTab, 
-  onTabSelect, 
-  unreadMessagesCount = 1, 
+export function LeftSidebar({
+  activeTab,
+  onTabSelect,
+  unreadMessagesCount = 1,
   onOpenBenefitsModal,
   currentUser,
   onOpenLogin,
-  onLogout
+  onLogout,
+  onOpenCreateProfile
 }) {
   const navItems = [
     { id: 'feed', label: 'Home', icon: Home },
@@ -47,7 +48,7 @@ export function LeftSidebar({
           <PawPrint size={20} fill="#ffffff" />
         </div>
         <div className="brand-text-block">
-          <span className="brand-main-name">Doctor Vet™</span>
+          <span className="brand-main-name">Zenve Vet</span>
           <span className="brand-main-subtitle">The Professional Network</span>
         </div>
       </div>
@@ -59,7 +60,7 @@ export function LeftSidebar({
           const isActive = activeTab === item.id;
           return (
             <li key={item.id}>
-              <button 
+              <button
                 id={`sidebar-nav-${item.id}`}
                 className={`nav-item-btn ${isActive ? 'active' : ''}`}
                 onClick={() => onTabSelect(item.id)}
@@ -83,8 +84,8 @@ export function LeftSidebar({
       <div className="sidebar-discover-section">
         <p className="discover-kicker">Discover & Grow</p>
 
-        <a 
-          href="#scholarships" 
+        <a
+          href="#scholarships"
           className="discover-nav-link"
           onClick={(e) => { e.preventDefault(); onTabSelect('benefits'); }}
         >
@@ -95,8 +96,8 @@ export function LeftSidebar({
           <ExternalLink size={13} color="#7ca895" />
         </a>
 
-        <a 
-          href="#mentorship" 
+        <a
+          href="#mentorship"
           className="discover-nav-link"
           onClick={(e) => { e.preventDefault(); onTabSelect('network'); }}
         >
@@ -122,10 +123,14 @@ export function LeftSidebar({
           justifyContent: 'space-between',
           gap: '8px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-            <img 
-              src={currentUser.avatar || "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=150&q=80"} 
-              alt={currentUser.name} 
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, cursor: 'pointer' }}
+            onClick={onOpenCreateProfile}
+            title="Edit / View Doctor Page"
+          >
+            <img
+              src={currentUser.avatar || "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=150&q=80"}
+              alt={currentUser.name}
               style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
             />
             <div style={{ minWidth: 0 }}>
@@ -138,7 +143,7 @@ export function LeftSidebar({
               </div>
             </div>
           </div>
-          <button 
+          <button
             onClick={onLogout}
             title="Log Out"
             style={{
@@ -186,7 +191,7 @@ export function LeftSidebar({
       )}
 
       {/* Bottom Promo Card */}
-      <div 
+      <div
         className="sidebar-bottom-promo-card"
         onClick={() => onOpenBenefitsModal ? onOpenBenefitsModal() : onTabSelect('benefits')}
       >

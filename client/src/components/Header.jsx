@@ -1,62 +1,535 @@
-import React from 'react';
-import { Search, MapPin, ChevronDown, Bell, LogIn } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { 
+  Search, 
+  MapPin, 
+  ChevronDown, 
+  Bell, 
+  LogIn, 
+  Home, 
+  Users, 
+  FolderHeart, 
+  Video, 
+  MessageSquare, 
+  PawPrint,
+  Check, 
+  X, 
+  User, 
+  LogOut, 
+  Settings, 
+  CheckCircle2, 
+  Sparkles,
+  ExternalLink
+} from 'lucide-react';
 
 export function Header({ 
   searchQuery, 
   onSearchChange, 
   selectedCountry = 'INDIA',
-  onOpenCreateProfile,
+  activeTab,
+  onTabSelect,
   currentUser,
-  onOpenLogin
+  onOpenLogin,
+  onLogout,
+  onOpenCreateProfile,
+  onOpenDoctorProfile,
+  unreadMessagesCount = 0,
+  unreadNotificationsCount = 0,
+  pendingRequestsCount = 0,
+  notifications = [],
+  onAcceptRequest,
+  onIgnoreRequest,
+  onMarkNotificationRead,
+  onMarkAllNotificationsRead,
+  onOpenCreatePost
 }) {
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [notifFilter, setNotifFilter] = useState('all'); // 'all' | 'unread'
+
+  const notifRef = useRef(null);
+  const profileRef = useRef(null);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (notifRef.current && !notifRef.current.contains(event.target)) {
+        setIsNotificationsOpen(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setIsProfileMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const navItems = [
+    { id: 'feed', label: 'Home', icon: Home },
+    { id: 'network', label: 'My Network', icon: Users, badge: pendingRequestsCount },
+    { id: 'cases', label: 'Clinical Cases', icon: FolderHeart },
+    { id: 'videos', label: 'Reels', icon: Video },
+    { id: 'messages', label: 'Messages', icon: MessageSquare, badge: unreadMessagesCount },
+  ];
+
+  const filteredNotifs = notifications.filter(n => notifFilter === 'all' || !n.read);
+
   return (
-    <header className="top-header">
-      {/* Search Bar Pill */}
-      <div className="header-search-container">
-        <div className="header-search-bar">
-          <Search size={16} color="#6b7280" />
-          <input 
-            type="text" 
-            placeholder="Search doctors, specialties, cities..."
-            className="header-search-input"
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-          />
-          <div className="header-country-pill" title="Filter by Region">
-            <MapPin size={13} color="#4b5563" />
-            <span>{selectedCountry}</span>
-            <ChevronDown size={12} color="#4b5563" />
+    <header className="top-header" style={{ position: 'sticky', top: 0, zIndex: 40, borderBottom: '1px solid #E5E7EB', backgroundColor: '#FFFFFF' }}>
+      {/* 1. Brand Logo & Emblem */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <button 
+          onClick={() => onTabSelect && onTabSelect('feed')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0
+          }}
+        >
+          <div style={{
+            width: '34px',
+            height: '34px',
+            borderRadius: '8px',
+            background: 'linear-gradient(135deg, #003822 0%, #05633C 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 2px 6px rgba(0, 56, 34, 0.25)'
+          }}>
+            <PawPrint size={18} fill="#FFFFFF" color="#FFFFFF" />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.1 }}>
+            <span style={{ fontSize: '15px', fontWeight: '800', color: '#003822', letterSpacing: '-0.3px', fontFamily: 'var(--font-display, inherit)' }}>
+              Doctor Vet
+            </span>
+            <span style={{ fontSize: '9.5px', fontWeight: '700', color: '#059669', letterSpacing: '0.6px', textTransform: 'uppercase' }}>
+              Community
+            </span>
+          </div>
+        </button>
+
+        {/* Global Search Bar */}
+        <div className="header-search-container" style={{ marginLeft: '6px' }}>
+          <div className="header-search-bar" style={{ width: '260px' }}>
+            <Search size={15} color="#6b7280" />
+            <input 
+              type="text" 
+              placeholder="Search doctors, cases, skills..."
+              className="header-search-input"
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              style={{ fontSize: '13px' }}
+            />
           </div>
         </div>
       </div>
 
-      {/* Header Right Actions */}
-      <div className="header-right-actions">
-        <div className="open-community-badge">
-          <span className="status-dot-green"></span>
-          <span>Open community</span>
+      {/* 2. LinkedIn-Style Center Navigation Icons */}
+      <nav style={{ display: 'flex', alignItems: 'center', gap: '4px', margin: '0 auto' }}>
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => onTabSelect && onTabSelect(item.id)}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '6px 14px',
+                borderRadius: '8px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                position: 'relative',
+                color: isActive ? '#003822' : '#6B7280',
+                borderBottom: isActive ? '2.5px solid #003822' : '2.5px solid transparent',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive) e.currentTarget.style.color = '#111827';
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) e.currentTarget.style.color = '#6B7280';
+              }}
+            >
+              <div style={{ position: 'relative' }}>
+                <Icon size={20} strokeWidth={isActive ? 2.3 : 1.9} />
+                {item.badge > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '-6px',
+                    right: '-10px',
+                    backgroundColor: '#DC2626',
+                    color: '#FFFFFF',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    borderRadius: '10px',
+                    padding: '1px 5px',
+                    lineHeight: 1.2
+                  }}>
+                    {item.badge}
+                  </span>
+                )}
+              </div>
+              <span style={{ fontSize: '11px', fontWeight: isActive ? 700 : 500, marginTop: '2px' }}>
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* 3. Header Right Actions & Profile */}
+      <div className="header-right-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Post Shortcut Button */}
+        {onOpenCreatePost && (
+          <button
+            onClick={() => onOpenCreatePost('CLINICAL_CASE')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              backgroundColor: '#ECFDF5',
+              color: '#065F46',
+              border: '1px solid #A7F3D0',
+              borderRadius: '9999px',
+              padding: '6px 14px',
+              fontSize: '12.5px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#D1FAE5'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ECFDF5'}
+          >
+            <Sparkles size={14} color="#059669" />
+            <span>Post</span>
+          </button>
+        )}
+
+        {/* Notifications Bell Dropdown */}
+        <div style={{ position: 'relative' }} ref={notifRef}>
+          <button 
+            className="header-bell-btn" 
+            title="Notifications"
+            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+            style={{ position: 'relative', cursor: 'pointer' }}
+          >
+            <Bell size={19} color={isNotificationsOpen ? '#003822' : '#4B5563'} />
+            {unreadNotificationsCount > 0 && (
+              <span className="bell-badge-count">{unreadNotificationsCount}</span>
+            )}
+          </button>
+
+          {/* Interactive Notifications Modal Dropdown */}
+          {isNotificationsOpen && (
+            <div style={{
+              position: 'absolute',
+              top: '46px',
+              right: 0,
+              width: '360px',
+              backgroundColor: '#FFFFFF',
+              borderRadius: '14px',
+              boxShadow: '0 12px 36px rgba(0,0,0,0.18)',
+              border: '1px solid #E5E7EB',
+              overflow: 'hidden',
+              zIndex: 100,
+              animation: 'modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}>
+              {/* Notification Header */}
+              <div style={{
+                padding: '12px 16px',
+                borderBottom: '1px solid #F3F4F6',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                backgroundColor: '#FAFAFA'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#111827' }}>
+                    Notifications
+                  </h4>
+                  {unreadNotificationsCount > 0 && (
+                    <span style={{ fontSize: '11px', backgroundColor: '#ECFDF5', color: '#047857', fontWeight: 700, padding: '2px 6px', borderRadius: '4px' }}>
+                      {unreadNotificationsCount} new
+                    </span>
+                  )}
+                </div>
+                {onMarkAllNotificationsRead && (
+                  <button 
+                    onClick={onMarkAllNotificationsRead}
+                    style={{ background: 'none', border: 'none', fontSize: '11.5px', color: '#059669', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Mark all read
+                  </button>
+                )}
+              </div>
+
+              {/* Notification Filters */}
+              <div style={{ display: 'flex', gap: '6px', padding: '8px 16px', borderBottom: '1px solid #F3F4F6' }}>
+                <button
+                  onClick={() => setNotifFilter('all')}
+                  style={{
+                    padding: '3px 10px',
+                    borderRadius: '9999px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    border: 'none',
+                    cursor: 'pointer',
+                    backgroundColor: notifFilter === 'all' ? '#003822' : '#F3F4F6',
+                    color: notifFilter === 'all' ? '#FFFFFF' : '#4B5563'
+                  }}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setNotifFilter('unread')}
+                  style={{
+                    padding: '3px 10px',
+                    borderRadius: '9999px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    border: 'none',
+                    cursor: 'pointer',
+                    backgroundColor: notifFilter === 'unread' ? '#003822' : '#F3F4F6',
+                    color: notifFilter === 'unread' ? '#FFFFFF' : '#4B5563'
+                  }}
+                >
+                  Unread
+                </button>
+              </div>
+
+              {/* Notifications List */}
+              <div style={{ maxHeight: '340px', overflowY: 'auto' }}>
+                {filteredNotifs.length === 0 ? (
+                  <div style={{ padding: '30px 16px', textAlign: 'center', color: '#9CA3AF' }}>
+                    <Bell size={28} color="#D1D5DB" style={{ margin: '0 auto 8px auto', display: 'block' }} />
+                    <p style={{ margin: 0, fontSize: '13px' }}>No notifications right now.</p>
+                  </div>
+                ) : (
+                  filteredNotifs.map((n) => (
+                    <div 
+                      key={n.id}
+                      onClick={() => onMarkNotificationRead && onMarkNotificationRead(n.id)}
+                      style={{
+                        padding: '12px 16px',
+                        borderBottom: '1px solid #F3F4F6',
+                        backgroundColor: n.read ? '#FFFFFF' : '#F0FDF4',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        gap: '10px',
+                        transition: 'background-color 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F9FAFB'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = n.read ? '#FFFFFF' : '#F0FDF4'}
+                    >
+                      <img 
+                        src={n.senderAvatar || "https://images.unsplash.com/photo-1594824813575-5858e94a5392?auto=format&fit=crop&w=150&q=80"}
+                        alt={n.senderName || "Doctor"}
+                        style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: '12.5px', color: '#1F2937', lineHeight: 1.4 }}>
+                          {n.message}
+                        </p>
+                        <span style={{ fontSize: '10.5px', color: '#9CA3AF', marginTop: '2px', display: 'block' }}>
+                          {n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}
+                        </span>
+
+                        {/* Interactive Connection Request Accept/Reject Buttons */}
+                        {n.type === 'CONNECTION_REQUEST' && onAcceptRequest && (
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onAcceptRequest(n.targetId || n.id);
+                                setIsNotificationsOpen(false);
+                              }}
+                              style={{
+                                backgroundColor: '#003822',
+                                color: '#FFFFFF',
+                                border: 'none',
+                                borderRadius: '6px',
+                                padding: '4px 12px',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <Check size={12} />
+                              <span>Accept</span>
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onIgnoreRequest && onIgnoreRequest(n.targetId || n.id);
+                              }}
+                              style={{
+                                backgroundColor: '#F3F4F6',
+                                color: '#4B5563',
+                                border: '1px solid #E5E7EB',
+                                borderRadius: '6px',
+                                padding: '4px 10px',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Ignore
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
-        <button className="header-bell-btn" title="Notifications">
-          <Bell size={19} />
-          <span className="bell-badge-count">3</span>
-        </button>
-
+        {/* Doctor Profile Menu */}
         {currentUser ? (
-          <div 
-            className="header-user-profile-btn" 
-            onClick={onOpenCreateProfile}
-            title={`${currentUser.name} (Verified Doctor)`}
-          >
-            <img 
-              src={currentUser.avatar || "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=150&q=80"} 
-              alt={currentUser.name} 
-              className="header-avatar-img"
-            />
-            <span style={{ fontSize: '12.5px', fontWeight: '700', color: '#111827', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {currentUser.name}
-            </span>
-            <ChevronDown size={13} color="#4b5563" />
+          <div style={{ position: 'relative' }} ref={profileRef}>
+            <div 
+              className="header-user-profile-btn" 
+              onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+              title={`${currentUser.name} (Verified Doctor)`}
+              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px', borderRadius: '9999px', border: '1px solid #E5E7EB' }}
+            >
+              <img 
+                src={currentUser.avatar || "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=150&q=80"} 
+                alt={currentUser.name} 
+                className="header-avatar-img"
+                style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }}
+              />
+              <span style={{ fontSize: '12px', fontWeight: '700', color: '#111827', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {currentUser.name.replace('Dr. ', '')}
+              </span>
+              <ChevronDown size={13} color="#4b5563" />
+            </div>
+
+            {/* Profile Dropdown */}
+            {isProfileMenuOpen && (
+              <div style={{
+                position: 'absolute',
+                top: '46px',
+                right: 0,
+                width: '260px',
+                backgroundColor: '#FFFFFF',
+                borderRadius: '12px',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
+                border: '1px solid #E5E7EB',
+                padding: '12px',
+                zIndex: 100
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingBottom: '10px', borderBottom: '1px solid #F3F4F6' }}>
+                  <img 
+                    src={currentUser.avatar || "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=150&q=80"} 
+                    alt={currentUser.name} 
+                    style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }}
+                  />
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: 700, color: '#111827' }}>{currentUser.name}</h4>
+                    <span style={{ fontSize: '11px', color: '#059669', fontWeight: 600 }}>{currentUser.specialty || 'Veterinary Surgeon'}</span>
+                  </div>
+                </div>
+
+                <div style={{ paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <button
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      onOpenDoctorProfile && onOpenDoctorProfile(currentUser);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 10px',
+                      width: '100%',
+                      background: 'none',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '12.5px',
+                      color: '#1F2937',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textAlign: 'left'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F3F4F6'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <User size={15} color="#059669" />
+                    <span>View Full Profile</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      onOpenCreateProfile && onOpenCreateProfile();
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 10px',
+                      width: '100%',
+                      background: 'none',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '12.5px',
+                      color: '#1F2937',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textAlign: 'left'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F3F4F6'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <Settings size={15} color="#4B5563" />
+                    <span>Edit Profile & Credentials</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      onLogout && onLogout();
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 10px',
+                      width: '100%',
+                      background: 'none',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '12.5px',
+                      color: '#DC2626',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      marginTop: '4px',
+                      borderTop: '1px solid #F3F4F6'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#FEE2E2'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <LogOut size={15} color="#DC2626" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <button 
@@ -73,6 +546,7 @@ export function Header({
               fontSize: '12.5px',
               fontWeight: '700',
               cursor: 'pointer',
+              border: 'none',
               boxShadow: '0 2px 8px rgba(0, 56, 34, 0.2)',
               transition: 'all 0.15s ease'
             }}

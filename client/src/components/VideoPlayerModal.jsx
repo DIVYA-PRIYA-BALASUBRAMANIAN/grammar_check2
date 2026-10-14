@@ -38,11 +38,21 @@ export function VideoPlayerModal({ video, onClose }) {
       >
         {/* Left Video Player Area */}
         <div style={{ flex: '1.2', position: 'relative', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <img 
-            src={video.thumbnail} 
-            alt={video.title}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          />
+          {video.videoUrl ? (
+            <video 
+              src={video.videoUrl} 
+              controls 
+              autoPlay 
+              playsInline
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          ) : (
+            <img 
+              src={video.thumbnail} 
+              alt={video.title}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          )}
 
           {/* Video Overlay Info */}
           <div style={{

@@ -96,7 +96,7 @@ export function ClinicalCasesView({
             </p>
             <button 
               className="btn-make-mark-link"
-              onClick={onOpenCreateCase}
+              onClick={() => onOpenCreateCase('CLINICAL_CASE')}
             >
               <span>Make your mark</span>
               <ArrowRight size={15} />
@@ -133,7 +133,7 @@ export function ClinicalCasesView({
 
         <div className="stories-avatar-track">
           {/* Your Story Button */}
-          <button className="story-circle-item" onClick={onOpenCreateCase}>
+          <button className="story-circle-item" onClick={() => onOpenCreateCase('STORY')}>
             <div className="story-ring-circle add-your-story">
               <Plus size={20} />
             </div>

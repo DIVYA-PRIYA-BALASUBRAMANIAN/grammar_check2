@@ -2931,3 +2931,463 @@ a {
     display: none;
   }
 }
+
+/* =========================================================
+   Zenve Vet™ — Create Your Professional Page Modal Styles
+   ========================================================= */
+.create-profile-modal-overlay {
+  background-color: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.create-profile-modal-card {
+  max-width: 820px;
+  width: 100%;
+  max-height: 94vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 30px 36px 28px 36px;
+  box-shadow:
+    0 25px 60px -15px rgba(15, 23, 42, 0.22),
+    0 0 0 1px rgba(226, 232, 240, 0.85);
+  position: relative;
+  animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.create-profile-close-btn {
+  position: absolute;
+  top: 22px;
+  right: 24px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #475569;
+  transition: all 0.15s ease;
+  z-index: 10;
+}
+
+.create-profile-close-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+  transform: scale(1.05);
+}
+
+/* Header */
+.create-profile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding-bottom: 2px;
+}
+
+.create-profile-title-block {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.create-profile-emblem {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #00d2c6 0%, #00b48a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 18px rgba(0, 180, 138, 0.32);
+  flex-shrink: 0;
+}
+
+.create-profile-title {
+  font-family: var(--font-display, inherit);
+  font-size: 23px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.4px;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.create-profile-title-bar {
+  width: 36px;
+  height: 3.5px;
+  background: #00d29d;
+  border-radius: 4px;
+  margin: 6px 0 6px 0;
+}
+
+.create-profile-subtitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  margin: 0;
+}
+
+/* Pets Banner in Header */
+.create-profile-pets-banner {
+  position: relative;
+  width: 195px;
+  height: 88px;
+  margin-right: 42px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pets-banner-backdrop {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  top: -60px;
+  left: 20px;
+  background: radial-gradient(circle, rgba(167, 243, 208, 0.65) 0%, rgba(186, 230, 253, 0.45) 55%, transparent 75%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.floating-badge {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+}
+
+.badge-heart {
+  background: #38bdf8;
+  top: 10px;
+  left: 8px;
+}
+
+.badge-paw {
+  background: #10b981;
+  top: 8px;
+  right: 14px;
+}
+
+.create-profile-pets-img {
+  height: 88px;
+  width: auto;
+  object-fit: contain;
+  position: relative;
+  z-index: 2;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.08));
+}
+
+/* Form Layout */
+.create-profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.cp-grid-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.cp-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cp-label-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+}
+
+.cp-label-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.badge-blue {
+  background-color: #e0f2fe;
+  color: #0284c7;
+}
+
+.badge-teal {
+  background-color: #ccfbf1;
+  color: #0d9488;
+}
+
+.badge-indigo {
+  background-color: #e0e7fe;
+  color: #2563eb;
+}
+
+.badge-green {
+  background-color: #dcfce7;
+  color: #16a34a;
+}
+
+.badge-cyan {
+  background-color: #e0f2fe;
+  color: #0284c7;
+}
+
+.cp-label-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.cp-required {
+  color: #ef4444;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+/* Input Fields */
+.cp-input-wrap {
+  height: 44px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 10px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.cp-input-wrap:focus-within {
+  border-color: #06b6d4;
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.12);
+}
+
+.cp-input-icon {
+  flex-shrink: 0;
+}
+
+.icon-blue {
+  color: #0284c7;
+}
+
+.icon-teal {
+  color: #0d9488;
+}
+
+.icon-indigo {
+  color: #2563eb;
+}
+
+.icon-green {
+  color: #16a34a;
+}
+
+.icon-cyan {
+  color: #0284c7;
+}
+
+.cp-text-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #0f172a;
+}
+
+.cp-text-input::placeholder {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+.cp-select-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #0f172a;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.cp-chevron-icon {
+  color: #64748b;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+/* Textarea */
+.cp-textarea-wrap {
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  display: flex;
+  align-items: flex-start;
+  padding: 10px 12px;
+  gap: 10px;
+  transition: all 0.2s ease;
+  min-height: 72px;
+}
+
+.cp-textarea-wrap:focus-within {
+  border-color: #06b6d4;
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.12);
+}
+
+.cp-textarea-icon {
+  color: #64748b;
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.cp-textarea-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font-size: 13px;
+  font-family: inherit;
+  color: #0f172a;
+  resize: vertical;
+  min-height: 52px;
+  line-height: 1.45;
+}
+
+.cp-textarea-input::placeholder {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+/* Footer Section */
+.create-profile-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding-top: 16px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.cp-footer-verify-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cp-verify-shield {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #ecfdf5;
+  border: 1.5px solid #a7f3d0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cp-verify-text-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.cp-verify-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cp-verify-check-icon {
+  flex-shrink: 0;
+}
+
+.cp-verify-sub {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+  margin-top: 1px;
+}
+
+.cp-submit-btn {
+  background: linear-gradient(135deg, #00d2c6 0%, #0084ff 100%);
+  border-radius: 12px;
+  height: 46px;
+  padding: 0 26px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 132, 255, 0.35);
+  transition: all 0.2s ease;
+}
+
+.cp-submit-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0, 132, 255, 0.45);
+  filter: brightness(1.05);
+}
+
+.cp-btn-arrow {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .create-profile-modal-card {
+    padding: 24px 20px;
+    border-radius: 20px;
+  }
+
+  .create-profile-pets-banner {
+    display: none;
+  }
+
+  .cp-grid-two-col {
+    grid-template-columns: 1fr;
+  }
+
+  .create-profile-footer {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .cp-submit-btn {
+    justify-content: center;
+  }
+}

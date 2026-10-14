@@ -14,6 +14,12 @@ public class DoctorProfile {
     @Column(nullable = false)
     private String name;
 
+    private String email;
+    private String phone;
+    private String headline;
+    private String coverImage;
+    private String licenseNumber;
+
     @Column(nullable = false)
     private String specialty;
 
@@ -25,6 +31,7 @@ public class DoctorProfile {
     private boolean verified;
     private int experienceYears;
     private int casesCount;
+    private int connectionsCount = 0;
 
     @Column(length = 2000)
     private String bio;
@@ -47,6 +54,7 @@ public class DoctorProfile {
         this.experienceYears = experienceYears;
         this.casesCount = casesCount;
         this.bio = bio;
+        this.createdAt = LocalDateTime.now();
     }
 
     public Long getId() { return id; }
@@ -54,6 +62,21 @@ public class DoctorProfile {
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+
+    public String getHeadline() { return headline; }
+    public void setHeadline(String headline) { this.headline = headline; }
+
+    public String getCoverImage() { return coverImage; }
+    public void setCoverImage(String coverImage) { this.coverImage = coverImage; }
+
+    public String getLicenseNumber() { return licenseNumber; }
+    public void setLicenseNumber(String licenseNumber) { this.licenseNumber = licenseNumber; }
 
     public String getSpecialty() { return specialty; }
     public void setSpecialty(String specialty) { this.specialty = specialty; }
@@ -81,6 +104,9 @@ public class DoctorProfile {
 
     public int getCasesCount() { return casesCount; }
     public void setCasesCount(int casesCount) { this.casesCount = casesCount; }
+
+    public int getConnectionsCount() { return connectionsCount; }
+    public void setConnectionsCount(int connectionsCount) { this.connectionsCount = connectionsCount; }
 
     public String getBio() { return bio; }
     public void setBio(String bio) { this.bio = bio; }

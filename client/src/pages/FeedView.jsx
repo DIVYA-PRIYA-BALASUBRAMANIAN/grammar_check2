@@ -13,7 +13,11 @@ import {
   CheckCircle2,
   Stethoscope,
   Users,
-  PawPrint
+  PawPrint,
+  Send,
+  Trash2,
+  Flag,
+  MoreHorizontal
 } from 'lucide-react';
 import heroVetImg from '../assets/hero_vet_dog.jpg';
 import { SPECIALTIES, STATES_INDIA } from '../data/mockData';
@@ -23,17 +27,43 @@ export function FeedView({
   stories = [], 
   onOpenStory, 
   onOpenCreatePost, 
-  onOpenAiAssistant,
-  onOpenClinicalCase,
-  onLikePost
+  onOpenAiAssistant, 
+  onOpenClinicalCase, 
+  onLikePost,
+  onAddComment,
+  onDeletePost,
+  onBookmarkPost,
+  onReportPost,
+  currentUser
 }) {
   const [activeTab, setActiveTab] = useState('for_you');
   const [selectedSpecialty, setSelectedSpecialty] = useState('All specialties');
   const [selectedState, setSelectedState] = useState('All states');
   const [selectedType, setSelectedType] = useState('All posts');
 
+  // Expanded comments for each post: { [postId]: boolean }
+  const [openComments, setOpenComments] = useState({});
+  const [commentInputs, setCommentInputs] = useState({});
+  const [activeMenuPostId, setActiveMenuPostId] = useState(null);
+
+  const toggleComments = (postId) => {
+    setOpenComments(prev => ({ ...prev, [postId]: !prev[postId] }));
+  };
+
+  const handleCommentSubmit = (e, postId) => {
+    e.preventDefault();
+    const text = commentInputs[postId]?.trim();
+    if (!text) return;
+    if (onAddComment) {
+      onAddComment(postId, text);
+    }
+    setCommentInputs(prev => ({ ...prev, [postId]: '' }));
+  };
+
   const filteredPosts = posts.filter(post => {
     if (selectedSpecialty !== 'All specialties' && post.authorSpecialty !== selectedSpecialty) return false;
+    if (selectedType === 'Clinical cases' && post.type !== 'CLINICAL_CASE') return false;
+    if (selectedType === 'Short videos' && post.type !== 'SHORT_VIDEO') return false;
     return true;
   });
 
@@ -49,11 +79,11 @@ export function FeedView({
               <span className="hero-headline-highlight">Connected.</span>
             </h1>
             <p className="hero-subtext">
-              Meet your peers. Share your practice. Move veterinary care forward.
+              Meet your peers. Share your clinical cases. Move veterinary practice forward.
             </p>
             <button 
               className="btn-make-mark"
-              onClick={onOpenCreatePost}
+              onClick={() => onOpenCreatePost('CLINICAL_CASE')}
             >
               <span>Make your mark</span>
               <ArrowRight size={15} />
@@ -90,7 +120,7 @@ export function FeedView({
 
         <div className="stories-avatar-track">
           {/* Your Story Button */}
-          <button className="story-circle-item" onClick={onOpenCreatePost}>
+          <button className="story-circle-item" onClick={() => onOpenCreatePost('STORY')}>
             <div className="story-ring-circle add-your-story">
               <Plus size={20} />
             </div>
@@ -99,7 +129,7 @@ export function FeedView({
 
           {/* Doctor Community Stories */}
           {stories.map((story, index) => {
-            const hasActiveDot = index === stories.length - 1; // Ritika has active green dot
+            const hasActiveDot = index === stories.length - 1;
             return (
               <button 
                 key={story.id} 
@@ -125,31 +155,31 @@ export function FeedView({
           </div>
           <div 
             className="composer-fake-input-pill"
-            onClick={onOpenCreatePost}
+            onClick={() => onOpenCreatePost('CLINICAL_CASE')}
           >
-            <span>Share a discovery, a case, a little inspiration...</span>
+            <span>Share a clinical discovery, diagnosis, surgical technique, or little inspiration...</span>
             <ImageIcon size={17} color="#9ca3af" />
           </div>
         </div>
 
         <div className="composer-tools-row">
           <div className="composer-action-pills">
-            <button className="btn-composer-pill" onClick={onOpenCreatePost}>
+            <button className="btn-composer-pill" onClick={() => onOpenCreatePost('GENERAL_POST')}>
               <ImageIcon size={15} color="#059669" />
               <span>Photo / Post</span>
             </button>
 
-            <button className="btn-composer-pill" onClick={onOpenCreatePost}>
+            <button className="btn-composer-pill" onClick={() => onOpenCreatePost('CLINICAL_CASE')}>
               <Briefcase size={15} color="#059669" />
               <span>Clinical case</span>
             </button>
 
-            <button className="btn-composer-pill" onClick={onOpenCreatePost}>
+            <button className="btn-composer-pill" onClick={() => onOpenCreatePost('STORY')}>
               <Plus size={15} color="#059669" />
               <span>Story</span>
             </button>
 
-            <button className="btn-composer-pill" onClick={onOpenCreatePost}>
+            <button className="btn-composer-pill" onClick={() => onOpenCreatePost('SHORT_VIDEO')}>
               <Video size={15} color="#059669" />
               <span>Short video</span>
             </button>
@@ -160,7 +190,7 @@ export function FeedView({
             </button>
           </div>
 
-          <button className="btn-post-submit-dark" onClick={onOpenCreatePost}>
+          <button className="btn-post-submit-dark" onClick={() => onOpenCreatePost('CLINICAL_CASE')}>
             <span>Post</span>
             <ArrowRight size={14} />
           </button>
@@ -230,82 +260,274 @@ export function FeedView({
 
       {/* 5. Feed Posts Stream */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {filteredPosts.map((post) => (
-          <article key={post.id} className="feed-post-card" id={`post-${post.id}`}>
-            <div className="post-card-header">
-              <div className="post-author-block">
-                <img src={post.authorAvatar} alt={post.authorName} className="post-avatar-img" />
-                <div>
-                  <div className="post-author-name-row">
-                    <h3 className="post-author-name">{post.authorName}</h3>
-                    <CheckCircle2 size={15} color="#00a86b" />
+        {filteredPosts.map((post) => {
+          const isOwnPost = currentUser && (
+            post.authorId === currentUser.id ||
+            post.authorName === currentUser.name ||
+            post.authorId === 'doc-me'
+          );
+
+          return (
+            <article key={post.id} className="feed-post-card" id={`post-${post.id}`}>
+              <div className="post-card-header">
+                <div className="post-author-block">
+                  <img src={post.authorAvatar} alt={post.authorName} className="post-avatar-img" />
+                  <div>
+                    <div className="post-author-name-row">
+                      <h3 className="post-author-name">{post.authorName}</h3>
+                      <CheckCircle2 size={15} color="#00a86b" />
+                    </div>
+                    <span className="post-author-meta">{post.authorSpecialty} · {post.authorCity}</span>
                   </div>
-                  <span className="post-author-meta">{post.authorSpecialty} · {post.authorCity}</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}>
+                  <button 
+                    onClick={() => onBookmarkPost && onBookmarkPost(post.id)}
+                    style={{ background: 'none', border: 'none', color: post.isBookmarked ? '#C5A059' : '#9ca3af', cursor: 'pointer', padding: '4px' }}
+                    title={post.isBookmarked ? 'Bookmarked' : 'Save post'}
+                  >
+                    <Bookmark size={18} fill={post.isBookmarked ? '#C5A059' : 'none'} />
+                  </button>
+
+                  <button
+                    onClick={() => setActiveMenuPostId(activeMenuPostId === post.id ? null : post.id)}
+                    style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: '4px' }}
+                    title="Options"
+                  >
+                    <MoreHorizontal size={18} />
+                  </button>
+
+                  {/* Post Options Dropdown */}
+                  {activeMenuPostId === post.id && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '28px',
+                      right: 0,
+                      backgroundColor: '#FFFFFF',
+                      borderRadius: '8px',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                      border: '1px solid #E5E7EB',
+                      padding: '4px',
+                      zIndex: 30,
+                      width: '140px'
+                    }}>
+                      {isOwnPost && onDeletePost && (
+                        <button
+                          onClick={() => {
+                            setActiveMenuPostId(null);
+                            onDeletePost(post.id);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            width: '100%',
+                            padding: '6px 10px',
+                            border: 'none',
+                            background: 'none',
+                            color: '#DC2626',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            borderRadius: '4px'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#FEE2E2'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          <Trash2 size={13} />
+                          <span>Delete Post</span>
+                        </button>
+                      )}
+                      {onReportPost && (
+                        <button
+                          onClick={() => {
+                            setActiveMenuPostId(null);
+                            onReportPost(post.id);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            width: '100%',
+                            padding: '6px 10px',
+                            border: 'none',
+                            background: 'none',
+                            color: '#4B5563',
+                            fontSize: '12px',
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                            borderRadius: '4px'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F3F4F6'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          <Flag size={13} />
+                          <span>Report Post</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <button style={{ color: '#9ca3af' }}>
-                <Bookmark size={18} />
-              </button>
-            </div>
+              {post.badgeLabel && (
+                <div className="post-badge-pill">
+                  <Stethoscope size={13} />
+                  <span>{post.badgeLabel}</span>
+                </div>
+              )}
 
-            {post.badgeLabel && (
-              <div className="post-badge-pill">
-                <Stethoscope size={13} />
-                <span>{post.badgeLabel}</span>
-              </div>
-            )}
+              <p className="post-body-text">{post.content}</p>
 
-            <p className="post-body-text">{post.content}</p>
-
-            {post.imageUrl && (
-              <div 
-                className="post-image-preview-container"
-                onClick={() => onOpenClinicalCase && onOpenClinicalCase({
-                  title: post.badgeLabel || "Clinical Case Finding",
-                  authorName: post.authorName,
-                  authorSpecialty: post.authorSpecialty,
-                  species: post.species || "Canine",
-                  presentingComplaint: post.content,
-                  clinicalFindings: "Presented for routine follow-up and specialized examination.",
-                  diagnostics: "Microscopic cytology and diagnostic imaging evaluated.",
-                  diagnosis: "Presumptive / Confirmed Clinical Case",
-                  treatmentProtocol: "Medical management with targeted therapeutics.",
-                  outcome: "Full clinical remission observed at follow-up.",
-                  mediaUrl: post.imageUrl
-                })}
-                style={{ cursor: 'pointer' }}
-                title="Click to review clinical details"
-              >
-                <img src={post.imageUrl} alt="Clinical case" className="post-image-preview" loading="lazy" />
-              </div>
-            )}
-
-            <div className="post-card-footer">
-              <div className="post-actions-group">
-                <button 
-                  className={`post-action-btn ${post.isLiked ? 'liked' : ''}`}
-                  onClick={() => onLikePost(post.id)}
+              {/* Video Player or Image Preview */}
+              {post.videoUrl ? (
+                <div style={{ borderRadius: '12px', overflow: 'hidden', backgroundColor: '#000', maxHeight: '380px', marginBottom: '14px' }}>
+                  <video 
+                    src={post.videoUrl} 
+                    controls 
+                    playsInline 
+                    style={{ width: '100%', maxHeight: '380px', objectFit: 'contain', display: 'block' }} 
+                  />
+                </div>
+              ) : post.imageUrl ? (
+                <div 
+                  className="post-image-preview-container"
+                  onClick={() => onOpenClinicalCase && onOpenClinicalCase({
+                    title: post.badgeLabel || "Clinical Case Finding",
+                    authorName: post.authorName,
+                    authorSpecialty: post.authorSpecialty,
+                    species: post.species || "Canine",
+                    presentingComplaint: post.content,
+                    clinicalFindings: "Presented for routine follow-up and specialized examination.",
+                    diagnostics: "Microscopic cytology and diagnostic imaging evaluated.",
+                    diagnosis: "Presumptive / Confirmed Clinical Case",
+                    treatmentProtocol: "Medical management with targeted therapeutics.",
+                    outcome: "Full clinical remission observed at follow-up.",
+                    mediaUrl: post.imageUrl
+                  })}
+                  style={{ cursor: 'pointer' }}
+                  title="Click to review clinical details"
                 >
-                  <Heart size={17} fill={post.isLiked ? '#ef4444' : 'none'} color={post.isLiked ? '#ef4444' : '#6b7280'} />
-                  <span>{post.likes}</span>
-                </button>
+                  <img src={post.imageUrl} alt="Clinical case" className="post-image-preview" loading="lazy" />
+                </div>
+              ) : null}
 
-                <button className="post-action-btn">
-                  <MessageSquare size={17} />
-                  <span>{post.commentsCount} comments</span>
-                </button>
+              {/* Action Buttons */}
+              <div className="post-card-footer">
+                <div className="post-actions-group">
+                  <button 
+                    className={`post-action-btn ${post.isLiked ? 'liked' : ''}`}
+                    onClick={() => onLikePost(post.id)}
+                  >
+                    <Heart size={17} fill={post.isLiked ? '#ef4444' : 'none'} color={post.isLiked ? '#ef4444' : '#6b7280'} />
+                    <span>{post.likes}</span>
+                  </button>
 
-                <button className="post-action-btn">
-                  <Share2 size={17} />
-                  <span>Share</span>
-                </button>
+                  <button 
+                    className="post-action-btn"
+                    onClick={() => toggleComments(post.id)}
+                  >
+                    <MessageSquare size={17} color={openComments[post.id] ? '#059669' : '#6b7280'} />
+                    <span>{post.commentsCount || (post.comments ? post.comments.length : 0)} comments</span>
+                  </button>
+
+                  <button 
+                    className="post-action-btn"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(window.location.href);
+                      alert('Post link copied to clipboard!');
+                    }}
+                  >
+                    <Share2 size={17} />
+                    <span>Share</span>
+                  </button>
+                </div>
+
+                <span style={{ fontSize: '12px', color: '#9ca3af' }}>{post.timeAgo || 'Recent'}</span>
               </div>
 
-              <span style={{ fontSize: '12px', color: '#9ca3af' }}>{post.timeAgo}</span>
-            </div>
-          </article>
-        ))}
+              {/* Expandable Comments Drawer */}
+              {openComments[post.id] && (
+                <div style={{
+                  marginTop: '12px',
+                  paddingTop: '12px',
+                  borderTop: '1px solid #F3F4F6',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}>
+                  {/* Comments Stream */}
+                  {(post.comments && post.comments.length > 0) ? (
+                    post.comments.map((c, idx) => (
+                      <div key={c.id || idx} style={{ display: 'flex', gap: '8px', fontSize: '12.5px' }}>
+                        <img 
+                          src={c.authorAvatar || "https://images.unsplash.com/photo-1594824813575-5858e94a5392?auto=format&fit=crop&w=150&q=80"} 
+                          alt={c.authorName}
+                          style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                        />
+                        <div style={{
+                          backgroundColor: '#F9FAFB',
+                          borderRadius: '8px',
+                          padding: '6px 12px',
+                          flex: 1
+                        }}>
+                          <strong style={{ color: '#111827', display: 'block', fontSize: '12px' }}>{c.authorName}</strong>
+                          <span style={{ color: '#4B5563', lineHeight: 1.35 }}>{c.content}</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p style={{ margin: '4px 0', fontSize: '12px', color: '#9CA3AF', fontStyle: 'italic' }}>
+                      No comments yet. Start the clinical discussion!
+                    </p>
+                  )}
+
+                  {/* Add Comment Input Form */}
+                  <form 
+                    onSubmit={(e) => handleCommentSubmit(e, post.id)}
+                    style={{ display: 'flex', gap: '8px', marginTop: '6px' }}
+                  >
+                    <input 
+                      type="text" 
+                      placeholder="Add a clinical comment or inquiry..."
+                      value={commentInputs[post.id] || ''}
+                      onChange={(e) => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
+                      style={{
+                        flex: 1,
+                        padding: '8px 14px',
+                        borderRadius: '9999px',
+                        border: '1px solid #E5E7EB',
+                        backgroundColor: '#F9FAFB',
+                        fontSize: '12.5px',
+                        outline: 'none'
+                      }}
+                    />
+                    <button
+                      type="submit"
+                      style={{
+                        backgroundColor: '#003822',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: '9999px',
+                        padding: '6px 14px',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <span>Send</span>
+                      <Send size={12} />
+                    </button>
+                  </form>
+                </div>
+              )}
+            </article>
+          );
+        })}
       </div>
     </div>
   );

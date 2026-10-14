@@ -36,7 +36,7 @@ export function ShortVideosView({
             </p>
             <button 
               className="btn-make-mark-link"
-              onClick={onOpenCreateVideo}
+              onClick={() => onOpenCreateVideo('SHORT_VIDEO')}
             >
               <span>Share a clinical reel</span>
               <ArrowRight size={15} />
@@ -72,7 +72,7 @@ export function ShortVideosView({
         </div>
 
         <div className="stories-avatar-track">
-          <button className="story-circle-item" onClick={onOpenCreateVideo}>
+          <button className="story-circle-item" onClick={() => onOpenCreateVideo('STORY')}>
             <div className="story-ring-circle add-your-story">
               <Plus size={20} />
             </div>
