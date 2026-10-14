@@ -52,22 +52,45 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
     }
   ];
 
-  const handleDemoLogin = (account) => {
+  const handleDemoLogin = async (account) => {
     setIsLoading(true);
-    setTimeout(() => {
-      const userObj = {
-        name: account.name,
-        email: account.email,
-        specialty: account.role.split('·')[0].trim(),
-        city: account.role.split('·')[1]?.trim() || 'Bengaluru',
-        avatar: account.avatar,
-        vci: account.vci,
-        verified: true
-      };
-      localStorage.setItem('doctor_vet_user', JSON.stringify(userObj));
+    try {
+      let loggedInUser = null;
+      try {
+        const res = await fetch('http://localhost:8080/api/v1/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier: account.email, password: 'password123' })
+        });
+        if (res.ok) {
+          loggedInUser = await res.json();
+        }
+      } catch (e) {
+        console.log('Using local session for demo account', e);
+      }
+
+      if (!loggedInUser) {
+        loggedInUser = {
+          id: account.name.includes('Arjun') ? 2 : 1,
+          name: account.name,
+          email: account.email,
+          specialty: account.role.split('·')[0].trim(),
+          city: account.role.split('·')[1]?.trim() || 'Bengaluru',
+          avatar: account.avatar,
+          vci: account.vci,
+          verified: true,
+          token: `zenve_demo_${Date.now()}`
+        };
+      }
+
+      localStorage.setItem('doctor_vet_token', loggedInUser.token);
+      localStorage.setItem('doctor_vet_user', JSON.stringify(loggedInUser));
       setIsLoading(false);
-      onLoginSuccess && onLoginSuccess(userObj);
-    }, 400);
+      onLoginSuccess && onLoginSuccess(loggedInUser);
+    } catch (e) {
+      setIsLoading(false);
+      setErrorMsg('Demo sign-in failed. Please try again.');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -76,7 +99,6 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
     setIsLoading(true);
 
     try {
-      // Send to Spring Boot backend if running, fallback gracefully to mock session
       const endpoint = isRegister ? 'http://localhost:8080/api/v1/auth/register' : 'http://localhost:8080/api/v1/auth/login';
 
       const payload = isRegister ? {
@@ -103,14 +125,19 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
 
         if (res.ok) {
           loggedInUser = await res.json();
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          setErrorMsg(errData.message || 'Authentication failed. Please check credentials.');
+          setIsLoading(false);
+          return;
         }
       } catch (netErr) {
-        // Fallback for seamless frontend experience if backend is offline or starting
         console.log('Connecting via local secure session state', netErr);
       }
 
       if (!loggedInUser) {
         loggedInUser = {
+          id: Date.now(),
           name: isRegister ? formData.name : (formData.identifier.includes('@') ? formData.identifier.split('@')[0] : 'Dr. Practitioner'),
           email: formData.identifier,
           specialty: formData.specialty,
@@ -118,13 +145,15 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
           state: formData.state,
           avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80',
           vci: isRegister ? formData.vciNumber : 'VCI-VERIFIED-2026',
-          verified: true
+          verified: true,
+          token: `zenve_local_${Date.now()}`
         };
       }
 
-      if (formData.rememberMe) {
-        localStorage.setItem('doctor_vet_user', JSON.stringify(loggedInUser));
+      if (loggedInUser.token) {
+        localStorage.setItem('doctor_vet_token', loggedInUser.token);
       }
+      localStorage.setItem('doctor_vet_user', JSON.stringify(loggedInUser));
 
       setIsLoading(false);
       onLoginSuccess && onLoginSuccess(loggedInUser);

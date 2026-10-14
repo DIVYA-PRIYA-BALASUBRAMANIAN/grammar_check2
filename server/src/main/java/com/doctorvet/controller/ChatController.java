@@ -38,15 +38,98 @@ public class ChatController {
         this.messagingTemplate = messagingTemplate;
     }
 
+    public record MessageViewDto(
+            Long id,
+            String sender,
+            Long senderId,
+            Long receiverId,
+            String text,
+            String time,
+            String attachmentUrl,
+            String attachmentType
+    ) {}
+
+    public record PeerDoctorDto(
+            Long id,
+            String name,
+            String specialty,
+            String city,
+            String avatar,
+            boolean isOnline,
+            String onlineStatus
+    ) {}
+
+    public record ConversationViewDto(
+            Long id,
+            PeerDoctorDto doctor,
+            String lastMessage,
+            String timestamp,
+            int unread,
+            List<MessageViewDto> messages
+    ) {}
+
     @GetMapping("/conversations")
-    public List<Conversation> getConversations(@RequestParam Long doctorId) {
-        return convRepo.findAllByDoctorId(doctorId);
+    public List<ConversationViewDto> getConversations(@RequestParam Long doctorId) {
+        List<Conversation> list = convRepo.findAllByDoctorId(doctorId);
+        List<ConversationViewDto> dtos = new ArrayList<>();
+        java.time.format.DateTimeFormatter timeFmt = java.time.format.DateTimeFormatter.ofPattern("hh:mm a");
+
+        for (Conversation c : list) {
+            Long peerId = c.getDoctor1Id().equals(doctorId) ? c.getDoctor2Id() : c.getDoctor1Id();
+            DoctorProfile peerDoc = doctorRepo.findById(peerId).orElse(null);
+
+            PeerDoctorDto peerDto = new PeerDoctorDto(
+                    peerId,
+                    peerDoc != null ? peerDoc.getName() : (c.getDoctor1Id().equals(doctorId) ? c.getDoctor2Name() : c.getDoctor1Name()),
+                    peerDoc != null ? peerDoc.getSpecialty() : "Veterinary Practitioner",
+                    peerDoc != null ? peerDoc.getCity() : "India",
+                    peerDoc != null ? peerDoc.getAvatar() : (c.getDoctor1Id().equals(doctorId) ? c.getDoctor2Avatar() : c.getDoctor1Avatar()),
+                    true,
+                    "Online · Active Now"
+            );
+
+            List<Message> msgs = msgRepo.findByConversationIdOrderByCreatedAtAsc(c.getId());
+            List<MessageViewDto> msgDtos = new ArrayList<>();
+            for (Message m : msgs) {
+                boolean isSender = m.getSenderId().equals(doctorId);
+                String formattedTime = m.getCreatedAt() != null ? m.getCreatedAt().format(timeFmt) : "Just now";
+                msgDtos.add(new MessageViewDto(
+                        m.getId(),
+                        isSender ? "me" : "doctor",
+                        m.getSenderId(),
+                        m.getReceiverId(),
+                        m.getText(),
+                        formattedTime,
+                        m.getAttachmentUrl(),
+                        m.getAttachmentType()
+                ));
+            }
+
+            int unread = c.getDoctor1Id().equals(doctorId) ? c.getUnreadCountDoctor1() : c.getUnreadCountDoctor2();
+            String formattedUpdated = c.getUpdatedAt() != null ? c.getUpdatedAt().format(timeFmt) : "Recent";
+
+            dtos.add(new ConversationViewDto(
+                    c.getId(),
+                    peerDto,
+                    c.getLastMessage(),
+                    formattedUpdated,
+                    unread,
+                    msgDtos
+            ));
+        }
+        return dtos;
     }
 
     public record StartConversationDto(Long doctor1Id, Long doctor2Id, String initialMessage) {}
 
     @PostMapping("/conversations/start")
-    public ResponseEntity<Conversation> startConversation(@RequestBody StartConversationDto dto) {
+    public ResponseEntity<?> startConversation(@RequestBody StartConversationDto dto, jakarta.servlet.http.HttpServletRequest request) {
+        Long authenticatedDoctorId = (Long) request.getAttribute("authenticatedDoctorId");
+        if (authenticatedDoctorId != null && !authenticatedDoctorId.equals(dto.doctor1Id())) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Forbidden", "message", "You cannot initiate a conversation on behalf of another doctor."));
+        }
+
         Optional<Conversation> existing = convRepo.findBetweenDoctors(dto.doctor1Id(), dto.doctor2Id());
         if (existing.isPresent()) {
             return ResponseEntity.ok(existing.get());
@@ -76,14 +159,32 @@ public class ChatController {
     }
 
     @GetMapping("/conversations/{id}/messages")
-    public List<Message> getMessages(@PathVariable Long id) {
-        return msgRepo.findByConversationIdOrderByCreatedAtAsc(id);
+    public ResponseEntity<?> getMessages(@PathVariable Long id, jakarta.servlet.http.HttpServletRequest request) {
+        Long authenticatedDoctorId = (Long) request.getAttribute("authenticatedDoctorId");
+        Optional<Conversation> convOpt = convRepo.findById(id);
+        if (convOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Conversation conv = convOpt.get();
+        if (authenticatedDoctorId != null && !authenticatedDoctorId.equals(conv.getDoctor1Id()) && !authenticatedDoctorId.equals(conv.getDoctor2Id())) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Forbidden", "message", "Access denied: you are not a participant in this consultation."));
+        }
+
+        return ResponseEntity.ok(msgRepo.findByConversationIdOrderByCreatedAtAsc(id));
     }
 
     public record SendMessageDto(Long conversationId, Long senderId, Long receiverId, String text, String attachmentUrl, String attachmentType) {}
 
     @PostMapping("/messages")
-    public ResponseEntity<Message> sendMessage(@RequestBody SendMessageDto dto) {
+    public ResponseEntity<?> sendMessage(@RequestBody SendMessageDto dto, jakarta.servlet.http.HttpServletRequest request) {
+        Long authenticatedDoctorId = (Long) request.getAttribute("authenticatedDoctorId");
+        if (authenticatedDoctorId != null && !authenticatedDoctorId.equals(dto.senderId())) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Forbidden", "message", "You cannot send messages on behalf of another doctor."));
+        }
+
         Message msg = new Message(
                 dto.conversationId(),
                 dto.senderId(),

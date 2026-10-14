@@ -3,20 +3,37 @@
 const BASE_URL = 'http://localhost:8080/api/v1';
 
 async function fetchJson(endpoint, options = {}) {
+  const token = localStorage.getItem('doctor_vet_token');
+
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...(options.headers || {})
+  };
+
   try {
     const res = await fetch(`${BASE_URL}${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(options.headers || {})
-      },
-      ...options
+      ...options,
+      headers
     });
+
+    if (res.status === 401) {
+      console.warn(`Unauthorized request on ${endpoint}. Clearing session.`);
+      localStorage.removeItem('doctor_vet_user');
+      localStorage.removeItem('doctor_vet_token');
+      window.dispatchEvent(new CustomEvent('auth:unauthorized', { detail: { endpoint } }));
+      throw new Error('Unauthorized: Session expired or invalid credentials');
+    }
+
     if (!res.ok) {
       const errText = await res.text();
       throw new Error(`API error ${res.status}: ${errText}`);
     }
     return await res.json();
   } catch (err) {
+    if (err.message?.includes('Unauthorized')) {
+      throw err;
+    }
     console.warn(`Fetch error for ${endpoint}:`, err.message);
     throw err;
   }
@@ -34,7 +51,9 @@ export const api = {
       fetchJson('/auth/register', {
         method: 'POST',
         body: JSON.stringify(userData)
-      })
+      }),
+    getMe: () => fetchJson('/auth/me'),
+    logout: () => fetchJson('/auth/logout', { method: 'POST' }).catch(() => ({}))
   },
 
   // Doctors / Profiles

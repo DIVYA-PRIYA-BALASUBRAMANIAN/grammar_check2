@@ -1,17 +1,12 @@
 package com.doctorvet.config;
 
-import com.doctorvet.model.ClinicalCase;
-import com.doctorvet.model.DoctorProfile;
-import com.doctorvet.model.Post;
-import com.doctorvet.model.ShortVideo;
-import com.doctorvet.repository.ClinicalCaseRepository;
-import com.doctorvet.repository.DoctorProfileRepository;
-import com.doctorvet.repository.PostRepository;
-import com.doctorvet.repository.ShortVideoRepository;
+import com.doctorvet.model.*;
+import com.doctorvet.repository.*;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Configuration
@@ -22,38 +17,103 @@ public class DataInitializer {
             DoctorProfileRepository doctorRepo,
             ClinicalCaseRepository caseRepo,
             PostRepository postRepo,
-            ShortVideoRepository videoRepo
+            ShortVideoRepository videoRepo,
+            DoctorConnectionRepository connectionRepo,
+            ConversationRepository convRepo,
+            MessageRepository msgRepo
     ) {
         return args -> {
-            if (doctorRepo.count() > 0) return;
+            if (doctorRepo.count() == 0) {
+                // Seed Doctors with official demo credentials and specialties
+                DoctorProfile ananya = new DoctorProfile("Dr. Ananya Sharma", "Small Animal Medicine", "BVSc & AH, MVSc (Medicine)",
+                        "Bangalore Pet Hospital & Critical Care", "Bengaluru", "Karnataka",
+                        "https://images.unsplash.com/photo-1594824813575-5858e94a5392?auto=format&fit=crop&w=300&q=80",
+                        true, 8, 34, "Internal veterinary medicine, canine endocrinology, and critical emergency triage.");
+                ananya.setEmail("ananya.sharma@doctorvet.com");
 
-            // Seed Doctors matching screenshots
-            doctorRepo.saveAll(List.of(
-                    new DoctorProfile("Dr. Ananya Sharma", "Small Animal Medicine", "BVSc & AH, MVSc (Medicine)",
-                            "Bangalore Pet Hospital & Critical Care", "Bengaluru", "Karnataka",
-                            "https://images.unsplash.com/photo-1594824813575-5858e94a5392?auto=format&fit=crop&w=300&q=80",
-                            true, 8, 34, "Internal veterinary medicine, canine endocrinology, and critical emergency triage."),
+                DoctorProfile arjun = new DoctorProfile("Dr. Arjun Mehta", "Veterinary Surgery", "BVSc, MVSc (Surgery & Radiology)",
+                        "MetroVet Super Specialty Hospital, Bandra", "Mumbai", "Maharashtra",
+                        "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80",
+                        true, 12, 89, "Soft tissue reconstructive surgery and minimally invasive laparoscopy.");
+                arjun.setEmail("arjun.mehta@doctorvet.com");
 
-                    new DoctorProfile("Dr. Arjun Mehta", "Veterinary Surgery", "BVSc, MVSc (Surgery & Radiology)",
-                            "MetroVet Super Specialty Hospital, Bandra", "Mumbai", "Maharashtra",
-                            "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80",
-                            true, 12, 89, "Soft tissue reconstructive surgery and minimally invasive laparoscopy."),
+                DoctorProfile priya = new DoctorProfile("Dr. Priya Nair", "Veterinary Dermatology", "BVSc & AH, PhD (Dermatology)",
+                        "Cochin Animal Allergy & Skin Clinic", "Kochi", "Kerala",
+                        "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=300&q=80",
+                        true, 10, 45, "Chronic atopic dermatitis management, intradermal testing, and autoimmune skin conditions.");
+                priya.setEmail("priya.nair@doctorvet.com");
 
-                    new DoctorProfile("Dr. Priya Nair", "Veterinary Dermatology", "BVSc & AH, PhD (Dermatology)",
-                            "Cochin Animal Allergy & Skin Clinic", "Kochi", "Kerala",
-                            "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=300&q=80",
-                            true, 10, 45, "Chronic atopic dermatitis management, intradermal testing, and autoimmune skin conditions."),
+                DoctorProfile vikram = new DoctorProfile("Dr. Vikram Singh", "Equine Medicine", "BVSc & AH, MVSc (Equine Sports)",
+                        "Royal Rajasthan Stud & Equine Clinic", "Jaipur", "Rajasthan",
+                        "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=300&q=80",
+                        true, 15, 62, "Thoroughbred orthopedics, colic management, and performance horse rehabilitation.");
+                vikram.setEmail("vikram.singh@doctorvet.com");
 
-                    new DoctorProfile("Dr. Vikram Singh", "Equine Medicine", "BVSc & AH, MVSc (Equine Sports)",
-                            "Royal Rajasthan Stud & Equine Clinic", "Jaipur", "Rajasthan",
-                            "https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=300&q=80",
-                            true, 15, 62, "Thoroughbred orthopedics, colic management, and performance horse rehabilitation."),
+                DoctorProfile sneha = new DoctorProfile("Dr. Sneha Reddy", "Avian Medicine", "BVSc & AH, MVSc (Avian Pathology)",
+                        "Deccan Avian & Exotic Wildlife Hospital", "Hyderabad", "Telangana",
+                        "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80",
+                        true, 7, 24, "Avian endoscopy, psittacine orthopedic pinning, and raptor surgery.");
+                sneha.setEmail("sneha.reddy@doctorvet.com");
 
-                    new DoctorProfile("Dr. Tanya Bhatt", "Wildlife Medicine", "MVSc (Wildlife Health & Conservation)",
-                            "Himalayan Wildlife Rescue Trust", "Dehradun", "Uttarakhand",
-                            "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80",
-                            true, 9, 29, "Free-ranging mammal diagnostics, raptor rehabilitation, and zoonotic surveillance.")
-            ));
+                DoctorProfile rahul = new DoctorProfile("Dr. Rahul Desai", "Internal Medicine", "BVSc & AH, MVSc (Internal Medicine)",
+                        "West Coast Veterinary Specialty Center", "Pune", "Maharashtra",
+                        "https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=300&q=80",
+                        true, 11, 48, "Canine gastroenterology, feline nephrology, and ultrasound guided biopsies.");
+                rahul.setEmail("rahul.desai@doctorvet.com");
+
+                DoctorProfile kavita = new DoctorProfile("Dr. Kavita Iyer", "Exotic Pets", "BVSc & AH, MVSc (Exotics)",
+                        "Chennai Zoological & Exotic Clinic", "Chennai", "Tamil Nadu",
+                        "https://images.unsplash.com/photo-1582750433449-648ed127bb54?auto=format&fit=crop&w=300&q=80",
+                        true, 6, 31, "Reptilian metabolic bone disease and small mammal dental pathology.");
+                kavita.setEmail("kavita.iyer@doctorvet.com");
+
+                doctorRepo.saveAll(List.of(ananya, arjun, priya, vikram, sneha, rahul, kavita));
+            }
+
+            if (connectionRepo.count() == 0) {
+                DoctorProfile ananya = doctorRepo.findAll().stream().filter(d -> d.getName().contains("Ananya")).findFirst().orElse(null);
+                DoctorProfile arjun = doctorRepo.findAll().stream().filter(d -> d.getName().contains("Arjun")).findFirst().orElse(null);
+                DoctorProfile priya = doctorRepo.findAll().stream().filter(d -> d.getName().contains("Priya")).findFirst().orElse(null);
+                DoctorProfile vikram = doctorRepo.findAll().stream().filter(d -> d.getName().contains("Vikram")).findFirst().orElse(null);
+                DoctorProfile sneha = doctorRepo.findAll().stream().filter(d -> d.getName().contains("Sneha")).findFirst().orElse(null);
+                DoctorProfile rahul = doctorRepo.findAll().stream().filter(d -> d.getName().contains("Rahul")).findFirst().orElse(null);
+                DoctorProfile kavita = doctorRepo.findAll().stream().filter(d -> d.getName().contains("Kavita")).findFirst().orElse(null);
+
+                if (arjun != null && ananya != null) {
+                    connectionRepo.saveAll(List.of(
+                            new DoctorConnection(arjun.getId(), ananya.getId()),
+                            new DoctorConnection(arjun.getId(), priya != null ? priya.getId() : ananya.getId()),
+                            new DoctorConnection(arjun.getId(), vikram != null ? vikram.getId() : ananya.getId()),
+                            new DoctorConnection(arjun.getId(), sneha != null ? sneha.getId() : ananya.getId()),
+                            new DoctorConnection(arjun.getId(), rahul != null ? rahul.getId() : ananya.getId()),
+                            new DoctorConnection(arjun.getId(), kavita != null ? kavita.getId() : ananya.getId()),
+                            new DoctorConnection(ananya.getId(), priya != null ? priya.getId() : arjun.getId()),
+                            new DoctorConnection(ananya.getId(), vikram != null ? vikram.getId() : arjun.getId())
+                    ));
+                }
+            }
+
+            if (convRepo.count() == 0) {
+                DoctorProfile ananya = doctorRepo.findAll().stream().filter(d -> d.getName().contains("Ananya")).findFirst().orElse(null);
+                DoctorProfile arjun = doctorRepo.findAll().stream().filter(d -> d.getName().contains("Arjun")).findFirst().orElse(null);
+
+                if (arjun != null && ananya != null) {
+                    Conversation conv1 = new Conversation(arjun.getId(), ananya.getId(), arjun.getName(), ananya.getName(),
+                            arjun.getAvatar(), ananya.getAvatar());
+                    conv1.setLastMessage("Thank you for the echo interpretation! The DCM patient is now stabilized on Pimobendan.");
+                    conv1.setLastMessageSenderId(ananya.getId());
+                    conv1.setUpdatedAt(LocalDateTime.now());
+                    Conversation savedConv = convRepo.save(conv1);
+
+                    msgRepo.saveAll(List.of(
+                            new Message(savedConv.getId(), arjun.getId(), ananya.getId(), "Hi Dr. Ananya, did you get a chance to review the ECG recording I sent for Bruno?", null, null),
+                            new Message(savedConv.getId(), ananya.getId(), arjun.getId(), "Yes! Fast atrial fibrillation with variable R-R intervals. I recommend starting diltiazem at 0.5 mg/kg PO TID alongside pimobendan.", null, null),
+                            new Message(savedConv.getId(), arjun.getId(), ananya.getId(), "Will initiate right away and monitor blood pressure.", null, null),
+                            new Message(savedConv.getId(), ananya.getId(), arjun.getId(), "Thank you for the echo interpretation! The DCM patient is now stabilized on Pimobendan.", null, null)
+                    ));
+                }
+            }
+
 
             // Seed Clinical Cases
             caseRepo.saveAll(List.of(
@@ -80,12 +140,12 @@ public class DataInitializer {
 
             // Seed Feed Posts
             postRepo.saveAll(List.of(
-                    new Post("Dr. Tanya Bhatt", "Wildlife Medicine", "Dehradun",
+                    new Post("Dr. Sneha Reddy", "Avian Medicine", "Hyderabad",
                             "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80",
-                            "CLINICAL_CASE", "CASE REPORT · WILDLIFE TRIAGE",
-                            "Sharing an unusual presentation: An adult rescued Himalayan Black Bear cub presented with acute unilateral corneal edema, hyphema, and lethargy following trauma. Slit lamp evaluation revealed superficial stromal ulceration without deep perforation. Initiated topical autologous serum drops and oral NSAID protocol.",
+                            "CLINICAL_CASE", "CASE REPORT · AVIAN SURGERY",
+                            "Avian tibiotarsal fracture repair using external skeletal fixation on an injured rescue Brahminy Kite. Callus formation confirmed at week 3 post-op.",
                             "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=800&q=80",
-                            "Wildlife", 84),
+                            "Avian", 84),
 
                     new Post("Dr. Ananya Sharma", "Small Animal Medicine", "Bengaluru",
                             "https://images.unsplash.com/photo-1594824813575-5858e94a5392?auto=format&fit=crop&w=300&q=80",
