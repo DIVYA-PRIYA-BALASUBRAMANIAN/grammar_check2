@@ -10,8 +10,8 @@ public class DataInitializer {
     @Bean
     CommandLineRunner initDatabase() {
         return args -> {
-            // Pure dynamic operation: zero seed data.
-            // Doctors, cases, posts, videos, and stories are exclusively user-created.
+            // Pure dynamic operation: zero mock data.
+            // All doctors, cases, posts, videos, and stories are exclusively user-created.
         };
     }
 }

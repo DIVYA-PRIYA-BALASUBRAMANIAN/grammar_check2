@@ -19,6 +19,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { Avatar } from './Avatar';
+import zenveLogo from '../assets/zenve_logo.png';
 
 export function LeftSidebar({
   activeTab,
@@ -43,11 +44,13 @@ export function LeftSidebar({
 
   return (
     <aside className="left-sidebar">
-      {/* Brand Header with Paw Emblem */}
+      {/* Brand Header with Official Zenve Golden Logo */}
       <div className="sidebar-brand-block">
-        <div className="brand-paw-emblem">
-          <PawPrint size={20} fill="#ffffff" />
-        </div>
+        <img
+          src={zenveLogo}
+          alt="Zenve Vet Logo"
+          className="sidebar-zenve-logo-img"
+        />
         <div className="brand-text-block">
           <span className="brand-main-name">Zenve Vet</span>
           <span className="brand-main-subtitle">The Professional Network</span>

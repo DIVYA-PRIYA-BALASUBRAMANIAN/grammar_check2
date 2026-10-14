@@ -17,7 +17,6 @@ import {
   Sparkles,
   Shield
 } from 'lucide-react';
-import { MOCK_DOCTORS } from '../data/mockData';
 import { Avatar } from '../components/Avatar';
 
 export function MessagesView({
@@ -27,7 +26,7 @@ export function MessagesView({
   onSendMessage,
   onOpenDoctorProfile,
   currentUser = null,
-  doctors = MOCK_DOCTORS,
+  doctors = [],
   connectedDoctors = [],
   onOpenLogin,
   onNavigateTab,
