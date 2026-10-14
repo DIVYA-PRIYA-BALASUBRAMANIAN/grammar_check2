@@ -27,6 +27,7 @@ import { Avatar } from '../components/Avatar';
 export function FeedView({ 
   posts = [], 
   stories = [], 
+  doctors = [],
   onOpenStory, 
   onOpenCreatePost, 
   onOpenAiAssistant, 
@@ -86,8 +87,9 @@ export function FeedView({
 
   const filteredPosts = posts.filter(post => {
     if (selectedSpecialty !== 'All specialties' && post.authorSpecialty !== selectedSpecialty) return false;
-    if (selectedType === 'Clinical cases' && post.type !== 'CLINICAL_CASE') return false;
-    if (selectedType === 'Short videos' && post.type !== 'SHORT_VIDEO') return false;
+    const pType = post.postType || post.type;
+    if (selectedType === 'Clinical cases' && pType !== 'CLINICAL_CASE') return false;
+    if (selectedType === 'Short videos' && pType !== 'SHORT_VIDEO' && !post.videoUrl && !(post.imageUrl && (post.imageUrl.endsWith('.mp4') || post.imageUrl.endsWith('.mov')))) return false;
     return true;
   });
 
@@ -154,14 +156,23 @@ export function FeedView({
           {/* Doctor Community Stories */}
           {stories.map((story, index) => {
             const hasActiveDot = index === stories.length - 1;
+            const storyDoc = (doctors || []).find(d => 
+              d.id === story.doctorId || 
+              String(d.id).replace('doc-', '') === String(story.doctorId).replace('doc-', '') || 
+              (d.name && story.doctorName && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === story.doctorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+            );
+            const resolvedStoryAvatar = (storyDoc && storyDoc.avatar && !storyDoc.avatar.includes('unsplash.com'))
+              ? storyDoc.avatar
+              : (story.avatar || '');
+
             return (
               <button 
                 key={story.id} 
                 className="story-circle-item"
-                onClick={() => onOpenStory(story)}
+                onClick={() => onOpenStory({ ...story, avatar: resolvedStoryAvatar })}
               >
                 <div className="story-ring-circle">
-                  <img src={story.avatar} alt={story.doctorName} className="story-avatar-photo" />
+                  <Avatar src={resolvedStoryAvatar} name={story.doctorName} size={48} className="story-avatar-photo" />
                   {hasActiveDot && <span className="story-active-dot" />}
                 </div>
                 <span className="story-doc-label">{story.doctorName}</span>
@@ -305,15 +316,21 @@ export function FeedView({
           const isOwnPost = currentUser && (
             post.authorId === currentUser.id ||
             post.authorName === currentUser.name ||
-            post.authorId === 'doc-me'
+            post.authorId === 'doc-me' ||
+            (post.authorName && currentUser.name && post.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
           );
+          const postDoc = doctors?.find(d => 
+            d.id === post.authorId || 
+            (d.name && post.authorName && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === post.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+          );
+          const authorAvatar = (isOwnPost && currentUser?.avatar) ? currentUser.avatar : (postDoc?.avatar || post.authorAvatar);
 
           return (
             <article key={post.id} className="feed-post-card" id={`post-${post.id}`}>
               <div className="post-card-header">
                 <div className="post-author-block">
                   <Avatar 
-                    src={post.authorAvatar} 
+                    src={authorAvatar} 
                     name={post.authorName} 
                     size={40} 
                     className="post-avatar-img" 
@@ -427,37 +444,69 @@ export function FeedView({
               <p className="post-body-text">{post.content}</p>
 
               {/* Video Player or Image Preview */}
-              {post.videoUrl ? (
-                <div style={{ borderRadius: '12px', overflow: 'hidden', backgroundColor: '#000', maxHeight: '380px', marginBottom: '14px' }}>
-                  <video 
-                    src={post.videoUrl} 
-                    controls 
-                    playsInline 
-                    style={{ width: '100%', maxHeight: '380px', objectFit: 'contain', display: 'block' }} 
-                  />
-                </div>
-              ) : post.imageUrl ? (
-                <div 
-                  className="post-image-preview-container"
-                  onClick={() => onOpenClinicalCase && onOpenClinicalCase({
-                    title: post.badgeLabel || "Clinical Case Finding",
-                    authorName: post.authorName,
-                    authorSpecialty: post.authorSpecialty,
-                    species: post.species || "Canine",
-                    presentingComplaint: post.content,
-                    clinicalFindings: "Presented for routine follow-up and specialized examination.",
-                    diagnostics: "Microscopic cytology and diagnostic imaging evaluated.",
-                    diagnosis: "Presumptive / Confirmed Clinical Case",
-                    treatmentProtocol: "Medical management with targeted therapeutics.",
-                    outcome: "Full clinical remission observed at follow-up.",
-                    mediaUrl: post.imageUrl
-                  })}
-                  style={{ cursor: 'pointer' }}
-                  title="Click to review clinical details"
-                >
-                  <img src={post.imageUrl} alt="Clinical case" className="post-image-preview" loading="lazy" />
-                </div>
-              ) : null}
+              {(() => {
+                const isVideo = post.videoUrl || (post.imageUrl && (post.imageUrl.endsWith('.mp4') || post.imageUrl.endsWith('.webm') || post.imageUrl.endsWith('.mov') || post.imageUrl.includes('data:video')));
+                const videoSrc = post.videoUrl || (isVideo ? post.imageUrl : null);
+
+                if (videoSrc) {
+                  return (
+                    <div style={{
+                      borderRadius: '14px',
+                      overflow: 'hidden',
+                      backgroundColor: '#0a0a0a',
+                      maxHeight: '440px',
+                      width: '100%',
+                      marginBottom: '14px',
+                      position: 'relative',
+                      boxShadow: '0 4px 18px rgba(0,0,0,0.14)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <video 
+                        src={videoSrc} 
+                        controls 
+                        playsInline 
+                        preload="metadata"
+                        style={{
+                          width: '100%',
+                          maxHeight: '440px',
+                          objectFit: 'contain',
+                          display: 'block',
+                          backgroundColor: '#000'
+                        }} 
+                      />
+                    </div>
+                  );
+                }
+
+                if (post.imageUrl) {
+                  return (
+                    <div 
+                      className="post-image-preview-container"
+                      onClick={() => onOpenClinicalCase && onOpenClinicalCase({
+                        title: post.badgeLabel || "Clinical Case Finding",
+                        authorName: post.authorName,
+                        authorSpecialty: post.authorSpecialty,
+                        species: post.species || "Canine",
+                        presentingComplaint: post.content,
+                        clinicalFindings: "Presented for routine follow-up and specialized examination.",
+                        diagnostics: "Microscopic cytology and diagnostic imaging evaluated.",
+                        diagnosis: "Presumptive / Confirmed Clinical Case",
+                        treatmentProtocol: "Medical management with targeted therapeutics.",
+                        outcome: "Full clinical remission observed at follow-up.",
+                        mediaUrl: post.imageUrl
+                      })}
+                      style={{ cursor: 'pointer' }}
+                      title="Click to review clinical details"
+                    >
+                      <img src={post.imageUrl} alt="Clinical case" className="post-image-preview" loading="lazy" />
+                    </div>
+                  );
+                }
+
+                return null;
+              })()}
 
               {/* Action Buttons */}
               <div className="post-card-footer">
@@ -509,14 +558,26 @@ export function FeedView({
                       ? fetchedCommentsMap[post.id]
                       : (post.comments || []);
                     return postComments.length > 0 ? (
-                      postComments.map((c, idx) => (
-                      <div key={c.id || idx} style={{ display: 'flex', gap: '8px', fontSize: '12.5px' }}>
-                        <Avatar 
-                          src={c.authorAvatar} 
-                          name={c.authorName}
-                          size={28}
-                          style={{ flexShrink: 0 }}
-                        />
+                      postComments.map((c, idx) => {
+                        const isOwnComment = currentUser && (
+                          c.authorId === currentUser.id || 
+                          c.authorName === currentUser.name ||
+                          (c.authorName && currentUser.name && c.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+                        );
+                        const commentDoc = doctors?.find(d => 
+                          d.id === c.authorId || 
+                          (d.name && c.authorName && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === c.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+                        );
+                        const commentAvatar = (isOwnComment && currentUser?.avatar) ? currentUser.avatar : (commentDoc?.avatar || c.authorAvatar);
+
+                        return (
+                          <div key={c.id || idx} style={{ display: 'flex', gap: '8px', fontSize: '12.5px' }}>
+                            <Avatar 
+                              src={commentAvatar} 
+                              name={c.authorName}
+                              size={28}
+                              style={{ flexShrink: 0 }}
+                            />
                         <div style={{
                           backgroundColor: '#F9FAFB',
                           borderRadius: '8px',
@@ -527,7 +588,8 @@ export function FeedView({
                           <span style={{ color: '#4B5563', lineHeight: 1.35 }}>{c.content}</span>
                         </div>
                       </div>
-                    ))
+                    );
+                  })
                   ) : (
                     <p style={{ margin: '4px 0', fontSize: '12px', color: '#9CA3AF', fontStyle: 'italic' }}>
                       No comments yet. Start the clinical discussion!

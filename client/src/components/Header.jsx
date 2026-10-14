@@ -1,31 +1,31 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Search, 
-  MapPin, 
-  ChevronDown, 
-  Bell, 
-  LogIn, 
-  Home, 
-  Users, 
-  FolderHeart, 
-  Video, 
-  MessageSquare, 
+import {
+  Search,
+  MapPin,
+  ChevronDown,
+  Bell,
+  LogIn,
+  Home,
+  Users,
+  FolderHeart,
+  Video,
+  MessageSquare,
   PawPrint,
-  Check, 
-  X, 
-  User, 
-  LogOut, 
-  Settings, 
-  CheckCircle2, 
+  Check,
+  X,
+  User,
+  LogOut,
+  Settings,
+  CheckCircle2,
   Sparkles,
   ExternalLink,
-  Camera
+  UserPen
 } from 'lucide-react';
 import { Avatar } from './Avatar';
 
-export function Header({ 
-  searchQuery, 
-  onSearchChange, 
+export function Header({
+  searchQuery,
+  onSearchChange,
   selectedCountry = 'INDIA',
   activeTab,
   onTabSelect,
@@ -79,7 +79,7 @@ export function Header({
     <header className="top-header" style={{ position: 'sticky', top: 0, zIndex: 40, borderBottom: '1px solid #E5E7EB', backgroundColor: '#FFFFFF' }}>
       {/* 1. Brand Logo & Emblem */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <button 
+        <button
           onClick={() => onTabSelect && onTabSelect('feed')}
           style={{
             display: 'flex',
@@ -117,8 +117,8 @@ export function Header({
         <div className="header-search-container" style={{ marginLeft: '6px' }}>
           <div className="header-search-bar" style={{ width: '260px' }}>
             <Search size={15} color="#6b7280" />
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="Search doctors, cases, skills..."
               className="header-search-input"
               value={searchQuery}
@@ -129,7 +129,7 @@ export function Header({
         </div>
       </div>
 
-      {/* 2. LinkedIn-Style Center Navigation Icons */}
+      {/* 2.  Center Navigation Icons */}
       <nav style={{ display: 'flex', alignItems: 'center', gap: '4px', margin: '0 auto' }}>
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -217,8 +217,8 @@ export function Header({
 
         {/* Notifications Bell Dropdown */}
         <div style={{ position: 'relative' }} ref={notifRef}>
-          <button 
-            className="header-bell-btn" 
+          <button
+            className="header-bell-btn"
             title="Notifications"
             onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
             style={{ position: 'relative', cursor: 'pointer' }}
@@ -264,7 +264,7 @@ export function Header({
                   )}
                 </div>
                 {onMarkAllNotificationsRead && (
-                  <button 
+                  <button
                     onClick={onMarkAllNotificationsRead}
                     style={{ background: 'none', border: 'none', fontSize: '11.5px', color: '#059669', fontWeight: 600, cursor: 'pointer' }}
                   >
@@ -316,7 +316,7 @@ export function Header({
                   </div>
                 ) : (
                   filteredNotifs.map((n) => (
-                    <div 
+                    <div
                       key={n.id}
                       onClick={() => onMarkNotificationRead && onMarkNotificationRead(n.id)}
                       style={{
@@ -331,7 +331,7 @@ export function Header({
                       onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F9FAFB'}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = n.read ? '#FFFFFF' : '#F0FDF4'}
                     >
-                      <Avatar 
+                      <Avatar
                         src={n.senderAvatar}
                         name={n.senderName}
                         size={38}
@@ -403,13 +403,13 @@ export function Header({
         {/* Doctor Profile Menu */}
         {currentUser ? (
           <div style={{ position: 'relative' }} ref={profileRef}>
-            <div 
-              className="header-user-profile-btn" 
+            <div
+              className="header-user-profile-btn"
               onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
               title={`${currentUser.name} (Verified Doctor)`}
               style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px', borderRadius: '9999px', border: '1px solid #E5E7EB' }}
             >
-              <Avatar 
+              <Avatar
                 src={currentUser.avatar}
                 name={currentUser.name}
                 size={28}
@@ -436,7 +436,7 @@ export function Header({
                 zIndex: 100
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingBottom: '10px', borderBottom: '1px solid #F3F4F6' }}>
-                  <Avatar 
+                  <Avatar
                     src={currentUser.avatar}
                     name={currentUser.name}
                     size={42}
@@ -499,8 +499,8 @@ export function Header({
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F3F4F6'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    <Camera size={15} color="#059669" />
-                    <span>Upload Photo & Edit Profile</span>
+                    <UserPen size={15} color="#059669" />
+                    <span>Edit Profile</span>
                   </button>
 
                   <button
@@ -536,7 +536,7 @@ export function Header({
             )}
           </div>
         ) : (
-          <button 
+          <button
             className="header-signin-btn"
             onClick={onOpenLogin}
             style={{

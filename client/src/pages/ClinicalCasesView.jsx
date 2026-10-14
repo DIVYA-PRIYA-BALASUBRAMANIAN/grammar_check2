@@ -13,9 +13,13 @@ import {
 } from 'lucide-react';
 import heroVetImg from '../assets/hero_vet_dog.jpg';
 
+import { Avatar } from '../components/Avatar';
+
 export function ClinicalCasesView({ 
   clinicalCases = [],
   stories = [], 
+  doctors = [],
+  currentUser,
   onOpenStory, 
   onOpenCreateCase, 
   onSelectCase 
@@ -89,18 +93,29 @@ export function ClinicalCasesView({
           </button>
 
           {/* Doctor Community Stories */}
-          {stories.map((story) => (
-            <button 
-              key={story.id} 
-              className="story-circle-item"
-              onClick={() => onOpenStory(story)}
-            >
-              <div className="story-ring-circle">
-                <img src={story.avatar} alt={story.doctorName} className="story-avatar-photo" />
-              </div>
-              <span className="story-doc-label">{story.doctorName}</span>
-            </button>
-          ))}
+          {stories.map((story) => {
+            const storyDoc = (doctors || []).find(d => 
+              d.id === story.doctorId || 
+              String(d.id).replace('doc-', '') === String(story.doctorId).replace('doc-', '') || 
+              (d.name && story.doctorName && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === story.doctorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+            );
+            const resolvedStoryAvatar = (storyDoc && storyDoc.avatar && !storyDoc.avatar.includes('unsplash.com'))
+              ? storyDoc.avatar
+              : (story.avatar || '');
+
+            return (
+              <button 
+                key={story.id} 
+                className="story-circle-item"
+                onClick={() => onOpenStory({ ...story, avatar: resolvedStoryAvatar })}
+              >
+                <div className="story-ring-circle">
+                  <Avatar src={resolvedStoryAvatar} name={story.doctorName} size={48} className="story-avatar-photo" />
+                </div>
+                <span className="story-doc-label">{story.doctorName}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -123,20 +138,33 @@ export function ClinicalCasesView({
             </button>
           </div>
         ) : (
-          clinicalCases.map(c => ({
-            id: c.id,
-            authorName: c.authorName || 'Dr. Practitioner',
-            authorSpecialty: c.authorSpecialty || 'Veterinary Surgeon',
-            authorCity: 'Bengaluru',
-            authorAvatar: c.authorAvatar || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80',
-            timeAgo: 'Case Study',
-            content: c.presentingComplaint ? `${c.title} — ${c.presentingComplaint}` : c.title,
-            imgLeft: c.mediaUrl || heroVetImg,
-            imgRight: heroVetImg,
-            likes: c.views || 1,
-            comments: 0,
-            fullCase: c
-          })).map((post) => {
+          clinicalCases.map(c => {
+            const isOwnCase = currentUser && (
+              c.authorId === currentUser.id ||
+              c.authorName === currentUser.name ||
+              (c.authorName && currentUser.name && c.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+            );
+            const caseDoc = doctors?.find(d => 
+              d.id === c.authorId || 
+              (d.name && c.authorName && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === c.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+            );
+            const resolvedAvatar = (isOwnCase && currentUser?.avatar) ? currentUser.avatar : (caseDoc?.avatar || c.authorAvatar || '');
+
+            return {
+              id: c.id,
+              authorName: c.authorName || 'Dr. Practitioner',
+              authorSpecialty: c.authorSpecialty || 'Veterinary Surgeon',
+              authorCity: 'Bengaluru',
+              authorAvatar: resolvedAvatar,
+              timeAgo: 'Case Study',
+              content: c.presentingComplaint ? `${c.title} — ${c.presentingComplaint}` : c.title,
+              imgLeft: c.mediaUrl || heroVetImg,
+              imgRight: heroVetImg,
+              likes: c.views || 1,
+              comments: 0,
+              fullCase: c
+            };
+          }).map((post) => {
             const currentLikes = likedMap[post.id] !== undefined ? likedMap[post.id] : post.likes;
             const isLiked = likedMap[post.id] !== undefined;
 
@@ -145,7 +173,12 @@ export function ClinicalCasesView({
               {/* Card Header: Avatar, Name, Verified Badge, Time, Options */}
               <div className="post-card-header">
                 <div className="post-author-block">
-                  <img src={post.authorAvatar} alt={post.authorName} className="post-avatar-img" />
+                  <Avatar 
+                    src={post.authorAvatar} 
+                    name={post.authorName} 
+                    size={40} 
+                    className="post-avatar-img" 
+                  />
                   <div>
                     <div className="post-author-name-row">
                       <h3 className="post-author-name">{post.authorName}</h3>

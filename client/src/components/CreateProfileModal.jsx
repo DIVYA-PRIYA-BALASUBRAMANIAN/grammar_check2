@@ -95,20 +95,59 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentU
   const handleAvatarFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // 1. Instant visual preview so the photo shows up immediately
+    const objectUrl = URL.createObjectURL(file);
+    setFormData(prev => ({ ...prev, avatar: objectUrl }));
     setIsUploadingPhoto(true);
+
     try {
       const res = await api.media.upload(file);
       if (res && res.url) {
-        setFormData(prev => ({ ...prev, avatar: res.url }));
+        const photoUrl = res.url;
+        setFormData(prev => ({ ...prev, avatar: photoUrl }));
+
+        // 2. Immediately auto-save to backend doctor profile
+        const docId = currentUser?.id || 1;
+        try {
+          const updatedDoc = await api.doctors.update(docId, { avatar: photoUrl });
+          if (updatedDoc) {
+            onProfileCreated && onProfileCreated(updatedDoc);
+          }
+        } catch (saveErr) {
+          console.warn('Auto-save doctor avatar failed:', saveErr);
+          onProfileCreated && onProfileCreated({ ...(currentUser || {}), id: docId, avatar: photoUrl });
+        }
       }
     } catch (err) {
+      console.warn('Backend media upload fallback to dataURL:', err);
       const reader = new FileReader();
-      reader.onload = (ev) => {
-        setFormData(prev => ({ ...prev, avatar: ev.target.result }));
+      reader.onload = async (ev) => {
+        const dataUrl = ev.target.result;
+        setFormData(prev => ({ ...prev, avatar: dataUrl }));
+        const docId = currentUser?.id || 1;
+        try {
+          const updatedDoc = await api.doctors.update(docId, { avatar: dataUrl });
+          if (updatedDoc) onProfileCreated && onProfileCreated(updatedDoc);
+        } catch (e) {
+          onProfileCreated && onProfileCreated({ ...(currentUser || {}), id: docId, avatar: dataUrl });
+        }
       };
       reader.readAsDataURL(file);
     } finally {
       setIsUploadingPhoto(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    setFormData(prev => ({ ...prev, avatar: '' }));
+    const docId = currentUser?.id || 1;
+    try {
+      const updatedDoc = await api.doctors.update(docId, { avatar: '' });
+      if (updatedDoc) onProfileCreated && onProfileCreated(updatedDoc);
+    } catch (e) {
+      onProfileCreated && onProfileCreated({ ...(currentUser || {}), id: docId, avatar: '' });
     }
   };
 
@@ -118,12 +157,24 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentU
     try {
       const res = await api.media.upload(file);
       if (res && res.url) {
-        setFormData(prev => ({ ...prev, coverImage: res.url }));
+        const coverUrl = res.url;
+        setFormData(prev => ({ ...prev, coverImage: coverUrl }));
+        const docId = currentUser?.id || 1;
+        try {
+          const updatedDoc = await api.doctors.update(docId, { coverImage: coverUrl });
+          if (updatedDoc) onProfileCreated && onProfileCreated(updatedDoc);
+        } catch (e) {}
       }
     } catch (err) {
       const reader = new FileReader();
-      reader.onload = (ev) => {
-        setFormData(prev => ({ ...prev, coverImage: ev.target.result }));
+      reader.onload = async (ev) => {
+        const dataUrl = ev.target.result;
+        setFormData(prev => ({ ...prev, coverImage: dataUrl }));
+        const docId = currentUser?.id || 1;
+        try {
+          const updatedDoc = await api.doctors.update(docId, { coverImage: dataUrl });
+          if (updatedDoc) onProfileCreated && onProfileCreated(updatedDoc);
+        } catch (e) {}
       };
       reader.readAsDataURL(file);
     }
@@ -332,7 +383,55 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentU
                 }}
               >
                 <UploadCloud size={15} />
-                <span>{isUploadingPhoto ? 'Uploading...' : 'Upload Photo'}</span>
+                <span>{isUploadingPhoto ? 'Uploading...' : (formData.avatar ? 'Change Photo' : 'Upload Photo')}</span>
+              </button>
+
+              {formData.avatar && (
+                <button
+                  type="button"
+                  onClick={handleRemoveAvatar}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    backgroundColor: '#FEE2E2',
+                    color: '#DC2626',
+                    border: '1px solid #FECACA',
+                    borderRadius: '10px',
+                    padding: '8px 12px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                  title="Remove photo and revert to initial letter"
+                >
+                  <X size={14} />
+                  <span>Remove</span>
+                </button>
+              )}
+
+              {/* Cover Photo Button */}
+              <button
+                type="button"
+                onClick={() => coverInputRef.current?.click()}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  backgroundColor: '#FFFFFF',
+                  color: '#003822',
+                  border: '1px solid #A7F3D0',
+                  borderRadius: '10px',
+                  padding: '8px 14px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                title="Upload Profile Cover Banner Image"
+              >
+                <Camera size={14} color="#059669" />
+                <span>{formData.coverImage ? 'Change Cover' : 'Add Cover'}</span>
               </button>
             </div>
           </div>

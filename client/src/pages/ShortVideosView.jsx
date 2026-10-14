@@ -12,9 +12,13 @@ import {
 import heroVetImg from '../assets/hero_vet_dog.jpg';
 import { SPECIALTIES, STATES_INDIA } from '../data/mockData';
 
+import { Avatar } from '../components/Avatar';
+
 export function ShortVideosView({ 
   videos = [], 
   stories = [], 
+  doctors = [],
+  currentUser,
   onOpenStory, 
   onOpenCreateVideo, 
   onSelectVideo 
@@ -79,18 +83,29 @@ export function ShortVideosView({
             <span className="story-doc-label">Your story</span>
           </button>
 
-          {stories.map((story) => (
-            <button 
-              key={story.id} 
-              className="story-circle-item"
-              onClick={() => onOpenStory(story)}
-            >
-              <div className="story-ring-circle">
-                <img src={story.avatar} alt={story.doctorName} className="story-avatar-photo" />
-              </div>
-              <span className="story-doc-label">{story.doctorName}</span>
-            </button>
-          ))}
+          {stories.map((story) => {
+            const storyDoc = (doctors || []).find(d => 
+              d.id === story.doctorId || 
+              String(d.id).replace('doc-', '') === String(story.doctorId).replace('doc-', '') || 
+              (d.name && story.doctorName && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === story.doctorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+            );
+            const resolvedStoryAvatar = (storyDoc && storyDoc.avatar && !storyDoc.avatar.includes('unsplash.com'))
+              ? storyDoc.avatar
+              : (story.avatar || '');
+
+            return (
+              <button 
+                key={story.id} 
+                className="story-circle-item"
+                onClick={() => onOpenStory({ ...story, avatar: resolvedStoryAvatar })}
+              >
+                <div className="story-ring-circle">
+                  <Avatar src={resolvedStoryAvatar} name={story.doctorName} size={48} className="story-avatar-photo" />
+                </div>
+                <span className="story-doc-label">{story.doctorName}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -196,12 +211,36 @@ export function ShortVideosView({
             }}
           >
             {/* Video Cover Area with Glassy Badges */}
-            <div style={{ position: 'relative', height: '220px', backgroundColor: '#000' }}>
-              <img 
-                src={vid.thumbnail} 
-                alt={vid.title} 
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-              />
+            <div style={{ position: 'relative', height: '230px', backgroundColor: '#07180F', overflow: 'hidden' }}>
+              {vid.videoUrl ? (
+                <video 
+                  src={`${vid.videoUrl}#t=0.001`} 
+                  preload="metadata"
+                  muted 
+                  playsInline
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', backgroundColor: '#000' }}
+                  onMouseEnter={(e) => {
+                    try { e.currentTarget.play(); } catch (_) {}
+                  }}
+                  onMouseLeave={(e) => {
+                    try { 
+                      e.currentTarget.pause(); 
+                      e.currentTarget.currentTime = 0; 
+                    } catch (_) {}
+                  }}
+                />
+              ) : (vid.thumbnail && !vid.thumbnail.includes('543a7dc6') && !vid.thumbnail.includes('bcb16239')) ? (
+                <img 
+                  src={vid.thumbnail} 
+                  alt={vid.title} 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                />
+              ) : (
+                <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #062b1b 0%, #021a10 100%)', color: '#34D399' }}>
+                  <Video size={40} />
+                  <span style={{ fontSize: '11px', marginTop: '6px', fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>Clinical Reel</span>
+                </div>
+              )}
               
               {/* Glassy Duration Badge */}
               <div style={{
@@ -234,7 +273,8 @@ export function ShortVideosView({
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: '#ffffff',
-                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)'
+                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
+                pointerEvents: 'none'
               }}>
                 <Play size={20} fill="#ffffff" style={{ marginLeft: '3px' }} />
               </div>
@@ -261,15 +301,29 @@ export function ShortVideosView({
             </div>
 
             {/* Video Details */}
-            <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-              <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#111827', lineHeight: '1.35', marginBottom: '6px' }}>
-                {vid.title}
-              </h4>
-              <p style={{ fontSize: '12px', color: '#059669', fontWeight: '600', margin: '0 0 2px 0' }}>
-                {vid.doctorName}
-              </p>
-              <span style={{ fontSize: '11.5px', color: '#6b7280' }}>{vid.doctorSpecialty}</span>
-            </div>
+            {(() => {
+              const vidDoc = (doctors || []).find(d => 
+                d.id === vid.doctorId || 
+                String(d.id).replace('doc-', '') === String(vid.doctorId).replace('doc-', '') || 
+                (d.name && vid.doctorName && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === vid.doctorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+              );
+              const authorAvatar = vidDoc?.avatar || vid.authorAvatar;
+
+              return (
+                <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#111827', lineHeight: '1.35', marginBottom: '8px' }}>
+                    {vid.title}
+                  </h4>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 0 4px 0' }}>
+                    <Avatar src={authorAvatar} name={vid.doctorName} size={22} />
+                    <p style={{ fontSize: '12.5px', color: '#059669', fontWeight: '600', margin: 0 }}>
+                      {vid.doctorName}
+                    </p>
+                  </div>
+                  <span style={{ fontSize: '11.5px', color: '#6b7280' }}>{vid.doctorSpecialty}</span>
+                </div>
+              );
+            })()}
           </div>
         ))}
         </div>

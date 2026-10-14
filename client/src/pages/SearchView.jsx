@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import heroVetImg from '../assets/hero_vet_dog.jpg';
 import { api } from '../services/api';
+import { Avatar } from '../components/Avatar';
 
 export function SearchView({ doctors: initialDoctors = [], onSelectDoctor, onOpenChat, onSelectCase, onSelectVideo }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -246,7 +247,13 @@ export function SearchView({ doctors: initialDoctors = [], onSelectDoctor, onOpe
 
               {/* Card Top Info Row */}
               <div className="doctor-dir-top-row">
-                <img src={doctor.avatar} alt={doctor.name} className="doctor-dir-avatar-img" />
+                <Avatar 
+                  src={doctor.avatar} 
+                  name={doctor.name} 
+                  size={64} 
+                  fontSize={24} 
+                  style={{ borderRadius: '12px', flexShrink: 0 }} 
+                />
 
                 <div className="doctor-dir-info-col">
                   {/* Verified Indicator */}

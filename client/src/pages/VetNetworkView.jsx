@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
-import { 
-  Search, 
-  ChevronDown, 
-  CheckCircle2, 
-  PawPrint, 
-  ArrowRight, 
-  Users, 
-  UserPlus, 
-  Clock, 
-  Check, 
-  X, 
-  MessageSquare, 
-  MapPin, 
-  Building, 
+import {
+  Search,
+  ChevronDown,
+  CheckCircle2,
+  PawPrint,
+  ArrowRight,
+  Users,
+  UserPlus,
+  Clock,
+  Check,
+  X,
+  MessageSquare,
+  MapPin,
+  Building,
   ShieldCheck,
   Filter
 } from 'lucide-react';
@@ -20,10 +20,10 @@ import { SPECIALTIES, STATES_INDIA } from '../data/mockData';
 import heroVetImg from '../assets/hero_vet_dog.jpg';
 import { Avatar } from '../components/Avatar';
 
-export function VetNetworkView({ 
-  doctors = [], 
-  onSelectDoctor, 
-  connectedDoctors = {}, 
+export function VetNetworkView({
+  doctors = [],
+  onSelectDoctor,
+  connectedDoctors = {},
   pendingRequests = [], // received requests
   sentRequests = [],    // sent requests
   onSendRequest,
@@ -53,10 +53,10 @@ export function VetNetworkView({
     if (currentUser && doc.id === currentUser.id) return false;
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase();
-      const match = doc.name.toLowerCase().includes(q) || 
-                    doc.specialty.toLowerCase().includes(q) || 
-                    (doc.city && doc.city.toLowerCase().includes(q)) ||
-                    (doc.clinic && doc.clinic.toLowerCase().includes(q));
+      const match = doc.name.toLowerCase().includes(q) ||
+        doc.specialty.toLowerCase().includes(q) ||
+        (doc.city && doc.city.toLowerCase().includes(q)) ||
+        (doc.clinic && doc.clinic.toLowerCase().includes(q));
       if (!match) return false;
     }
     if (selectedSpecialty !== 'All specialties' && doc.specialty !== selectedSpecialty) return false;
@@ -73,7 +73,7 @@ export function VetNetworkView({
       <div className="cases-hero-banner-light" style={{ padding: '24px 28px', borderRadius: '16px' }}>
         <div className="hero-banner-inner">
           <div className="hero-text-content">
-            <span className="hero-tag-kicker">LinkedIn-Style Veterinary Network</span>
+            <span className="hero-tag-kicker">Veterinary Network</span>
             <h1 className="hero-headline" style={{ fontSize: '28px', margin: '4px 0 8px 0' }}>
               Connect with India's Veterinary Specialists
             </h1>
@@ -94,10 +94,10 @@ export function VetNetworkView({
 
           <div className="hero-photo-wrap">
             <PawPrint size={90} className="hero-paw-watermark" style={{ color: 'rgba(0, 56, 34, 0.12)' }} />
-            <img 
-              src={heroVetImg} 
-              alt="Veterinarian with dog" 
-              className="hero-photo-img" 
+            <img
+              src={heroVetImg}
+              alt="Veterinarian with dog"
+              className="hero-photo-img"
             />
           </div>
         </div>
@@ -126,7 +126,7 @@ export function VetNetworkView({
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {pendingRequests.map((req) => (
-              <div 
+              <div
                 key={req.id}
                 style={{
                   display: 'flex',
@@ -141,11 +141,11 @@ export function VetNetworkView({
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <Avatar 
+                  <Avatar
                     src={req.senderAvatar}
-                    name={req.senderName} 
+                    name={req.senderName}
                     size={48}
-                    style={{ border: '2px solid #E5E7EB', flexShrink: 0 }} 
+                    style={{ border: '2px solid #E5E7EB', flexShrink: 0 }}
                   />
                   <div>
                     <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#111827' }}>
@@ -286,8 +286,8 @@ export function VetNetworkView({
             padding: '7px 16px'
           }}>
             <Search size={15} color="#9CA3AF" />
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="Search by name, specialty, hospital or city..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -303,7 +303,7 @@ export function VetNetworkView({
             />
           </div>
 
-          <select 
+          <select
             className="pill-select-control"
             style={{ flex: 1, minWidth: '150px' }}
             value={selectedSpecialty}
@@ -312,7 +312,7 @@ export function VetNetworkView({
             {SPECIALTIES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
 
-          <select 
+          <select
             className="pill-select-control"
             style={{ flex: 1, minWidth: '140px' }}
             value={selectedState}
@@ -323,7 +323,7 @@ export function VetNetworkView({
         </div>
       </div>
 
-      {/* 5. Doctor Cards Grid (LinkedIn Style) */}
+      {/* 5. Doctor Cards Grid  */}
       {((activeTab === 'grow' ? suggestedDoctors : myConnectedDoctors).length === 0) ? (
         <div style={{
           textAlign: 'center',
@@ -337,218 +337,218 @@ export function VetNetworkView({
             {activeTab === 'connections' ? 'No Connected Peers Yet' : 'No Other Doctors Found'}
           </h3>
           <p style={{ fontSize: '13px', color: '#6B7280', maxWidth: '380px', margin: '0 auto' }}>
-            {activeTab === 'connections' 
+            {activeTab === 'connections'
               ? 'Send connection requests to fellow veterinarians to grow your professional clinical network.'
               : 'As other veterinary practitioners register their profiles, they will appear here for you to connect with.'}
           </p>
         </div>
       ) : (
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-        gap: '16px'
-      }}>
-        {(activeTab === 'grow' ? suggestedDoctors : myConnectedDoctors).map((doc) => {
-          const isConnected = connectedIds.has(doc.id.toString()) || connectedIds.has(doc.id);
-          const isPending = sentPendingIds.has(doc.id.toString()) || sentPendingIds.has(doc.id);
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+          gap: '16px'
+        }}>
+          {(activeTab === 'grow' ? suggestedDoctors : myConnectedDoctors).map((doc) => {
+            const isConnected = connectedIds.has(doc.id.toString()) || connectedIds.has(doc.id);
+            const isPending = sentPendingIds.has(doc.id.toString()) || sentPendingIds.has(doc.id);
 
-          return (
-            <div 
-              key={doc.id}
-              className="doctor-card"
-              style={{
-                backgroundColor: '#FFFFFF',
-                borderRadius: '14px',
-                border: '1px solid #E5E7EB',
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
-                transition: 'transform 0.15s ease, box-shadow 0.15s ease'
-              }}
-            >
-              {/* Cover Gradient Banner */}
-              <div style={{
-                height: '70px',
-                background: 'linear-gradient(135deg, #003822 0%, #05633C 100%)',
-                position: 'relative',
-                padding: '10px 12px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start'
-              }}>
-                <PawPrint size={18} color="rgba(255,255,255,0.3)" />
-                <span style={{ fontSize: '10.5px', color: '#D1FAE5', fontWeight: 600 }}>
-                  {doc.city || 'India'}
-                </span>
-              </div>
-
-              {/* Avatar with Verified checkmark */}
-              <div style={{ marginTop: '-36px', marginLeft: '16px', position: 'relative', width: '64px', height: '64px' }}>
-                <Avatar 
-                  src={doc.avatar} 
-                  name={doc.name} 
-                  size={64}
-                  fontSize={26}
-                  style={{
-                    border: '3px solid #FFFFFF',
-                    backgroundColor: '#F3F4F6',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                  }}
-                />
-                {doc.verified && (
-                  <CheckCircle2 
-                    size={16} 
-                    color="#00a86b" 
-                    fill="#FFFFFF"
-                    style={{ position: 'absolute', bottom: '2px', right: '0px' }} 
-                  />
-                )}
-              </div>
-
-              {/* Card Body */}
-              <div style={{ padding: '8px 16px 16px 16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                <h3 
-                  onClick={() => onSelectDoctor && onSelectDoctor(doc)}
-                  style={{
-                    margin: '0 0 2px 0',
-                    fontSize: '15px',
-                    fontWeight: 700,
-                    color: '#111827',
-                    cursor: 'pointer'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.color = '#059669'}
-                  onMouseLeave={(e) => e.currentTarget.style.color = '#111827'}
-                >
-                  {doc.name}
-                </h3>
-                
-                <p style={{ margin: '0 0 4px 0', fontSize: '12.5px', color: '#003822', fontWeight: 600 }}>
-                  {doc.specialty}
-                </p>
-
-                <p style={{ margin: '0 0 8px 0', fontSize: '11.5px', color: '#6B7280', lineHeight: 1.3 }}>
-                  {doc.clinic || 'Specialty Veterinary Hospital'} · {doc.state || 'India'}
-                </p>
-
-                {/* Mutual Connection Tag */}
-                <div style={{
-                  padding: '4px 8px',
-                  backgroundColor: '#F8FBF9',
-                  borderRadius: '6px',
-                  border: '1px solid #E8F3ED',
-                  fontSize: '10.5px',
-                  color: '#065F46',
-                  marginBottom: '14px',
+            return (
+              <div
+                key={doc.id}
+                className="doctor-card"
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: '14px',
+                  border: '1px solid #E5E7EB',
+                  overflow: 'hidden',
                   display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
+                  flexDirection: 'column',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+                  transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+                }}
+              >
+                {/* Cover Gradient Banner */}
+                <div style={{
+                  height: '70px',
+                  background: 'linear-gradient(135deg, #003822 0%, #05633C 100%)',
+                  position: 'relative',
+                  padding: '10px 12px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start'
                 }}>
-                  <span>✦ 4 mutual peer connections</span>
+                  <PawPrint size={18} color="rgba(255,255,255,0.3)" />
+                  <span style={{ fontSize: '10.5px', color: '#D1FAE5', fontWeight: 600 }}>
+                    {doc.city || 'India'}
+                  </span>
                 </div>
 
-                {/* Action Buttons */}
-                <div style={{ marginTop: 'auto', display: 'flex', gap: '8px' }}>
-                  {isConnected ? (
-                    <>
+                {/* Avatar with Verified checkmark */}
+                <div style={{ marginTop: '-36px', marginLeft: '16px', position: 'relative', width: '64px', height: '64px' }}>
+                  <Avatar
+                    src={doc.avatar}
+                    name={doc.name}
+                    size={64}
+                    fontSize={26}
+                    style={{
+                      border: '3px solid #FFFFFF',
+                      backgroundColor: '#F3F4F6',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                    }}
+                  />
+                  {doc.verified && (
+                    <CheckCircle2
+                      size={16}
+                      color="#00a86b"
+                      fill="#FFFFFF"
+                      style={{ position: 'absolute', bottom: '2px', right: '0px' }}
+                    />
+                  )}
+                </div>
+
+                {/* Card Body */}
+                <div style={{ padding: '8px 16px 16px 16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                  <h3
+                    onClick={() => onSelectDoctor && onSelectDoctor(doc)}
+                    style={{
+                      margin: '0 0 2px 0',
+                      fontSize: '15px',
+                      fontWeight: 700,
+                      color: '#111827',
+                      cursor: 'pointer'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = '#059669'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = '#111827'}
+                  >
+                    {doc.name}
+                  </h3>
+
+                  <p style={{ margin: '0 0 4px 0', fontSize: '12.5px', color: '#003822', fontWeight: 600 }}>
+                    {doc.specialty}
+                  </p>
+
+                  <p style={{ margin: '0 0 8px 0', fontSize: '11.5px', color: '#6B7280', lineHeight: 1.3 }}>
+                    {doc.clinic || 'Specialty Veterinary Hospital'} · {doc.state || 'India'}
+                  </p>
+
+                  {/* Mutual Connection Tag */}
+                  <div style={{
+                    padding: '4px 8px',
+                    backgroundColor: '#F8FBF9',
+                    borderRadius: '6px',
+                    border: '1px solid #E8F3ED',
+                    fontSize: '10.5px',
+                    color: '#065F46',
+                    marginBottom: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    <span>✦ 4 mutual peer connections</span>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div style={{ marginTop: 'auto', display: 'flex', gap: '8px' }}>
+                    {isConnected ? (
+                      <>
+                        <button
+                          onClick={() => onOpenChat && onOpenChat(doc)}
+                          style={{
+                            flex: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            backgroundColor: '#003822',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            borderRadius: '9999px',
+                            padding: '7px',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <MessageSquare size={13} />
+                          <span>Message</span>
+                        </button>
+                        <button
+                          onClick={() => onDisconnect && onDisconnect(doc.id)}
+                          title="Remove connection"
+                          style={{
+                            backgroundColor: '#F3F4F6',
+                            color: '#6B7280',
+                            border: '1px solid #E5E7EB',
+                            borderRadius: '9999px',
+                            padding: '7px 10px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Check size={13} color="#059669" />
+                        </button>
+                      </>
+                    ) : isPending ? (
                       <button
-                        onClick={() => onOpenChat && onOpenChat(doc)}
+                        onClick={() => onCancelRequest && onCancelRequest(doc.id)}
                         style={{
-                          flex: 1,
+                          width: '100%',
+                          backgroundColor: '#F3F4F6',
+                          color: '#4B5563',
+                          border: '1px solid #D1D5DB',
+                          borderRadius: '9999px',
+                          padding: '7px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '5px'
+                        }}
+                      >
+                        <Clock size={13} />
+                        <span>Pending · Withdraw</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => onSendRequest && onSendRequest(doc)}
+                        style={{
+                          width: '100%',
+                          backgroundColor: '#FFFFFF',
+                          color: '#003822',
+                          border: '1.5px solid #003822',
+                          borderRadius: '9999px',
+                          padding: '7px',
+                          fontSize: '12.5px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           gap: '6px',
-                          backgroundColor: '#003822',
-                          color: '#FFFFFF',
-                          border: 'none',
-                          borderRadius: '9999px',
-                          padding: '7px',
-                          fontSize: '12px',
-                          fontWeight: 700,
-                          cursor: 'pointer'
+                          transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#003822';
+                          e.currentTarget.style.color = '#FFFFFF';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#FFFFFF';
+                          e.currentTarget.style.color = '#003822';
                         }}
                       >
-                        <MessageSquare size={13} />
-                        <span>Message</span>
+                        <UserPlus size={14} />
+                        <span>Connect</span>
                       </button>
-                      <button
-                        onClick={() => onDisconnect && onDisconnect(doc.id)}
-                        title="Remove connection"
-                        style={{
-                          backgroundColor: '#F3F4F6',
-                          color: '#6B7280',
-                          border: '1px solid #E5E7EB',
-                          borderRadius: '9999px',
-                          padding: '7px 10px',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <Check size={13} color="#059669" />
-                      </button>
-                    </>
-                  ) : isPending ? (
-                    <button
-                      onClick={() => onCancelRequest && onCancelRequest(doc.id)}
-                      style={{
-                        width: '100%',
-                        backgroundColor: '#F3F4F6',
-                        color: '#4B5563',
-                        border: '1px solid #D1D5DB',
-                        borderRadius: '9999px',
-                        padding: '7px',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '5px'
-                      }}
-                    >
-                      <Clock size={13} />
-                      <span>Pending · Withdraw</span>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => onSendRequest && onSendRequest(doc)}
-                      style={{
-                        width: '100%',
-                        backgroundColor: '#FFFFFF',
-                        color: '#003822',
-                        border: '1.5px solid #003822',
-                        borderRadius: '9999px',
-                        padding: '7px',
-                        fontSize: '12.5px',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                        transition: 'all 0.15s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#003822';
-                        e.currentTarget.style.color = '#FFFFFF';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#FFFFFF';
-                        e.currentTarget.style.color = '#003822';
-                      }}
-                    >
-                      <UserPlus size={14} />
-                      <span>Connect</span>
-                    </button>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );

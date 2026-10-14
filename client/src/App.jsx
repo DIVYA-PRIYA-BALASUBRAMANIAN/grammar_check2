@@ -107,17 +107,19 @@ export function App() {
   useEffect(() => {
     async function loadBackendData() {
       // Public catalogs
+      let loadedDocs = [];
       try {
         const docs = await api.doctors.getAll();
         if (docs && docs.length > 0) {
+          loadedDocs = docs;
           setDoctors(docs);
           if (currentUser?.id) {
-            const fresh = docs.find(d => d.id === currentUser.id);
+            const fresh = docs.find(d => d.id === currentUser.id || String(d.id).replace('doc-', '') === String(currentUser.id).replace('doc-', ''));
             if (fresh) {
               setCurrentUser(fresh);
               try {
                 localStorage.setItem('doctor_vet_user', JSON.stringify(fresh));
-              } catch (err) {}
+              } catch (err) { }
             }
           }
         }
@@ -128,7 +130,14 @@ export function App() {
       try {
         const feedPosts = await api.feed.getPosts();
         if (feedPosts && feedPosts.length > 0) {
-          setPosts(feedPosts);
+          setPosts(feedPosts.map(p => {
+            const freshDoc = loadedDocs.find(d =>
+              d.id === p.authorId ||
+              String(d.id).replace('doc-', '') === String(p.authorId).replace('doc-', '') ||
+              (d.name && p.authorName && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === p.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+            );
+            return freshDoc ? { ...p, authorAvatar: freshDoc.avatar || p.authorAvatar } : p;
+          }));
         }
       } catch (e) {
         console.log('Using local feed posts');
@@ -138,16 +147,24 @@ export function App() {
         // Load active 24h stories
         const backendStories = await api.stories.getAll();
         if (backendStories && backendStories.length > 0) {
-          setStories(backendStories.map(s => ({
-            id: s.id,
-            doctorName: s.doctorName || 'Doctor',
-            fullDoctorName: s.doctorName || 'Doctor',
-            avatar: s.avatar || '',
-            image: s.mediaUrl || 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=800&q=80',
-            videoUrl: s.mediaType === 'VIDEO' ? s.mediaUrl : null,
-            caption: s.caption || 'Moments from clinical practice',
-            time: 'Active'
-          })));
+          setStories(backendStories.map(s => {
+            const freshDoc = loadedDocs.find(d =>
+              d.id === s.doctorId ||
+              String(d.id).replace('doc-', '') === String(s.doctorId).replace('doc-', '') ||
+              (d.name && s.doctorName && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === s.doctorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+            );
+            return {
+              id: s.id,
+              doctorId: s.doctorId,
+              doctorName: s.doctorName ? s.doctorName.replace(/^dr\.?\s*/i, '').split(' ')[0] : (freshDoc?.name ? freshDoc.name.replace(/^dr\.?\s*/i, '').split(' ')[0] : 'Doctor'),
+              fullDoctorName: s.doctorName || freshDoc?.name || 'Doctor',
+              avatar: (freshDoc?.avatar && !freshDoc.avatar.includes('unsplash.com')) ? freshDoc.avatar : (s.avatar || ''),
+              image: s.mediaUrl || 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=800&q=80',
+              videoUrl: s.mediaType === 'VIDEO' ? s.mediaUrl : null,
+              caption: s.caption || 'Moments from clinical practice',
+              time: 'Active'
+            };
+          }));
         }
       } catch (e) {
         console.log('Using local stories');
@@ -157,7 +174,10 @@ export function App() {
         // Load clinical cases
         const backendCases = await api.cases.getAll();
         if (backendCases && backendCases.length > 0) {
-          setClinicalCases(backendCases);
+          setClinicalCases(backendCases.map(c => {
+            const freshDoc = loadedDocs.find(d => d.id === c.authorId || String(d.id).replace('doc-', '') === String(c.authorId).replace('doc-', '') || d.name === c.authorName);
+            return freshDoc ? { ...c, authorAvatar: freshDoc.avatar || c.authorAvatar } : c;
+          }));
         }
       } catch (e) {
         console.log('Using local clinical cases');
@@ -184,14 +204,18 @@ export function App() {
           try {
             const notifs = await api.notifications.getNotifications(docId);
             if (notifs) setNotifications(notifs);
-          } catch (e) {}
+          } catch (e) { }
 
           try {
             const myCons = await api.connections.getMy(docId);
             if (myCons && myCons.length > 0) {
-              setMyConnections(myCons);
+              const enrichedCons = myCons.map(c => {
+                const fresh = loadedDocs.find(d => d.id === c.id || String(d.id).replace('doc-', '') === String(c.id).replace('doc-', '') || d.name === c.name);
+                return fresh ? { ...c, avatar: fresh.avatar || c.avatar, specialty: fresh.specialty || c.specialty } : c;
+              });
+              setMyConnections(enrichedCons);
               const map = {};
-              myCons.forEach(c => { map[c.id] = true; map[`doc-${c.id}`] = true; });
+              enrichedCons.forEach(c => { map[c.id] = true; map[`doc-${c.id}`] = true; });
               setConnectedMap(map);
             } else {
               setMyConnections([]);
@@ -211,15 +235,19 @@ export function App() {
                 let msgs = [];
                 try {
                   msgs = await api.chat.getMessages(c.id);
-                } catch (e) {}
+                } catch (e) { }
+                const otherDocId = c.doctor1Id === docId ? c.doctor2Id : c.doctor1Id;
+                const otherDocName = c.doctor1Id === docId ? c.doctor2Name : c.doctor1Name;
+                const freshDoc = loadedDocs.find(d => d.id === otherDocId || String(d.id).replace('doc-', '') === String(otherDocId).replace('doc-', '') || d.name === otherDocName);
+                const resolvedAvatar = freshDoc?.avatar || (c.doctor1Id === docId ? c.doctor2Avatar : c.doctor1Avatar) || '';
                 return {
                   id: c.id,
                   doctor: {
-                    id: c.doctor1Id === docId ? c.doctor2Id : c.doctor1Id,
-                    name: c.doctor1Id === docId ? c.doctor2Name : c.doctor1Name,
-                    avatar: c.doctor1Id === docId ? c.doctor2Avatar : c.doctor1Avatar,
-                    specialty: 'Veterinary Practitioner',
-                    city: 'Bengaluru'
+                    id: otherDocId,
+                    name: otherDocName,
+                    avatar: resolvedAvatar,
+                    specialty: freshDoc?.specialty || 'Veterinary Practitioner',
+                    city: freshDoc?.city || 'Bengaluru'
                   },
                   lastMessage: c.lastMessage,
                   timestamp: 'Active',
@@ -246,7 +274,7 @@ export function App() {
             if (sent && sent.length > 0) {
               setSentRequests(sent);
             }
-          } catch (e) {}
+          } catch (e) { }
         }
       } else {
         // Cleanly wipe any private data from memory when not signed in
@@ -273,7 +301,7 @@ export function App() {
         stomp.subscribe(`/topic/user/${currentUser.id}/notifications`, () => {
           api.notifications.getNotifications(currentUser.id).then(notifs => {
             if (notifs) setNotifications(notifs);
-          }).catch(() => {});
+          }).catch(() => { });
         });
 
         // Subscribe to live incoming direct chat messages
@@ -324,11 +352,11 @@ export function App() {
                       messages: [formattedMsg]
                     })));
                   }
-                }).catch(() => {});
+                }).catch(() => { });
                 return prev;
               }
             });
-          } catch (e) {}
+          } catch (e) { }
         });
       });
     } catch (e) {
@@ -337,7 +365,7 @@ export function App() {
 
     return () => {
       if (client && client.deactivate) {
-        try { client.deactivate(); } catch (e) {}
+        try { client.deactivate(); } catch (e) { }
       }
     };
   }, [currentUser?.id]);
@@ -351,7 +379,7 @@ export function App() {
   const handleLogout = async () => {
     try {
       await api.auth.logout();
-    } catch (e) {}
+    } catch (e) { }
     localStorage.removeItem('doctor_vet_user');
     localStorage.removeItem('doctor_vet_token');
     setCurrentUser(null);
@@ -524,7 +552,10 @@ export function App() {
   const handleCreatePost = async ({ content, postType, imageUrl, videoUrl, videoTitle, specialty, duration, species }) => {
     const authorName = currentUser?.name || 'Dr. You (Verified)';
     const authorSpecialty = currentUser?.specialty || specialty || 'Veterinary Medicine';
-    const authorAvatar = currentUser?.avatar || 'https://images.unsplash.com/photo-1594824813575-5858e94a5392?auto=format&fit=crop&w=300&q=80';
+    const authorAvatar = currentUser?.avatar || '';
+
+    const isVideoMedia = !!videoUrl || (imageUrl && (imageUrl.endsWith('.mp4') || imageUrl.endsWith('.mov') || imageUrl.endsWith('.webm') || imageUrl.includes('data:video')));
+    const effectiveVideoUrl = videoUrl || (isVideoMedia ? imageUrl : null);
 
     if (postType === 'STORY') {
       const storyPayload = {
@@ -532,14 +563,15 @@ export function App() {
         doctorName: currentUser?.name || 'Dr. You',
         avatar: authorAvatar,
         mediaUrl: imageUrl || 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=800&q=80',
-        mediaType: videoUrl ? 'VIDEO' : 'IMAGE',
+        mediaType: isVideoMedia ? 'VIDEO' : 'IMAGE',
         caption: content || 'Moments from clinical practice'
       };
       try {
         const savedStory = await api.stories.create(storyPayload);
         const formattedStory = {
           id: savedStory.id || `story-${Date.now()}`,
-          doctorName: currentUser?.name ? currentUser.name.replace('Dr. ', '').split(' ')[0] : 'You',
+          doctorId: currentUser?.id || 1,
+          doctorName: currentUser?.name ? currentUser.name.replace(/^dr\.?\s*/i, '').split(' ')[0] : 'You',
           fullDoctorName: authorName,
           avatar: authorAvatar,
           image: savedStory.mediaUrl || imageUrl,
@@ -551,7 +583,52 @@ export function App() {
       } catch (e) {
         console.warn('Backend story persistence error:', e);
       }
-      alert('Your 24-hour story is now live in the community moments bar!');
+
+      // If user uploaded a video reel, publish it down to the scrollable feed as well!
+      if (isVideoMedia) {
+        const reelPostPayload = {
+          authorId: currentUser?.id || 1,
+          authorName,
+          authorSpecialty,
+          authorCity: currentUser?.city || 'Bengaluru',
+          authorAvatar,
+          postType: 'SHORT_VIDEO',
+          badgeLabel: 'CLINICAL REEL · VIDEO',
+          content: content || 'Clinical reel demonstration',
+          imageUrl: (imageUrl && !imageUrl.endsWith('.mp4')) ? imageUrl : null,
+          videoUrl: effectiveVideoUrl,
+          species: species || 'Canine',
+          likes: 1,
+          commentsCount: 0
+        };
+        try {
+          const savedPost = await api.feed.createPost(reelPostPayload);
+          setPosts(prev => [savedPost, ...prev]);
+        } catch (e) {
+          setPosts(prev => [{ ...reelPostPayload, id: `post-${Date.now()}`, comments: [] }, ...prev]);
+        }
+
+        const reelVideoPayload = {
+          title: content ? content.slice(0, 50) : 'Clinical Technique Reel',
+          doctorName: authorName,
+          doctorSpecialty: `${authorSpecialty} · ${currentUser?.city || 'Bengaluru'}`,
+          views: '1',
+          duration: '0:45',
+          thumbnail: (imageUrl && !imageUrl.endsWith('.mp4')) ? imageUrl : 'http://localhost:8080/uploads/543a7dc6-e985-4130-967d-7aac4969ff9f.png',
+          videoUrl: effectiveVideoUrl,
+          likes: 1,
+          comments: 0
+        };
+        try {
+          const savedVideo = await api.videos.create(reelVideoPayload);
+          setVideos(prev => [savedVideo, ...prev]);
+        } catch (e) {
+          setVideos(prev => [{ ...reelVideoPayload, id: `vid-${Date.now()}` }, ...prev]);
+        }
+        alert('Your clinical reel is live in both the community stories and the scrollable feed below!');
+      } else {
+        alert('Your 24-hour story is now live in the community moments bar!');
+      }
       return;
     }
 
@@ -562,8 +639,8 @@ export function App() {
         doctorSpecialty: `${authorSpecialty} · ${currentUser?.city || 'Bengaluru'}`,
         views: '1',
         duration: duration || '0:45',
-        thumbnail: imageUrl || 'https://images.unsplash.com/photo-1576201836106-db1758fd1c97?auto=format&fit=crop&w=500&q=80',
-        videoUrl: videoUrl || null,
+        thumbnail: (imageUrl && !imageUrl.endsWith('.mp4')) ? imageUrl : 'http://localhost:8080/uploads/543a7dc6-e985-4130-967d-7aac4969ff9f.png',
+        videoUrl: effectiveVideoUrl,
         likes: 1,
         comments: 0
       };
@@ -606,14 +683,14 @@ export function App() {
       authorCity: currentUser?.city || 'Bengaluru',
       authorAvatar,
       postType,
-      badgeLabel: postType === 'CLINICAL_CASE' 
-        ? 'CLINICAL CASE REPORT' 
+      badgeLabel: postType === 'CLINICAL_CASE'
+        ? 'CLINICAL CASE REPORT'
         : postType === 'SHORT_VIDEO'
-        ? 'CLINICAL REEL · VIDEO'
-        : 'CLINICAL UPDATE',
+          ? 'CLINICAL REEL · VIDEO'
+          : 'CLINICAL UPDATE',
       content: videoTitle ? `${videoTitle} — ${content}` : content,
-      imageUrl,
-      videoUrl,
+      imageUrl: (imageUrl && !imageUrl.endsWith('.mp4')) ? imageUrl : null,
+      videoUrl: effectiveVideoUrl,
       species: species || 'Canine',
       likes: 1,
       commentsCount: 0
@@ -638,7 +715,7 @@ export function App() {
         if (started && started.id) {
           try {
             msgs = await api.chat.getMessages(started.id);
-          } catch (e) {}
+          } catch (e) { }
           existing = {
             id: started.id,
             doctor,
@@ -685,7 +762,7 @@ export function App() {
             time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'
           }))
         } : c));
-      } catch (e) {}
+      } catch (e) { }
     }
     setActiveTab('messages');
   };
@@ -713,8 +790,8 @@ export function App() {
           }
           return c;
         }));
-        api.chat.markAsRead(conv.id, currentUser?.id || 1).catch(() => {});
-      } catch (e) {}
+        api.chat.markAsRead(conv.id, currentUser?.id || 1).catch(() => { });
+      } catch (e) { }
     }
   };
 
@@ -724,7 +801,7 @@ export function App() {
       try {
         const started = await api.chat.startConversation(currentUser?.id || 1, receiverId, text);
         if (started?.id) targetConvId = started.id;
-      } catch (e) {}
+      } catch (e) { }
     }
 
     const optimisticMsg = {
@@ -781,6 +858,147 @@ export function App() {
 
   const unreadNotifsCount = notifications.filter(n => !n.read).length;
 
+  const handleDoctorProfileUpdated = (updatedDoc) => {
+    if (!updatedDoc) return;
+
+    // Helper to check match
+    const isDocMatch = (entityId, entityName) => {
+      if (!entityId && !entityName) return false;
+      if (entityId && updatedDoc.id) {
+        if (entityId === updatedDoc.id) return true;
+        if (String(entityId).replace('doc-', '') === String(updatedDoc.id).replace('doc-', '')) return true;
+      }
+      if (entityName && updatedDoc.name) {
+        const n1 = entityName.toLowerCase().replace(/^dr\.?\s*/i, '').trim();
+        const n2 = updatedDoc.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim();
+        if (n1 === n2) return true;
+      }
+      return false;
+    };
+
+    // 1. Current user
+    if (currentUser && isDocMatch(currentUser.id, currentUser.name)) {
+      setCurrentUser(prev => {
+        const next = { ...prev, ...updatedDoc };
+        try { localStorage.setItem('doctor_vet_user', JSON.stringify(next)); } catch (e) { }
+        return next;
+      });
+    }
+
+    // 2. Selected Doctor modal
+    setSelectedDoctor(prev => {
+      if (!prev) return prev;
+      if (isDocMatch(prev.id, prev.name)) {
+        return { ...prev, ...updatedDoc };
+      }
+      return prev;
+    });
+
+    // 3. Doctors catalog
+    setDoctors(prev => {
+      const idx = prev.findIndex(d => isDocMatch(d.id, d.name));
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = { ...copy[idx], ...updatedDoc };
+        return copy;
+      }
+      return [updatedDoc, ...prev];
+    });
+
+    // 4. Feed Posts
+    setPosts(prev => prev.map(p => {
+      if (isDocMatch(p.authorId, p.authorName)) {
+        return {
+          ...p,
+          authorAvatar: updatedDoc.avatar,
+          authorName: updatedDoc.name || p.authorName,
+          authorSpecialty: updatedDoc.specialty || p.authorSpecialty
+        };
+      }
+      return p;
+    }));
+
+    // 5. 24h Stories
+    setStories(prev => prev.map(s => {
+      if (isDocMatch(s.doctorId, s.doctorName) || isDocMatch(s.doctorId, s.fullDoctorName)) {
+        return {
+          ...s,
+          avatar: updatedDoc.avatar,
+          doctorName: updatedDoc.name ? updatedDoc.name.replace(/^dr\.?\s*/i, '').split(' ')[0] : s.doctorName,
+          fullDoctorName: updatedDoc.name || s.fullDoctorName
+        };
+      }
+      return s;
+    }));
+
+    // 6. Clinical Cases
+    setClinicalCases(prev => prev.map(c => {
+      if (isDocMatch(c.authorId, c.authorName)) {
+        return {
+          ...c,
+          authorAvatar: updatedDoc.avatar,
+          authorName: updatedDoc.name || c.authorName,
+          authorSpecialty: updatedDoc.specialty || c.authorSpecialty
+        };
+      }
+      return c;
+    }));
+
+    // 7. My Connections
+    setMyConnections(prev => prev.map(c => {
+      if (isDocMatch(c.id, c.name)) {
+        return {
+          ...c,
+          avatar: updatedDoc.avatar,
+          name: updatedDoc.name || c.name,
+          specialty: updatedDoc.specialty || c.specialty
+        };
+      }
+      return c;
+    }));
+
+    // 8. Active Chat Doctor & Conversations
+    setActiveChatDoctor(prev => {
+      if (!prev) return prev;
+      if (isDocMatch(prev.id, prev.name)) {
+        return { ...prev, ...updatedDoc, avatar: updatedDoc.avatar };
+      }
+      return prev;
+    });
+
+    setConversations(prev => prev.map(conv => {
+      if (conv.doctor && isDocMatch(conv.doctor.id, conv.doctor.name)) {
+        return {
+          ...conv,
+          doctor: { ...conv.doctor, ...updatedDoc, avatar: updatedDoc.avatar }
+        };
+      }
+      return conv;
+    }));
+  };
+
+  const handleOpenDoctorProfile = (doc) => {
+    if (!doc) {
+      setSelectedDoctor(currentUser);
+      return;
+    }
+    const isMe = currentUser && (
+      doc.id === currentUser.id ||
+      String(doc.id).replace('doc-', '') === String(currentUser.id).replace('doc-', '') ||
+      (doc.name && currentUser.name && doc.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+    );
+    if (isMe) {
+      setSelectedDoctor(currentUser);
+      return;
+    }
+    const fresh = (doctors || []).find(d =>
+      d.id === doc.id ||
+      String(d.id).replace('doc-', '') === String(doc.id).replace('doc-', '') ||
+      (d.name && doc.name && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === doc.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+    );
+    setSelectedDoctor(fresh ? { ...doc, ...fresh, avatar: fresh.avatar || doc.avatar } : doc);
+  };
+
   if (!currentUser || isLoginView || activeTab === 'login') {
     return (
       <LoginPage
@@ -812,7 +1030,7 @@ export function App() {
 
       {/* 2. Main Content Layout */}
       <div className="main-content-layout">
-        {/* Top Persistent Header with LinkedIn-style navigation & notification dropdown */}
+        {/* Top Persistent Header & notification dropdown */}
         <Header
           searchQuery={globalSearch}
           onSearchChange={(query) => {
@@ -830,7 +1048,7 @@ export function App() {
           onOpenLogin={() => setIsLoginView(true)}
           onLogout={handleLogout}
           onOpenCreateProfile={() => setIsCreateProfileOpen(true)}
-          onOpenDoctorProfile={(doc) => setSelectedDoctor(doc || currentUser)}
+          onOpenDoctorProfile={handleOpenDoctorProfile}
           unreadMessagesCount={conversations.reduce((acc, c) => acc + (c.unread || 0), 0)}
           unreadNotificationsCount={unreadNotifsCount}
           pendingRequestsCount={pendingRequests.length}
@@ -857,7 +1075,7 @@ export function App() {
               activeChatDoctor={activeChatDoctor}
               onSelectConversation={(c) => setActiveChatDoctor(c.doctor)}
               onSendMessage={handleSendMessage}
-              onOpenDoctorProfile={(doc) => setSelectedDoctor(doc)}
+              onOpenDoctorProfile={handleOpenDoctorProfile}
               currentUser={currentUser}
               doctors={doctors}
               connectedDoctors={myConnections}
@@ -874,6 +1092,7 @@ export function App() {
                 <FeedView
                   posts={posts}
                   stories={stories}
+                  doctors={doctors}
                   onOpenStory={(s) => setSelectedStory(s)}
                   onOpenCreatePost={handleOpenCreatePost}
                   onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
@@ -890,7 +1109,7 @@ export function App() {
               {activeTab === 'network' && (
                 <VetNetworkView
                   doctors={doctors}
-                  onSelectDoctor={(doc) => setSelectedDoctor(doc)}
+                  onSelectDoctor={handleOpenDoctorProfile}
                   connectedDoctors={connectedMap}
                   pendingRequests={pendingRequests}
                   sentRequests={sentRequests}
@@ -908,6 +1127,8 @@ export function App() {
                 <ClinicalCasesView
                   clinicalCases={clinicalCases}
                   stories={stories}
+                  doctors={doctors}
+                  currentUser={currentUser}
                   onOpenStory={(s) => setSelectedStory(s)}
                   onOpenCreateCase={handleOpenCreatePost}
                   onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
@@ -919,6 +1140,8 @@ export function App() {
                 <ShortVideosView
                   videos={videos}
                   stories={stories}
+                  doctors={doctors}
+                  currentUser={currentUser}
                   onOpenStory={(s) => setSelectedStory(s)}
                   onOpenCreateVideo={handleOpenCreatePost}
                   onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
@@ -929,7 +1152,7 @@ export function App() {
               {activeTab === 'search' && (
                 <SearchView
                   doctors={doctors}
-                  onSelectDoctor={(doc) => setSelectedDoctor(doc)}
+                  onSelectDoctor={handleOpenDoctorProfile}
                   onSelectCase={(c) => setSelectedCase(c)}
                   onSelectVideo={(v) => setSelectedVideo(v)}
                   onOpenChat={handleOpenDirectChat}
@@ -950,7 +1173,7 @@ export function App() {
             {/* Right Rail Widgets (People to Know & Network Advantage) */}
             <RightSidebar
               doctors={doctors}
-              onSelectDoctor={(doc) => setSelectedDoctor(doc)}
+              onSelectDoctor={handleOpenDoctorProfile}
               onViewAllDoctors={() => setActiveTab('network')}
               onSendRequest={handleSendRequest}
               connectedDoctors={Object.keys(connectedMap).map(k => ({ id: isNaN(k) ? k : Number(k) }))}
@@ -962,6 +1185,7 @@ export function App() {
       {/* Interactive Modals */}
       <DoctorModal
         doctor={selectedDoctor}
+        doctors={doctors}
         onClose={() => setSelectedDoctor(null)}
         onOpenChat={handleOpenDirectChat}
         isConnected={selectedDoctor ? (!!connectedMap[selectedDoctor.id] || !!connectedMap[`doc-${selectedDoctor.id}`]) : false}
@@ -973,6 +1197,30 @@ export function App() {
         posts={posts}
         currentUser={currentUser}
         onEditProfile={() => setIsCreateProfileOpen(true)}
+        onUpdateAvatar={async (newAvatarUrl) => {
+          const docId = currentUser?.id || selectedDoctor?.id || 1;
+          try {
+            const updated = await api.doctors.update(docId, { avatar: newAvatarUrl });
+            handleDoctorProfileUpdated(updated);
+            alert('Profile photo updated successfully!');
+          } catch (e) {
+            console.error('Failed to update avatar:', e);
+            const fallback = { ...(currentUser || selectedDoctor), avatar: newAvatarUrl };
+            handleDoctorProfileUpdated(fallback);
+          }
+        }}
+        onUpdateCover={async (newCoverUrl) => {
+          const docId = currentUser?.id || selectedDoctor?.id || 1;
+          try {
+            const updated = await api.doctors.update(docId, { coverImage: newCoverUrl });
+            handleDoctorProfileUpdated(updated);
+            alert('Cover photo updated successfully!');
+          } catch (e) {
+            console.error('Failed to update cover:', e);
+            const fallback = { ...(currentUser || selectedDoctor), coverImage: newCoverUrl };
+            handleDoctorProfileUpdated(fallback);
+          }
+        }}
       />
 
       <CreateProfileModal
@@ -980,19 +1228,7 @@ export function App() {
         onClose={() => setIsCreateProfileOpen(false)}
         currentUser={currentUser}
         onProfileCreated={(savedDoc) => {
-          setDoctors(prev => {
-            const idx = prev.findIndex(d => d.id === savedDoc.id);
-            if (idx >= 0) {
-              const copy = [...prev];
-              copy[idx] = savedDoc;
-              return copy;
-            }
-            return [savedDoc, ...prev];
-          });
-          setCurrentUser(savedDoc);
-          try {
-            localStorage.setItem('doctor_vet_user', JSON.stringify(savedDoc));
-          } catch (e) {}
+          handleDoctorProfileUpdated(savedDoc);
         }}
       />
 
@@ -1010,6 +1246,8 @@ export function App() {
       <VideoPlayerModal
         video={selectedVideo}
         onClose={() => setSelectedVideo(null)}
+        currentUser={currentUser}
+        doctors={doctors}
       />
 
       <ClinicalCaseModal

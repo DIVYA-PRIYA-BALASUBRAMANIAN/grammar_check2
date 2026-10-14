@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Users,
   Search,
@@ -18,6 +18,7 @@ import {
   Shield
 } from 'lucide-react';
 import { MOCK_DOCTORS } from '../data/mockData';
+import { Avatar } from '../components/Avatar';
 
 export function MessagesView({
   conversations = [],
@@ -45,7 +46,7 @@ export function MessagesView({
   }, [conversations, activeChatDoctor]);
 
   // =========================================================================
-  // 1. SIGNED-OUT STATE: LINKEDIN-STYLE SECURE GATE
+  // 1. SIGNED-OUT STATE: SECURE GATE
   // =========================================================================
   if (!currentUser) {
     return (
@@ -65,7 +66,7 @@ export function MessagesView({
         textAlign: 'center'
       }}>
         <div style={{ maxWidth: '640px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          
+
           {/* Branded Security Lock Icon */}
           <div style={{
             position: 'relative',
@@ -315,16 +316,25 @@ export function MessagesView({
   // 2. AUTHENTICATED STATE: FULL PEER CONSULTATION EXPERIENCE
   // =========================================================================
 
-  // Resolve user's actual connections strictly - never show other doctors as connections
-  const userConnections = connectedDoctors || [];
+  // Resolve user's actual connections strictly - enriched with live doctor catalog
+  const userConnections = useMemo(() => {
+    return (connectedDoctors || []).map(p => {
+      const fresh = (doctors || []).find(d =>
+        d.id === p.id ||
+        String(d.id).replace('doc-', '') === String(p.id).replace('doc-', '') ||
+        (d.name && p.name && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === p.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+      );
+      return fresh ? { ...p, ...fresh, avatar: fresh.avatar || p.avatar } : p;
+    });
+  }, [connectedDoctors, doctors]);
 
   // Filter connected people by search query
   const filteredPeople = userConnections.filter(p => {
     if (!searchPersonQuery.trim()) return true;
     const q = searchPersonQuery.toLowerCase();
     return (p.name && p.name.toLowerCase().includes(q)) ||
-           (p.specialty && p.specialty.toLowerCase().includes(q)) ||
-           (p.city && p.city.toLowerCase().includes(q));
+      (p.specialty && p.specialty.toLowerCase().includes(q)) ||
+      (p.city && p.city.toLowerCase().includes(q));
   });
 
   // Selected conversation strictly belonging to this user
@@ -332,8 +342,17 @@ export function MessagesView({
     activeChatDoctor && (c.doctor?.id === activeChatDoctor.id || c.doctor?.name === activeChatDoctor.name)
   ) || (conversations.length > 0 ? conversations[0] : null);
 
-  // Active doctor peer for consultation
-  const currentDoctor = activeChatDoctor || selectedConv?.doctor || null;
+  // Active doctor peer for consultation - dynamically resolved from live doctor catalog
+  const rawDoctor = activeChatDoctor || selectedConv?.doctor || null;
+  const currentDoctor = useMemo(() => {
+    if (!rawDoctor) return null;
+    const fresh = (doctors || []).find(d =>
+      d.id === rawDoctor.id ||
+      String(d.id).replace('doc-', '') === String(rawDoctor.id).replace('doc-', '') ||
+      (d.name && rawDoctor.name && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === rawDoctor.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+    );
+    return fresh ? { ...rawDoctor, ...fresh, avatar: fresh.avatar || rawDoctor.avatar } : rawDoctor;
+  }, [rawDoctor, doctors]);
 
   // Active chat message stream (strictly from user's selected conversation)
   const chatMessages = selectedConv?.messages || [];
@@ -413,16 +432,11 @@ export function MessagesView({
               {/* Doctor Info */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                 <div style={{ position: 'relative', width: '46px', height: '46px' }}>
-                  <img
-                    src={currentDoctor.avatar || "https://images.unsplash.com/photo-1594824813575-5858e94a5392?auto=format&fit=crop&w=300&q=80"}
-                    alt={currentDoctor.name}
-                    style={{
-                      width: '46px',
-                      height: '46px',
-                      borderRadius: '50%',
-                      objectFit: 'cover',
-                      display: 'block'
-                    }}
+                  <Avatar
+                    src={currentDoctor.avatar}
+                    name={currentDoctor.name}
+                    size={46}
+                    fontSize={18}
                   />
                   <span style={{
                     position: 'absolute',
@@ -544,16 +558,11 @@ export function MessagesView({
                     {/* Doctor Avatar on the left for received messages */}
                     {!isMe && (
                       <div style={{ position: 'relative', flexShrink: 0, marginTop: '2px' }}>
-                        <img
-                          src={currentDoctor.avatar || "https://images.unsplash.com/photo-1594824813575-5858e94a5392?auto=format&fit=crop&w=150&q=80"}
-                          alt={currentDoctor.name}
-                          style={{
-                            width: '34px',
-                            height: '34px',
-                            borderRadius: '50%',
-                            objectFit: 'cover',
-                            display: 'block'
-                          }}
+                        <Avatar
+                          src={currentDoctor.avatar}
+                          name={currentDoctor.name}
+                          size={34}
+                          fontSize={13}
                         />
                         <span style={{
                           position: 'absolute',
@@ -941,7 +950,7 @@ export function MessagesView({
                     if (onSelectConversation) {
                       const existing = conversations.find(c => c.doctor?.id === person.id || c.doctor?.name === person.name);
                       if (existing) {
-                        onSelectConversation(existing);
+                        onSelectConversation({ ...existing, doctor: person });
                       } else {
                         onSelectConversation({
                           id: `chat-${person.id}`,
@@ -974,16 +983,11 @@ export function MessagesView({
                   {/* Avatar and Info */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
                     <div style={{ position: 'relative', flexShrink: 0 }}>
-                      <img
-                        src={person.avatar || "https://images.unsplash.com/photo-1594824813575-5858e94a5392?auto=format&fit=crop&w=300&q=80"}
-                        alt={person.name}
-                        style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '50%',
-                          objectFit: 'cover',
-                          display: 'block'
-                        }}
+                      <Avatar
+                        src={person.avatar}
+                        name={person.name}
+                        size={40}
+                        fontSize={16}
                       />
                       <span style={{
                         position: 'absolute',

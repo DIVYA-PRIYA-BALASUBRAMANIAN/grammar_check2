@@ -234,7 +234,7 @@ export function CreatePostModal({
   };
 
   const doctorName = currentUser?.name || 'Dr. You (Verified)';
-  const doctorAvatar = currentUser?.avatar || 'https://images.unsplash.com/photo-1594824813575-5858e94a5392?auto=format&fit=crop&w=300&q=80';
+  const doctorAvatar = currentUser?.avatar || '';
 
   return (
     <div className="modal-overlay" onClick={handleClose}>

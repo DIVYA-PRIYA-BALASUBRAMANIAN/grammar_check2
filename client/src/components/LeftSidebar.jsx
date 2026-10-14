@@ -16,8 +16,7 @@ import {
   GraduationCap,
   LogIn,
   LogOut,
-  ShieldCheck,
-  Camera
+  ShieldCheck
 } from 'lucide-react';
 import { Avatar } from './Avatar';
 
@@ -121,96 +120,47 @@ export function LeftSidebar({
           borderRadius: '12px',
           border: '1px solid rgba(255, 255, 255, 0.12)',
           display: 'flex',
-          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'space-between',
           gap: '8px'
         }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '8px'
-          }}>
-            <div
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, cursor: 'pointer' }}
-              onClick={onOpenCreateProfile}
-              title="Upload Profile Photo / Edit Doctor Profile"
-            >
-              <div style={{ position: 'relative', width: '34px', height: '34px', flexShrink: 0 }}>
-                <Avatar
-                  src={currentUser.avatar}
-                  name={currentUser.name}
-                  size={34}
-                />
-                <div style={{
-                  position: 'absolute',
-                  bottom: '-2px',
-                  right: '-2px',
-                  backgroundColor: '#003822',
-                  border: '1.5px solid #8be6bc',
-                  borderRadius: '50%',
-                  width: '16px',
-                  height: '16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#ffffff'
-                }}>
-                  <Camera size={9} />
-                </div>
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, cursor: 'pointer' }}
+            onClick={onOpenCreateProfile}
+            title="Edit Doctor Profile"
+          >
+            <Avatar
+              src={currentUser.avatar}
+              name={currentUser.name}
+              size={34}
+            />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: '12px', fontWeight: '700', color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {currentUser.name}
               </div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: '12px', fontWeight: '700', color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {currentUser.name}
-                </div>
-                <div style={{ fontSize: '10px', color: '#8be6bc', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                  <ShieldCheck size={10} />
-                  <span>Verified</span>
-                </div>
+              <div style={{ fontSize: '10px', color: '#8be6bc', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                <ShieldCheck size={10} />
+                <span>Verified</span>
               </div>
             </div>
-            <button
-              onClick={onLogout}
-              title="Log Out"
-              style={{
-                color: '#94a3b8',
-                padding: '4px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'color 0.15s ease'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
-              onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
-            >
-              <LogOut size={15} />
-            </button>
           </div>
-
           <button
-            onClick={onOpenCreateProfile}
+            onClick={onLogout}
+            title="Log Out"
             style={{
+              color: '#94a3b8',
+              padding: '4px',
+              borderRadius: '6px',
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '6px',
-              backgroundColor: 'rgba(255, 255, 255, 0.12)',
-              color: '#ffffff',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              borderRadius: '8px',
-              padding: '6px 10px',
-              fontSize: '11px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              width: '100%'
+              transition: 'color 0.15s ease'
             }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.22)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.12)'}
+            onMouseEnter={(e) => e.currentTarget.style.color = '#ffffff'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
           >
-            <Camera size={12} color="#8be6bc" />
-            <span>Upload Photo / Edit Profile</span>
+            <LogOut size={15} />
           </button>
         </div>
       ) : (

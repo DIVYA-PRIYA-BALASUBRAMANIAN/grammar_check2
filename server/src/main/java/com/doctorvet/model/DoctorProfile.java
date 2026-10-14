@@ -19,6 +19,8 @@ public class DoctorProfile {
     private String passwordHash;
     private String role = "VERIFIED_DOCTOR";
     private String headline;
+
+    @Column(columnDefinition = "LONGTEXT")
     private String coverImage;
     private String licenseNumber;
 
@@ -29,6 +31,8 @@ public class DoctorProfile {
     private String clinic;
     private String city;
     private String state;
+
+    @Column(columnDefinition = "LONGTEXT")
     private String avatar;
     private boolean verified;
     private int experienceYears;

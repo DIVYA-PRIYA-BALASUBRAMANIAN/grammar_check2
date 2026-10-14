@@ -32,7 +32,7 @@ async function fetchJson(endpoint, options = {}) {
         const parsed = JSON.parse(errText);
         if (parsed.message) errorMsg = parsed.message;
         else if (parsed.error) errorMsg = parsed.error;
-      } catch (e) {}
+      } catch (e) { }
       throw new Error(errorMsg);
     }
     return await res.json();
@@ -48,12 +48,12 @@ async function fetchJson(endpoint, options = {}) {
 export const api = {
   // Auth
   auth: {
-    login: (identifier, password) => 
+    login: (identifier, password) =>
       fetchJson('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ identifier, password })
       }),
-    register: (userData) => 
+    register: (userData) =>
       fetchJson('/auth/register', {
         method: 'POST',
         body: JSON.stringify(userData)
@@ -212,6 +212,11 @@ export const api = {
     create: (video) => fetchJson('/videos', {
       method: 'POST',
       body: JSON.stringify(video)
+    }),
+    getComments: (id) => fetchJson(`/videos/${id}/comments`).catch(() => []),
+    addComment: (id, comment) => fetchJson(`/videos/${id}/comments`, {
+      method: 'POST',
+      body: JSON.stringify(comment)
     })
   },
 

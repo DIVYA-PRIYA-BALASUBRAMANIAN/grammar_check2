@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Heart, MessageCircle, Send } from 'lucide-react';
+import { Avatar } from './Avatar';
 
 export function StoryModal({ story, onClose }) {
   if (!story) return null;
@@ -29,14 +30,15 @@ export function StoryModal({ story, onClose }) {
         {/* Story Header */}
         <div style={{ position: 'absolute', top: 22, left: 16, right: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <img 
+            <Avatar 
               src={story.avatar} 
-              alt={story.doctorName} 
-              style={{ width: 36, height: 36, borderRadius: '50%', border: '2px solid #C5A059' }} 
+              name={story.doctorName || story.fullDoctorName} 
+              size={36} 
+              style={{ border: '2px solid #C5A059' }} 
             />
             <div>
               <p style={{ color: '#FFF', fontWeight: 700, fontSize: 13.5, margin: 0, textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
-                {story.fullDoctorName}
+                {story.fullDoctorName || story.doctorName}
               </p>
               <span style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11 }}>{story.time}</span>
             </div>
