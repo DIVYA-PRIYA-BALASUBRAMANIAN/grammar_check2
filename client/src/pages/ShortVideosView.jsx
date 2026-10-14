@@ -151,8 +151,25 @@ export function ShortVideosView({
       </div>
 
       {/* 4. Glassy Video Cards Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(225px, 1fr))', gap: '16px' }}>
-        {videos.map((vid) => (
+      {videos.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '48px 24px', background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
+          <Video size={40} color="#059669" style={{ margin: '0 auto 12px' }} />
+          <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#111827', marginBottom: '6px' }}>No Clinical Video Reels Yet</h3>
+          <p style={{ fontSize: '13px', color: '#6B7280', maxWidth: '380px', margin: '0 auto 16px' }}>
+            Share your surgical procedures, ultrasound examinations, or clinical technique reels with peers.
+          </p>
+          <button 
+            className="btn-make-mark"
+            onClick={() => onOpenCreateVideo('SHORT_VIDEO')}
+            style={{ margin: '0 auto' }}
+          >
+            <span>Share First Clinical Reel</span>
+            <ArrowRight size={15} />
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(225px, 1fr))', gap: '16px' }}>
+          {videos.map((vid) => (
           <div 
             key={vid.id}
             onClick={() => onSelectVideo(vid)}
@@ -255,7 +272,8 @@ export function ShortVideosView({
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

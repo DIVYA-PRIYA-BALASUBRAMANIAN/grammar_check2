@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
 import { Plus, Check, ChevronRight, Globe, Users, TrendingUp, Sparkles, ArrowRight } from 'lucide-react';
+import { Avatar } from './Avatar';
 
-export function RightSidebar({ doctors = [], onSelectDoctor, onViewAllDoctors }) {
+export function RightSidebar({ doctors = [], onSelectDoctor, onViewAllDoctors, onSendRequest, connectedDoctors = [] }) {
   const [connectedMap, setConnectedMap] = useState({});
 
-  const toggleConnect = (docId) => {
+  const toggleConnect = (doc) => {
     setConnectedMap(prev => ({
       ...prev,
-      [docId]: !prev[docId]
+      [doc.id]: !prev[doc.id]
     }));
+    if (onSendRequest) {
+      onSendRequest(doc);
+    }
   };
 
   const previewDoctors = doctors.slice(1, 4);
@@ -30,7 +34,7 @@ export function RightSidebar({ doctors = [], onSelectDoctor, onViewAllDoctors })
 
         <div className="people-list-container">
           {previewDoctors.map((doc) => {
-            const isConnected = !!connectedMap[doc.id];
+            const isConnected = !!connectedMap[doc.id] || connectedDoctors.some(c => c.id === doc.id);
             return (
               <div key={doc.id} className="people-card-row">
                 <div 
@@ -38,7 +42,7 @@ export function RightSidebar({ doctors = [], onSelectDoctor, onViewAllDoctors })
                   style={{ cursor: 'pointer' }}
                   onClick={() => onSelectDoctor && onSelectDoctor(doc)}
                 >
-                  <img src={doc.avatar} alt={doc.name} className="people-avatar-img" />
+                  <Avatar src={doc.avatar} name={doc.name} size={40} className="people-avatar-img" />
                   <div>
                     <h4 className="people-doctor-name">{doc.name}</h4>
                     <p className="people-doctor-spec">{doc.specialty}</p>
@@ -48,7 +52,7 @@ export function RightSidebar({ doctors = [], onSelectDoctor, onViewAllDoctors })
 
                 <button
                   className={`btn-circle-add ${isConnected ? 'connected' : ''}`}
-                  onClick={() => toggleConnect(doc.id)}
+                  onClick={() => toggleConnect(doc)}
                   title={isConnected ? 'Connected' : 'Connect with Doctor'}
                 >
                   {isConnected ? <Check size={15} /> : <Plus size={16} />}

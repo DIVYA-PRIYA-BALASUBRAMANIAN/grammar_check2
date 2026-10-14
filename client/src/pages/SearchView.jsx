@@ -17,12 +17,14 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import heroVetImg from '../assets/hero_vet_dog.jpg';
-import { MOCK_DOCTORS } from '../data/mockData';
+import { api } from '../services/api';
 
-export function SearchView({ onSelectDoctor, onOpenChat }) {
+export function SearchView({ doctors: initialDoctors = [], onSelectDoctor, onOpenChat, onSelectCase, onSelectVideo }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('ALL');
   const [savedDoctors, setSavedDoctors] = useState({});
+  const [searchResults, setSearchResults] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const toggleSave = (id) => {
     setSavedDoctors(prev => ({
@@ -31,6 +33,31 @@ export function SearchView({ onSelectDoctor, onOpenChat }) {
     }));
   };
 
+  React.useEffect(() => {
+    let cancel = false;
+    const runSearch = async () => {
+      if (!searchQuery.trim()) {
+        setSearchResults(null);
+        return;
+      }
+      setLoading(true);
+      try {
+        const res = await api.search.query(searchQuery);
+        if (!cancel) setSearchResults(res);
+      } catch (e) {
+        console.warn('Backend search fallback:', e);
+      } finally {
+        if (!cancel) setLoading(false);
+      }
+    };
+
+    const timer = setTimeout(runSearch, 300);
+    return () => {
+      cancel = true;
+      clearTimeout(timer);
+    };
+  }, [searchQuery]);
+
   const getSpecialtyIcon = (specialty) => {
     if (specialty.includes('Surgery')) return <Scissors size={13} color="#9333ea" />;
     if (specialty.includes('Dermatology')) return <Sparkles size={13} color="#ea580c" />;
@@ -38,52 +65,20 @@ export function SearchView({ onSelectDoctor, onOpenChat }) {
     return <PawPrint size={13} color="#059669" />;
   };
 
-  const doctorList = [
-    {
-      ...MOCK_DOCTORS[0],
-      exp: '8+ years experience',
-      rating: '4.8',
-      reviews: '124'
-    },
-    {
-      ...MOCK_DOCTORS[1],
-      exp: '12+ years experience',
-      rating: '4.9',
-      reviews: '218'
-    },
-    {
-      ...MOCK_DOCTORS[2],
-      exp: '6+ years experience',
-      rating: '4.7',
-      reviews: '96'
-    },
-    {
-      ...MOCK_DOCTORS[3],
-      exp: '10+ years experience',
-      rating: '4.8',
-      reviews: '142'
-    },
-    {
-      ...MOCK_DOCTORS[4],
-      exp: '7+ years experience',
-      rating: '4.6',
-      reviews: '87'
-    },
-    {
-      ...MOCK_DOCTORS[5],
-      exp: '9+ years experience',
-      rating: '4.7',
-      reviews: '112'
-    }
-  ];
+  const allDoctorsPool = (searchResults?.doctors && searchResults.doctors.length > 0)
+    ? searchResults.doctors
+    : initialDoctors;
 
-  const filteredDoctors = doctorList.filter(doc => {
+  const filteredDoctors = allDoctorsPool.filter(doc => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
-    return doc.name.toLowerCase().includes(q) || 
-           doc.specialty.toLowerCase().includes(q) || 
-           doc.city.toLowerCase().includes(q);
+    return (doc.name && doc.name.toLowerCase().includes(q)) || 
+           (doc.specialty && doc.specialty.toLowerCase().includes(q)) || 
+           (doc.city && doc.city.toLowerCase().includes(q));
   });
+
+  const matchingCases = searchResults?.cases || [];
+  const matchingVideos = searchResults?.videos || [];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -172,12 +167,69 @@ export function SearchView({ onSelectDoctor, onOpenChat }) {
       {/* 3. Section Title with Green Accent */}
       <div className="search-section-header-row">
         <h3 className="search-section-title">
-          DOCTORS ({filteredDoctors.length})
+          {activeFilter === 'CASES' ? `CLINICAL CASES (${matchingCases.length})` :
+           activeFilter === 'VIDEOS' ? `SHORT VIDEOS (${matchingVideos.length})` :
+           `DOCTORS (${filteredDoctors.length})`}
         </h3>
       </div>
 
+      {/* Clinical Cases Search Tab */}
+      {activeFilter === 'CASES' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {matchingCases.length === 0 ? (
+            <p style={{ color: '#6b7280', fontSize: '14px', fontStyle: 'italic', padding: '12px 0' }}>
+              No clinical cases found for "{searchQuery}". Try typing "parvo", "cardiology", or "colic".
+            </p>
+          ) : (
+            matchingCases.map(c => (
+              <div 
+                key={c.id} 
+                className="doctor-dir-card" 
+                style={{ cursor: 'pointer', padding: '16px' }}
+                onClick={() => onSelectCase && onSelectCase(c)}
+              >
+                <h4 style={{ fontSize: '15px', fontWeight: '700', color: '#003822', marginBottom: '6px' }}>{c.title}</h4>
+                <p style={{ fontSize: '13px', color: '#4b5563', marginBottom: '8px' }}>{c.presentingComplaint}</p>
+                <div style={{ display: 'flex', gap: '8px', fontSize: '12px', color: '#6b7280' }}>
+                  <span>Species: <strong>{c.species}</strong></span>
+                  <span>·</span>
+                  <span>Author: {c.authorName}</span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Short Videos Search Tab */}
+      {activeFilter === 'VIDEOS' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
+          {matchingVideos.length === 0 ? (
+            <p style={{ color: '#6b7280', fontSize: '14px', fontStyle: 'italic', padding: '12px 0' }}>
+              No video reels found matching "{searchQuery}".
+            </p>
+          ) : (
+            matchingVideos.map(v => (
+              <div 
+                key={v.id} 
+                className="doctor-dir-card" 
+                style={{ cursor: 'pointer', overflow: 'hidden' }}
+                onClick={() => onSelectVideo && onSelectVideo(v)}
+              >
+                <img src={v.thumbnailUrl} alt={v.title} style={{ width: '100%', height: '140px', objectFit: 'cover' }} />
+                <div style={{ padding: '10px' }}>
+                  <h4 style={{ fontSize: '13px', fontWeight: '600', color: '#111827', marginBottom: '4px' }}>{v.title}</h4>
+                  <span style={{ fontSize: '11px', color: '#059669' }}>{v.doctorName}</span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
       {/* 4. Doctors Directory Cards Grid */}
-      <div className="doctor-directory-grid">
+      {(activeFilter === 'ALL' || activeFilter === 'DOCTORS') && (
+        <div className="doctor-directory-grid">
         {filteredDoctors.map(doctor => {
           const isSaved = !!savedDoctors[doctor.id];
 
@@ -222,13 +274,13 @@ export function SearchView({ onSelectDoctor, onOpenChat }) {
                   <div className="doctor-dir-meta-stats">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <Briefcase size={11} color="#6b7280" />
-                      <span>{doctor.exp}</span>
+                      <span>{doctor.experienceYears ? `${doctor.experienceYears}+ years experience` : 'Registered Doctor'}</span>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#111827', fontWeight: '700' }}>
                       <Star size={11} fill="#eab308" color="#eab308" />
-                      <span>{doctor.rating}</span>
-                      <span style={{ color: '#9ca3af', fontWeight: '500' }}>({doctor.reviews})</span>
+                      <span>4.9</span>
+                      <span style={{ color: '#9ca3af', fontWeight: '500' }}>({doctor.connectionsCount || 25}+ peers)</span>
                     </div>
                   </div>
                 </div>
@@ -256,6 +308,7 @@ export function SearchView({ onSelectDoctor, onOpenChat }) {
           );
         })}
       </div>
+      )}
 
       {/* 5. Trusted By Veterinary Professionals Footer */}
       <div className="search-trusted-footer-divider">

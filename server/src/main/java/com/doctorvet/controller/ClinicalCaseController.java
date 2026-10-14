@@ -1,7 +1,7 @@
 package com.doctorvet.controller;
 
 import com.doctorvet.model.ClinicalCase;
-import com.doctorvet.repository.ClinicalCaseRepository;
+import com.doctorvet.service.ClinicalCaseService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,32 +12,26 @@ import java.util.List;
 @CrossOrigin(originPatterns = "*")
 public class ClinicalCaseController {
 
-    private final ClinicalCaseRepository repository;
+    private final ClinicalCaseService caseService;
 
-    public ClinicalCaseController(ClinicalCaseRepository repository) {
-        this.repository = repository;
+    public ClinicalCaseController(ClinicalCaseService caseService) {
+        this.caseService = caseService;
     }
 
     @GetMapping
     public List<ClinicalCase> getAllCases(@RequestParam(required = false) String species) {
-        if (species != null && !species.isBlank() && !species.equalsIgnoreCase("all")) {
-            return repository.findBySpecies(species);
-        }
-        return repository.findAll();
+        return caseService.getAllCases(species);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ClinicalCase> getCaseById(@PathVariable Long id) {
-        return repository.findById(id)
-                .map(c -> {
-                    c.setViews(c.getViews() + 1);
-                    return ResponseEntity.ok(repository.save(c));
-                })
+        return caseService.getCaseById(id)
+                .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
     public ClinicalCase createCase(@RequestBody ClinicalCase clinicalCase) {
-        return repository.save(clinicalCase);
+        return caseService.createCase(clinicalCase);
     }
 }

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { SPECIALTIES, STATES_INDIA } from '../data/mockData';
 import heroVetImg from '../assets/hero_vet_dog.jpg';
+import { Avatar } from '../components/Avatar';
 
 export function VetNetworkView({ 
   doctors = [], 
@@ -82,7 +83,7 @@ export function VetNetworkView({
             <div style={{ display: 'flex', gap: '16px', marginTop: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: '#065F46', fontWeight: 600 }}>
                 <Users size={16} />
-                <span>{connectedIds.size + 14} Connected Doctors</span>
+                <span>{connectedIds.size} Connected Doctors</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: '#065F46', fontWeight: 600 }}>
                 <Clock size={16} />
@@ -140,10 +141,11 @@ export function VetNetworkView({
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <img 
-                    src={req.senderAvatar || "https://images.unsplash.com/photo-1594824813575-5858e94a5392?auto=format&fit=crop&w=150&q=80"}
-                    alt={req.senderName} 
-                    style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #E5E7EB' }} 
+                  <Avatar 
+                    src={req.senderAvatar}
+                    name={req.senderName} 
+                    size={48}
+                    style={{ border: '2px solid #E5E7EB', flexShrink: 0 }} 
                   />
                   <div>
                     <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#111827' }}>
@@ -322,6 +324,25 @@ export function VetNetworkView({
       </div>
 
       {/* 5. Doctor Cards Grid (LinkedIn Style) */}
+      {((activeTab === 'grow' ? suggestedDoctors : myConnectedDoctors).length === 0) ? (
+        <div style={{
+          textAlign: 'center',
+          padding: '48px 24px',
+          background: '#FFFFFF',
+          borderRadius: '14px',
+          border: '1px solid #E5E7EB'
+        }}>
+          <Users size={40} color="#059669" style={{ margin: '0 auto 12px' }} />
+          <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#111827', marginBottom: '6px' }}>
+            {activeTab === 'connections' ? 'No Connected Peers Yet' : 'No Other Doctors Found'}
+          </h3>
+          <p style={{ fontSize: '13px', color: '#6B7280', maxWidth: '380px', margin: '0 auto' }}>
+            {activeTab === 'connections' 
+              ? 'Send connection requests to fellow veterinarians to grow your professional clinical network.'
+              : 'As other veterinary practitioners register their profiles, they will appear here for you to connect with.'}
+          </p>
+        </div>
+      ) : (
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
@@ -364,16 +385,15 @@ export function VetNetworkView({
 
               {/* Avatar with Verified checkmark */}
               <div style={{ marginTop: '-36px', marginLeft: '16px', position: 'relative', width: '64px', height: '64px' }}>
-                <img 
+                <Avatar 
                   src={doc.avatar} 
-                  alt={doc.name} 
+                  name={doc.name} 
+                  size={64}
+                  fontSize={26}
                   style={{
-                    width: '64px',
-                    height: '64px',
-                    borderRadius: '50%',
                     border: '3px solid #FFFFFF',
-                    objectFit: 'cover',
-                    backgroundColor: '#F3F4F6'
+                    backgroundColor: '#F3F4F6',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                   }}
                 />
                 {doc.verified && (
@@ -529,6 +549,7 @@ export function VetNetworkView({
           );
         })}
       </div>
+      )}
     </div>
   );
 }

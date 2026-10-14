@@ -17,15 +17,15 @@ import {
 } from 'lucide-react';
 import heroVetImg from '../assets/hero_vet_dog.jpg';
 import { SPECIALTIES, STATES_INDIA } from '../data/mockData';
+import { api } from '../services/api';
 
 export function LoginPage({ onLoginSuccess, onCancel }) {
   const [isRegister, setIsRegister] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    identifier: '', // email or VCI
+    identifier: '', // Email ID
     password: '',
     name: '',
-    vciNumber: '',
     specialty: 'Small Animal Medicine',
     state: 'Karnataka',
     city: 'Bengaluru',
@@ -34,95 +34,27 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Quick 1-click Demo Accounts
-  const demoAccounts = [
-    {
-      name: 'Dr. Arjun Mehta',
-      role: 'Veterinary Surgeon · Mumbai',
-      email: 'arjun.mehta@doctorvet.com',
-      avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80',
-      vci: 'VCI-MH-2016-0842'
-    },
-    {
-      name: 'Dr. Ananya Sharma',
-      role: 'Small Animal Medicine · Bengaluru',
-      email: 'ananya.sharma@doctorvet.com',
-      avatar: 'https://images.unsplash.com/photo-1594824813575-5858e94a5392?auto=format&fit=crop&w=300&q=80',
-      vci: 'VCI-KA-2018-1294'
-    }
-  ];
-
-  const handleDemoLogin = (account) => {
-    setIsLoading(true);
-    setTimeout(() => {
-      const userObj = {
-        name: account.name,
-        email: account.email,
-        specialty: account.role.split('·')[0].trim(),
-        city: account.role.split('·')[1]?.trim() || 'Bengaluru',
-        avatar: account.avatar,
-        vci: account.vci,
-        verified: true
-      };
-      localStorage.setItem('doctor_vet_user', JSON.stringify(userObj));
-      setIsLoading(false);
-      onLoginSuccess && onLoginSuccess(userObj);
-    }, 400);
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     setIsLoading(true);
 
     try {
-      // Send to Spring Boot backend if running, fallback gracefully to mock session
-      const endpoint = isRegister ? 'http://localhost:8080/api/v1/auth/register' : 'http://localhost:8080/api/v1/auth/login';
-
-      const payload = isRegister ? {
-        name: formData.name,
-        email: formData.identifier,
-        password: formData.password,
-        vciNumber: formData.vciNumber,
-        specialty: formData.specialty,
-        city: formData.city,
-        state: formData.state
-      } : {
-        identifier: formData.identifier,
-        password: formData.password
-      };
-
       let loggedInUser = null;
-
-      try {
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
-          loggedInUser = await res.json();
-        }
-      } catch (netErr) {
-        // Fallback for seamless frontend experience if backend is offline or starting
-        console.log('Connecting via local secure session state', netErr);
-      }
-
-      if (!loggedInUser) {
-        loggedInUser = {
-          name: isRegister ? formData.name : (formData.identifier.includes('@') ? formData.identifier.split('@')[0] : 'Dr. Practitioner'),
+      if (isRegister) {
+        loggedInUser = await api.auth.register({
+          name: formData.name,
           email: formData.identifier,
+          password: formData.password,
           specialty: formData.specialty,
           city: formData.city,
-          state: formData.state,
-          avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80',
-          vci: isRegister ? formData.vciNumber : 'VCI-VERIFIED-2026',
-          verified: true
-        };
+          state: formData.state
+        });
+      } else {
+        loggedInUser = await api.auth.login(formData.identifier, formData.password);
       }
 
-      if (formData.rememberMe) {
+      if (formData.rememberMe && loggedInUser) {
         localStorage.setItem('doctor_vet_user', JSON.stringify(loggedInUser));
       }
 
@@ -130,7 +62,7 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
       onLoginSuccess && onLoginSuccess(loggedInUser);
     } catch (err) {
       setIsLoading(false);
-      setErrorMsg('Login failed. Please check your credentials.');
+      setErrorMsg(err.message || 'Authentication failed. Please verify credentials.');
     }
   };
 
@@ -180,7 +112,7 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
             />
             <div className="login-image-overlay-pill">
               <ShieldCheck size={13} color="#2ee59d" />
-              <span>VCI Verified Community</span>
+              <span>Verified Veterinary Community</span>
             </div>
           </div>
 
@@ -211,36 +143,9 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
             <p className="login-form-subtitle">
               {isRegister
                 ? 'Join India’s verified veterinary medical registry'
-                : 'Sign in with your email or VCI Registration Number'}
+                : 'Sign in with your registered Email ID'}
             </p>
           </div>
-
-          {/* Quick Demo Login Pills */}
-          {!isRegister && (
-            <div className="demo-accounts-strip">
-              <span className="demo-label">
-                <Sparkles size={12} color="#059669" />
-                <span>Quick 1-Click Demo Login:</span>
-              </span>
-              <div className="demo-buttons-row">
-                {demoAccounts.map((acc, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    className="btn-demo-pill"
-                    onClick={() => handleDemoLogin(acc)}
-                    disabled={isLoading}
-                  >
-                    <img src={acc.avatar} alt={acc.name} className="demo-avatar-mini" />
-                    <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontWeight: '700', fontSize: '11.5px', color: '#111827' }}>{acc.name}</div>
-                      <div style={{ fontSize: '10px', color: '#6b7280' }}>{acc.role.split('·')[0]}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Tab Switcher: Sign In vs Register */}
           <div className="login-tabs-bar">
@@ -268,7 +173,7 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="login-form-fields">
-            {/* If Registering: Name & VCI number */}
+            {/* If Registering: Name & Specialty */}
             {isRegister && (
               <>
                 <div className="form-group-field">
@@ -281,21 +186,6 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
                       placeholder="e.g. Dr. Priya Nair, BVSc"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="text-input-field"
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group-field">
-                  <label className="field-label">VCI Registration Number *</label>
-                  <div className="field-input-wrap">
-                    <Stethoscope size={16} className="field-icon" />
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. VCI-KA-2021-0492"
-                      value={formData.vciNumber}
-                      onChange={(e) => setFormData({ ...formData, vciNumber: e.target.value })}
                       className="text-input-field"
                     />
                   </div>
@@ -333,17 +223,17 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
               </>
             )}
 
-            {/* Email / Identifier */}
+            {/* Email ID */}
             <div className="form-group-field">
               <label className="field-label">
-                {isRegister ? 'Official Email Address *' : 'Email or VCI Registration Number *'}
+                {isRegister ? 'Official Email ID *' : 'Registered Email ID *'}
               </label>
               <div className="field-input-wrap">
                 <Mail size={16} className="field-icon" />
                 <input
-                  type={isRegister ? 'email' : 'text'}
+                  type="email"
                   required
-                  placeholder={isRegister ? 'doctor@clinic.com' : 'doctor@clinic.com or VCI-XXXX-XXXX'}
+                  placeholder="doctor@clinic.com"
                   value={formData.identifier}
                   onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
                   className="text-input-field"
@@ -356,7 +246,7 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label className="field-label">Password *</label>
                 {!isRegister && (
-                  <a href="#forgot" className="forgot-password-link" onClick={(e) => { e.preventDefault(); alert('Password reset instructions will be sent to your registered VCI email address.'); }}>
+                  <a href="#forgot" className="forgot-password-link" onClick={(e) => { e.preventDefault(); alert('Password reset instructions will be sent to your registered Email ID.'); }}>
                     Forgot Password?
                   </a>
                 )}

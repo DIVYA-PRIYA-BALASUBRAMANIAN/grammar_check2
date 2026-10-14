@@ -18,8 +18,10 @@ import {
   Settings, 
   CheckCircle2, 
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  Camera
 } from 'lucide-react';
+import { Avatar } from './Avatar';
 
 export function Header({ 
   searchQuery, 
@@ -329,10 +331,11 @@ export function Header({
                       onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F9FAFB'}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = n.read ? '#FFFFFF' : '#F0FDF4'}
                     >
-                      <img 
-                        src={n.senderAvatar || "https://images.unsplash.com/photo-1594824813575-5858e94a5392?auto=format&fit=crop&w=150&q=80"}
-                        alt={n.senderName || "Doctor"}
-                        style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                      <Avatar 
+                        src={n.senderAvatar}
+                        name={n.senderName}
+                        size={38}
+                        style={{ flexShrink: 0 }}
                       />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ margin: 0, fontSize: '12.5px', color: '#1F2937', lineHeight: 1.4 }}>
@@ -406,11 +409,11 @@ export function Header({
               title={`${currentUser.name} (Verified Doctor)`}
               style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 8px', borderRadius: '9999px', border: '1px solid #E5E7EB' }}
             >
-              <img 
-                src={currentUser.avatar || "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=150&q=80"} 
-                alt={currentUser.name} 
-                className="header-avatar-img"
-                style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }}
+              <Avatar 
+                src={currentUser.avatar}
+                name={currentUser.name}
+                size={28}
+                fontSize={12}
               />
               <span style={{ fontSize: '12px', fontWeight: '700', color: '#111827', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {currentUser.name.replace('Dr. ', '')}
@@ -433,10 +436,11 @@ export function Header({
                 zIndex: 100
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingBottom: '10px', borderBottom: '1px solid #F3F4F6' }}>
-                  <img 
-                    src={currentUser.avatar || "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=150&q=80"} 
-                    alt={currentUser.name} 
-                    style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }}
+                  <Avatar 
+                    src={currentUser.avatar}
+                    name={currentUser.name}
+                    size={42}
+                    fontSize={17}
                   />
                   <div>
                     <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: 700, color: '#111827' }}>{currentUser.name}</h4>
@@ -495,8 +499,8 @@ export function Header({
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F3F4F6'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    <Settings size={15} color="#4B5563" />
-                    <span>Edit Profile & Credentials</span>
+                    <Camera size={15} color="#059669" />
+                    <span>Upload Photo & Edit Profile</span>
                   </button>
 
                   <button

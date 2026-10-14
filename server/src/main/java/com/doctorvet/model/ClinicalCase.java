@@ -37,8 +37,8 @@ public class ClinicalCase {
     private String outcome;
 
     private String mediaUrl;
-    private int views;
-    private int comments;
+    private Integer views = 0;
+    private Integer comments = 0;
     private LocalDateTime createdAt = LocalDateTime.now();
 
     public ClinicalCase() {}

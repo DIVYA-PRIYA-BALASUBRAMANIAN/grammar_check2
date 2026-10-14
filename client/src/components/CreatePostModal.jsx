@@ -16,44 +16,11 @@ import {
   FileText,
   AlertCircle
 } from 'lucide-react';
+import { api } from '../services/api';
 
-const SAMPLE_PHOTOS = [
-  { label: 'Radiograph (Fracture)', url: 'https://images.unsplash.com/photo-1576201836106-db1758fd1c97?auto=format&fit=crop&w=800&q=80' },
-  { label: 'Cytology Slide', url: 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=800&q=80' },
-  { label: 'Post-Op Recovery', url: 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=800&q=80' },
-  { label: 'Ultrasound Scan', url: 'https://images.unsplash.com/photo-1534361960057-19889db9621e?auto=format&fit=crop&w=800&q=80' }
-];
-
-const SAMPLE_STORIES = [
-  { label: 'Surgery Scrub-In', url: 'https://images.unsplash.com/photo-1576201836106-db1758fd1c97?auto=format&fit=crop&w=800&q=80', caption: 'Prepped for laparoscopic gastropexy in OR 2 🩺' },
-  { label: 'Post-Op Recovery', url: 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=800&q=80', caption: 'Bruno waking up smoothly after GDV surgery. Vitals rock solid!' },
-  { label: 'Exotic Triage', url: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=800&q=80', caption: 'Rescue macaw wing splint check-in — doing great!' },
-  { label: 'Clinic Rounds', url: 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?auto=format&fit=crop&w=800&q=80', caption: 'Morning rounds with the critical care veterinary team 🐾' }
-];
-
-const SAMPLE_VIDEOS = [
-  { 
-    title: 'Rapid Subdermal Suture Pattern for Tension Relief', 
-    duration: '0:45',
-    specialty: 'Surgery',
-    thumbnail: 'https://images.unsplash.com/photo-1576201836106-db1758fd1c97?auto=format&fit=crop&w=600&q=80',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'
-  },
-  { 
-    title: 'Identifying Comet-Tail Artifacts on Lung Ultrasound (TFAST)', 
-    duration: '0:58',
-    specialty: 'Critical Care',
-    thumbnail: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=600&q=80',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4'
-  },
-  { 
-    title: 'Low-Stress Feline Blood Sampling: Medial Saphenous', 
-    duration: '0:39',
-    specialty: 'Feline Practice',
-    thumbnail: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=600&q=80',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4'
-  }
-];
+const SAMPLE_PHOTOS = [];
+const SAMPLE_STORIES = [];
+const SAMPLE_VIDEOS = [];
 
 export function CreatePostModal({ 
   isOpen, 
@@ -193,20 +160,37 @@ export function CreatePostModal({
     if (storyInputRef.current) storyInputRef.current.value = '';
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
+    let uploadedMediaUrl = mediaUrl;
+    let uploadedVideoUrl = videoFileUrl;
+
+    if (mediaFile) {
+      try {
+        const uploadRes = await api.media.upload(mediaFile);
+        if (uploadRes && uploadRes.url) {
+          uploadedMediaUrl = uploadRes.url;
+          if (mediaFile.type.startsWith('video/')) {
+            uploadedVideoUrl = uploadRes.url;
+          }
+        }
+      } catch (uploadErr) {
+        console.warn('Server media upload fallback:', uploadErr);
+      }
+    }
 
     if (postType === 'STORY') {
       const text = storyCaption.trim() || content.trim() || 'Moments from clinical practice';
-      if (!mediaUrl) {
+      if (!uploadedMediaUrl) {
         alert('Please upload a photo or video for your story.');
         return;
       }
       onPostSubmit({
         postType: 'STORY',
         content: text,
-        imageUrl: mediaUrl,
-        videoUrl: videoFileUrl || null,
+        imageUrl: uploadedMediaUrl,
+        videoUrl: uploadedVideoUrl || null,
         species
       });
       handleClose();
@@ -215,7 +199,7 @@ export function CreatePostModal({
 
     if (postType === 'SHORT_VIDEO') {
       const title = videoTitle.trim() || content.slice(0, 50) || 'Clinical Technique Reel';
-      if (!mediaUrl && !videoFileUrl) {
+      if (!uploadedMediaUrl && !uploadedVideoUrl) {
         alert('Please upload a clinical video or select a sample reel.');
         return;
       }
@@ -225,8 +209,8 @@ export function CreatePostModal({
         videoTitle: title,
         specialty: videoSpecialty,
         duration: videoDuration,
-        imageUrl: mediaUrl || 'https://images.unsplash.com/photo-1576201836106-db1758fd1c97?auto=format&fit=crop&w=500&q=80',
-        videoUrl: videoFileUrl || mediaUrl,
+        imageUrl: uploadedMediaUrl || 'https://images.unsplash.com/photo-1576201836106-db1758fd1c97?auto=format&fit=crop&w=500&q=80',
+        videoUrl: uploadedVideoUrl || uploadedMediaUrl,
         species
       });
       handleClose();
@@ -234,7 +218,7 @@ export function CreatePostModal({
     }
 
     // GENERAL_POST or CLINICAL_CASE
-    if (!content.trim() && !mediaUrl) {
+    if (!content.trim() && !uploadedMediaUrl) {
       alert('Please enter post content or upload an image.');
       return;
     }
@@ -242,7 +226,7 @@ export function CreatePostModal({
     onPostSubmit({
       content: content.trim() || (postType === 'CLINICAL_CASE' ? 'Clinical case observation' : 'Clinical photograph / update'),
       postType,
-      imageUrl: mediaUrl ? mediaUrl.trim() : null,
+      imageUrl: uploadedMediaUrl ? uploadedMediaUrl.trim() : null,
       species
     });
 

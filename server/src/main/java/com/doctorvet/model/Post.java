@@ -26,8 +26,8 @@ public class Post {
     private String imageUrl;
     private String videoUrl;
     private String species;
-    private int likes = 0;
-    private int commentsCount = 0;
+    private Integer likes = 0;
+    private Integer commentsCount = 0;
     private LocalDateTime createdAt = LocalDateTime.now();
 
     public Post() {}
@@ -83,11 +83,11 @@ public class Post {
     public String getSpecies() { return species; }
     public void setSpecies(String species) { this.species = species; }
 
-    public int getLikes() { return likes; }
-    public void setLikes(int likes) { this.likes = likes; }
+    public int getLikes() { return likes != null ? likes : 0; }
+    public void setLikes(Integer likes) { this.likes = likes != null ? likes : 0; }
 
-    public int getCommentsCount() { return commentsCount; }
-    public void setCommentsCount(int commentsCount) { this.commentsCount = commentsCount; }
+    public int getCommentsCount() { return commentsCount != null ? commentsCount : 0; }
+    public void setCommentsCount(Integer commentsCount) { this.commentsCount = commentsCount != null ? commentsCount : 0; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

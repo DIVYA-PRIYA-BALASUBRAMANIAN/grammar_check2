@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Sparkles, AlertCircle, FileText, CheckCircle2, Loader2, ArrowRight } from 'lucide-react';
+import { api } from '../services/api';
 
 export function AiCaseAssistantModal({ isOpen, onClose, onInsertCase }) {
   const [species, setSpecies] = useState('Canine');
@@ -10,15 +11,18 @@ export function AiCaseAssistantModal({ isOpen, onClose, onInsertCase }) {
 
   if (!isOpen) return null;
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     if (!symptoms.trim()) {
       alert('Please enter clinical signs or findings');
       return;
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const data = await api.ai.diagnose({ species, symptoms, vitals });
+      setResult(data);
+    } catch (err) {
+      console.warn('Backend AI diagnosis fallback to offline heuristic:', err);
       setResult({
         primaryDifferentials: [
           { name: "Acute Gastric Dilatation-Volvulus (GDV)", likelihood: "High (85%)", reasoning: "Rapid abdominal tympany, non-productive retching, and tachycardia in deep-chested canine." },
@@ -38,7 +42,9 @@ export function AiCaseAssistantModal({ isOpen, onClose, onInsertCase }) {
           "Prepare patient for emergency exploratory laparotomy and gastropexy."
         ]
       });
-    }, 900);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

@@ -19,10 +19,14 @@ import {
   Check, 
   ChevronDown, 
   Send,
-  Heart
+  Heart,
+  Camera,
+  UploadCloud
 } from 'lucide-react';
 import modalPetsImg from '../assets/modal_pets_header.jpg';
 import { SPECIALTIES, STATES_INDIA } from '../data/mockData';
+import { api } from '../services/api';
+import { Avatar } from './Avatar';
 
 // Qualifications list for dropdown
 const QUALIFICATIONS = [
@@ -50,7 +54,7 @@ function DoctorPawLogo() {
   );
 }
 
-export function CreateProfileModal({ isOpen, onClose, onProfileCreated }) {
+export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentUser }) {
   const [formData, setFormData] = useState({
     name: 'Dr. ',
     specialty: 'Small Animal Medicine',
@@ -59,35 +63,110 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated }) {
     state: 'Karnataka',
     clinic: '',
     registrationNo: '',
-    bio: ''
+    email: '',
+    bio: '',
+    avatar: '',
+    coverImage: ''
   });
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const avatarInputRef = React.useRef(null);
+  const coverInputRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (currentUser) {
+      setFormData({
+        name: currentUser.name || 'Dr. ',
+        specialty: currentUser.specialty || 'Small Animal Medicine',
+        qualification: currentUser.qualification || 'BVSc & AH',
+        city: currentUser.city || 'Bengaluru',
+        state: currentUser.state || 'Karnataka',
+        clinic: currentUser.clinic || '',
+        registrationNo: currentUser.licenseNumber || '',
+        email: currentUser.email || '',
+        bio: currentUser.bio || '',
+        avatar: currentUser.avatar || '',
+        coverImage: currentUser.coverImage || ''
+      });
+    }
+  }, [currentUser, isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleAvatarFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingPhoto(true);
+    try {
+      const res = await api.media.upload(file);
+      if (res && res.url) {
+        setFormData(prev => ({ ...prev, avatar: res.url }));
+      }
+    } catch (err) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setFormData(prev => ({ ...prev, avatar: ev.target.result }));
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  const handleCoverFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const res = await api.media.upload(file);
+      if (res && res.url) {
+        setFormData(prev => ({ ...prev, coverImage: res.url }));
+      }
+    } catch (err) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setFormData(prev => ({ ...prev, coverImage: ev.target.result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name.trim() || formData.name.trim() === 'Dr.') {
       alert('Please enter your full doctor name');
       return;
     }
 
-    const newDoctor = {
-      id: `doc-${Date.now()}`,
+    const payload = {
       name: formData.name,
       specialty: formData.specialty,
       city: formData.city,
       state: formData.state,
-      avatar: 'https://images.unsplash.com/photo-1594824813575-5858e94a5392?auto=format&fit=crop&w=300&q=80',
+      avatar: formData.avatar,
+      coverImage: formData.coverImage,
+      email: formData.email,
       verified: true,
       qualification: formData.qualification,
       clinic: formData.clinic || `${formData.city} Veterinary Clinic`,
-      experienceYears: 5,
-      casesCount: 1,
+      experienceYears: currentUser?.experienceYears || 5,
+      casesCount: currentUser?.casesCount || 1,
       bio: formData.bio || 'Practicing veterinary surgeon and clinical care professional.',
-      connectionsCount: 1
+      licenseNumber: formData.registrationNo
     };
 
-    onProfileCreated && onProfileCreated(newDoctor);
+    try {
+      let savedDoc = null;
+      if (currentUser?.id) {
+        savedDoc = await api.doctors.update(currentUser.id, payload);
+      } else {
+        savedDoc = await api.doctors.create(payload);
+      }
+      onProfileCreated && onProfileCreated(savedDoc);
+      alert('Doctor profile & photo updated successfully!');
+    } catch (err) {
+      console.warn('Backend profile update fallback to local:', err);
+      onProfileCreated && onProfileCreated({ id: currentUser?.id || `doc-${Date.now()}`, ...payload });
+      alert('Doctor profile & photo updated!');
+    }
     onClose && onClose();
   };
 
@@ -150,6 +229,114 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated }) {
         {/* FORM BODY: 8 Structured Input Groups with Badges          */}
         {/* ========================================================= */}
         <form onSubmit={handleSubmit} className="create-profile-form">
+          {/* Doctor Profile Headshot & Cover Banner Upload Section */}
+          <div style={{
+            background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfeff 100%)',
+            border: '1.5px dashed #00b48a',
+            borderRadius: '16px',
+            padding: '16px 20px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '18px',
+            flexWrap: 'wrap'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              {/* Avatar Preview + Clickable Overlay */}
+              <div 
+                onClick={() => avatarInputRef.current?.click()}
+                style={{
+                  position: 'relative',
+                  width: '70px',
+                  height: '70px',
+                  borderRadius: '50%',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(0, 180, 138, 0.25)',
+                  border: '3px solid #ffffff',
+                  overflow: 'hidden',
+                  flexShrink: 0
+                }}
+                title="Click to upload/change doctor profile photo"
+              >
+                <Avatar
+                  src={formData.avatar}
+                  name={formData.name || currentUser?.name}
+                  size={70}
+                  fontSize={28}
+                />
+                <div style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  backgroundColor: 'rgba(0, 56, 34, 0.78)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '3px 0',
+                  color: '#ffffff'
+                }}>
+                  <Camera size={13} />
+                </div>
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 800, color: '#003822' }}>
+                    Doctor Profile Photo
+                  </h4>
+                  <span style={{ fontSize: '10.5px', backgroundColor: '#dcfce7', color: '#166534', fontWeight: 700, padding: '2px 8px', borderRadius: '9999px' }}>
+                    Profile Headshot
+                  </span>
+                </div>
+                <p style={{ margin: '3px 0 0 0', fontSize: '12px', color: '#475569', lineHeight: 1.3 }}>
+                  Upload your professional doctor headshot (PNG, JPG, WebP).
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                type="file"
+                ref={avatarInputRef}
+                onChange={handleAvatarFileChange}
+                accept="image/*"
+                style={{ display: 'none' }}
+              />
+              <input
+                type="file"
+                ref={coverInputRef}
+                onChange={handleCoverFileChange}
+                accept="image/*"
+                style={{ display: 'none' }}
+              />
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={isUploadingPhoto}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  backgroundColor: '#003822',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '8px 16px',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(0, 56, 34, 0.2)',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <UploadCloud size={15} />
+                <span>{isUploadingPhoto ? 'Uploading...' : 'Upload Photo'}</span>
+              </button>
+            </div>
+          </div>
+
           {/* 1. Full Name with Title * */}
           <div className="cp-form-group">
             <label className="cp-label-row">

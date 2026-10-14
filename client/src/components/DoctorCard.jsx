@@ -1,16 +1,19 @@
 import React from 'react';
 import { MapPin, ExternalLink, Plus, Check, ShieldCheck } from 'lucide-react';
+import { Avatar } from './Avatar';
 
 export function DoctorCard({ doctor, onSelect, isConnected, onToggleConnect }) {
   return (
     <div className="network-doctor-card" id={`doctor-card-${doctor.id}`}>
       {/* 1. Card Top Cover Image with City Pill Badge */}
       <div className="doctor-card-cover-wrap">
-        <img 
+        <Avatar 
           src={doctor.avatar} 
-          alt={doctor.name} 
-          className="doctor-card-cover-img"
-          loading="lazy"
+          name={doctor.name} 
+          size={180}
+          borderRadius="16px 16px 0 0"
+          fontSize={60}
+          style={{ width: '100%', height: '180px' }}
         />
         <div className="doctor-city-overlay-pill">
           <MapPin size={11} />

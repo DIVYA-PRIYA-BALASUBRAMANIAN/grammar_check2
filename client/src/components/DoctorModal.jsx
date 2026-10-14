@@ -15,24 +15,34 @@ import {
   Phone, 
   Mail, 
   ShieldCheck,
-  Share2
+  Share2,
+  Camera
 } from 'lucide-react';
+import { Avatar } from './Avatar';
 
 export function DoctorModal({ 
   doctor, 
   onClose, 
   onOpenChat, 
   isConnected, 
-  isPending,
-  onSendRequest,
-  onToggleConnect,
-  onSelectCase,
-  cases = [],
-  posts = []
+  isPending, 
+  onSendRequest, 
+  onToggleConnect, 
+  onSelectCase, 
+  cases = [], 
+  posts = [],
+  currentUser,
+  onEditProfile
 }) {
   const [activeTab, setActiveTab] = useState('about'); // 'about' | 'cases' | 'posts' | 'contact'
 
   if (!doctor) return null;
+
+  const isOwnProfile = currentUser && (
+    doctor.id === currentUser.id || 
+    (doctor.email && currentUser.email && doctor.email.toLowerCase() === currentUser.email.toLowerCase()) || 
+    doctor.name === currentUser.name
+  );
 
   const doctorCases = cases.filter(c => c.authorName === doctor.name || c.authorName?.includes(doctor.name.replace('Dr. ', '')));
   const doctorPosts = posts.filter(p => p.authorName === doctor.name || p.authorName?.includes(doctor.name.replace('Dr. ', '')));
@@ -69,109 +79,163 @@ export function DoctorModal({
         <div style={{ padding: '0 24px 20px 24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '-48px', marginBottom: '14px' }}>
             <div style={{ position: 'relative' }}>
-              <img 
+              <Avatar 
                 src={doctor.avatar} 
-                alt={doctor.name} 
+                name={doctor.name} 
+                size={96}
+                fontSize={38}
                 style={{
-                  width: '96px',
-                  height: '96px',
-                  borderRadius: '50%',
                   border: '4px solid #FFFFFF',
-                  boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
-                  objectFit: 'cover',
-                  backgroundColor: '#F3F4F6'
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.12)'
                 }}
               />
-              {doctor.verified && (
+              {isOwnProfile ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onEditProfile && onEditProfile();
+                  }}
+                  style={{
+                    position: 'absolute',
+                    bottom: '2px',
+                    right: '2px',
+                    backgroundColor: '#003822',
+                    color: '#FFFFFF',
+                    border: '2.5px solid #FFFFFF',
+                    borderRadius: '50%',
+                    width: '32px',
+                    height: '32px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Upload profile photo & edit profile"
+                >
+                  <Camera size={15} />
+                </button>
+              ) : doctor.verified ? (
                 <CheckCircle2 
                   size={22} 
                   color="#00a86b" 
                   fill="#FFFFFF"
                   style={{ position: 'absolute', bottom: '4px', right: '4px' }} 
                 />
-              )}
+              ) : null}
             </div>
 
             {/* Action Buttons */}
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button 
-                onClick={() => {
-                  onClose();
-                  onOpenChat && onOpenChat(doctor);
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  backgroundColor: '#003822',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  borderRadius: '9999px',
-                  padding: '8px 18px',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                <MessageSquare size={14} />
-                <span>Message</span>
-              </button>
-
-              {isConnected ? (
-                <button 
-                  onClick={() => onToggleConnect && onToggleConnect(doctor.id)}
+              {isOwnProfile ? (
+                <button
+                  onClick={() => {
+                    onClose();
+                    onEditProfile && onEditProfile();
+                  }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px',
-                    backgroundColor: '#ECFDF5',
-                    color: '#065F46',
-                    border: '1px solid #A7F3D0',
+                    gap: '7px',
+                    backgroundColor: '#003822',
+                    color: '#FFFFFF',
+                    border: 'none',
                     borderRadius: '9999px',
-                    padding: '8px 16px',
+                    padding: '8px 20px',
                     fontSize: '13px',
                     fontWeight: 700,
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(0, 56, 34, 0.25)',
+                    transition: 'all 0.15s ease'
                   }}
                 >
-                  <Check size={14} color="#059669" />
-                  <span>Connected</span>
-                </button>
-              ) : isPending ? (
-                <button 
-                  style={{
-                    backgroundColor: '#F3F4F6',
-                    color: '#6B7280',
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '9999px',
-                    padding: '8px 16px',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: 'default'
-                  }}
-                >
-                  Pending
+                  <Camera size={14} />
+                  <span>Upload Photo / Edit Profile</span>
                 </button>
               ) : (
-                <button 
-                  onClick={() => onSendRequest && onSendRequest(doctor)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    backgroundColor: '#FFFFFF',
-                    color: '#003822',
-                    border: '1.5px solid #003822',
-                    borderRadius: '9999px',
-                    padding: '8px 18px',
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    cursor: 'pointer'
-                  }}
-                >
-                  <UserPlus size={14} />
-                  <span>Connect</span>
-                </button>
+                <>
+                  <button 
+                    onClick={() => {
+                      onClose();
+                      onOpenChat && onOpenChat(doctor);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      backgroundColor: '#003822',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '9999px',
+                      padding: '8px 18px',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <MessageSquare size={14} />
+                    <span>Message</span>
+                  </button>
+
+                  {isConnected ? (
+                    <button 
+                      onClick={() => onToggleConnect && onToggleConnect(doctor.id)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        backgroundColor: '#ECFDF5',
+                        color: '#065F46',
+                        border: '1px solid #A7F3D0',
+                        borderRadius: '9999px',
+                        padding: '8px 16px',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Check size={14} color="#059669" />
+                      <span>Connected</span>
+                    </button>
+                  ) : isPending ? (
+                    <button 
+                      style={{
+                        backgroundColor: '#F3F4F6',
+                        color: '#6B7280',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '9999px',
+                        padding: '8px 16px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        cursor: 'default'
+                      }}
+                    >
+                      Pending
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => onSendRequest && onSendRequest(doctor)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        backgroundColor: '#FFFFFF',
+                        color: '#003822',
+                        border: '1.5px solid #003822',
+                        borderRadius: '9999px',
+                        padding: '8px 18px',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <UserPlus size={14} />
+                      <span>Connect</span>
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -184,7 +248,7 @@ export function DoctorModal({
               </h2>
               {doctor.verified && (
                 <span style={{ fontSize: '11px', color: '#065F46', backgroundColor: '#ECFDF5', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
-                  VCI Verified
+                  Verified Practitioner
                 </span>
               )}
             </div>

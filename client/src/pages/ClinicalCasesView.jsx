@@ -14,6 +14,7 @@ import {
 import heroVetImg from '../assets/hero_vet_dog.jpg';
 
 export function ClinicalCasesView({ 
+  clinicalCases = [],
   stories = [], 
   onOpenStory, 
   onOpenCreateCase, 
@@ -28,60 +29,7 @@ export function ClinicalCasesView({
     }));
   };
 
-  const casePosts = [
-    {
-      id: 'case-post-1',
-      authorName: 'Dr. Arjun Mehta',
-      authorSpecialty: 'Veterinary Surgeon',
-      authorCity: 'Mumbai',
-      authorAvatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80',
-      timeAgo: '2h',
-      content: 'Great discussion today on managing canine parvovirus cases. Learned a lot from the community!',
-      imgLeft: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=700&q=80',
-      imgRight: heroVetImg,
-      likes: 124,
-      comments: 18,
-      fullCase: {
-        title: 'Canine Parvoviral Enteritis Management & Early Enteral Nutrition Protocol',
-        authorName: 'Dr. Arjun Mehta',
-        authorSpecialty: 'Veterinary Surgery & Critical Care',
-        species: 'Canine (Golden Retriever, 4 months)',
-        presentingComplaint: 'Severe hemorrhagic diarrhea, vomiting, hypothermia, profound lethargy for 24 hours.',
-        clinicalFindings: 'Dehydration 8%, weak pulses, tacky pale mucous membranes, leukopenia (WBC 1,200/µL).',
-        diagnostics: 'CPV fecal antigen SNAP test positive. Hypoalbuminemia (1.8 g/dL) and hypoglycemia (58 mg/dL).',
-        diagnosis: 'Acute Canine Parvoviral Enteritis with septic SIRS.',
-        treatmentProtocol: 'Balanced IV crystalloids + potassium supplementation, Maropitant, Ampicillin-Sulbactam, early microenteral nutrition via NG tube within 12 hours.',
-        outcome: 'Discharged on Day 5 with full appetite and normal stool consistency.',
-        mediaUrl: heroVetImg
-      }
-    },
-    {
-      id: 'case-post-2',
-      authorName: 'Dr. Ananya Sharma',
-      authorSpecialty: 'Small Animal Medicine',
-      authorCity: 'Bengaluru',
-      authorAvatar: 'https://images.unsplash.com/photo-1594824813575-5858e94a5392?auto=format&fit=crop&w=300&q=80',
-      timeAgo: '5h',
-      content: 'Follow-up on Bruno: 6-year-old Doberman with acute DCM and atrial fibrillation. Normal sinus rhythm restored with rate control protocol.',
-      imgLeft: 'https://images.unsplash.com/photo-1594824813575-5858e94a5392?auto=format&fit=crop&w=700&q=80',
-      imgRight: 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=700&q=80',
-      likes: 186,
-      comments: 29,
-      fullCase: {
-        title: 'Acute Dilated Cardiomyopathy with Atrial Fibrillation in a Doberman Pinscher',
-        authorName: 'Dr. Ananya Sharma',
-        authorSpecialty: 'Small Animal Cardiology',
-        species: 'Canine (Doberman, 6 yr, Male)',
-        presentingComplaint: 'Acute syncope episode, exercise intolerance, tachypnea at rest for 48 hours.',
-        clinicalFindings: 'Heart rate 190 bpm with pulse deficits. Gallop sound noted on auscultation.',
-        diagnostics: 'Echocardiogram: LVIDd 62mm, Fractional Shortening 11%. ECG confirmed fast atrial fibrillation.',
-        diagnosis: 'Stage C Dilated Cardiomyopathy complicated by atrial fibrillation.',
-        treatmentProtocol: 'Pimobendan 0.25 mg/kg PO BID, Furosemide 1.5 mg/kg PO BID, Diltiazem 0.5 mg/kg PO TID.',
-        outcome: 'Patient stabilized within 36 hours. Resting respiratory rate decreased to 22 bpm.',
-        mediaUrl: 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=800&q=80'
-      }
-    }
-  ];
+
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -158,9 +106,39 @@ export function ClinicalCasesView({
 
       {/* 3. Clinical Cases Feed Stream */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-        {casePosts.map((post) => {
-          const currentLikes = likedMap[post.id] !== undefined ? likedMap[post.id] : post.likes;
-          const isLiked = likedMap[post.id] !== undefined;
+        {clinicalCases.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px', background: '#FFF', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
+            <PawPrint size={36} color="#059669" style={{ margin: '0 auto 10px' }} />
+            <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#111827', marginBottom: '6px' }}>No Clinical Cases Published Yet</h3>
+            <p style={{ fontSize: '13px', color: '#6B7280', maxWidth: '380px', margin: '0 auto 14px' }}>
+              Publish an interesting clinical observation, surgical procedure, or diagnostic report.
+            </p>
+            <button 
+              className="btn-make-mark"
+              onClick={() => onOpenCreateCase('CLINICAL_CASE')}
+              style={{ margin: '0 auto' }}
+            >
+              <span>Publish First Clinical Case</span>
+              <ArrowRight size={15} />
+            </button>
+          </div>
+        ) : (
+          clinicalCases.map(c => ({
+            id: c.id,
+            authorName: c.authorName || 'Dr. Practitioner',
+            authorSpecialty: c.authorSpecialty || 'Veterinary Surgeon',
+            authorCity: 'Bengaluru',
+            authorAvatar: c.authorAvatar || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80',
+            timeAgo: 'Case Study',
+            content: c.presentingComplaint ? `${c.title} — ${c.presentingComplaint}` : c.title,
+            imgLeft: c.mediaUrl || heroVetImg,
+            imgRight: heroVetImg,
+            likes: c.views || 1,
+            comments: 0,
+            fullCase: c
+          })).map((post) => {
+            const currentLikes = likedMap[post.id] !== undefined ? likedMap[post.id] : post.likes;
+            const isLiked = likedMap[post.id] !== undefined;
 
           return (
             <article key={post.id} className="feed-post-card" id={`case-post-${post.id}`}>
@@ -236,7 +214,8 @@ export function ClinicalCasesView({
               </div>
             </article>
           );
-        })}
+        })
+      )}
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 package com.doctorvet.controller;
 
 import com.doctorvet.model.ShortVideo;
-import com.doctorvet.repository.ShortVideoRepository;
+import com.doctorvet.service.ShortVideoService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -11,19 +11,19 @@ import java.util.List;
 @CrossOrigin(originPatterns = "*")
 public class ShortVideoController {
 
-    private final ShortVideoRepository repository;
+    private final ShortVideoService videoService;
 
-    public ShortVideoController(ShortVideoRepository repository) {
-        this.repository = repository;
+    public ShortVideoController(ShortVideoService videoService) {
+        this.videoService = videoService;
     }
 
     @GetMapping
     public List<ShortVideo> getAllVideos() {
-        return repository.findAll();
+        return videoService.getAllVideos();
     }
 
     @PostMapping
     public ShortVideo createVideo(@RequestBody ShortVideo video) {
-        return repository.save(video);
+        return videoService.createVideo(video);
     }
 }

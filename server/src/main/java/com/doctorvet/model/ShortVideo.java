@@ -19,8 +19,11 @@ public class ShortVideo {
     private String views = "1.2k";
     private String duration;
     private String thumbnail;
-    private int likes = 0;
-    private int comments = 0;
+    @Column(length = 1000)
+    private String videoUrl;
+    private Integer viewsCount = 0;
+    private Integer likes = 0;
+    private Integer comments = 0;
     private LocalDateTime createdAt = LocalDateTime.now();
 
     public ShortVideo() {}
@@ -32,6 +35,17 @@ public class ShortVideo {
         this.views = views;
         this.duration = duration;
         this.thumbnail = thumbnail;
+        this.likes = likes;
+    }
+
+    public ShortVideo(String title, String doctorName, String doctorSpecialty, String views, String duration, String thumbnail, String videoUrl, int likes) {
+        this.title = title;
+        this.doctorName = doctorName;
+        this.doctorSpecialty = doctorSpecialty;
+        this.views = views;
+        this.duration = duration;
+        this.thumbnail = thumbnail;
+        this.videoUrl = videoUrl;
         this.likes = likes;
     }
 
@@ -55,6 +69,12 @@ public class ShortVideo {
 
     public String getThumbnail() { return thumbnail; }
     public void setThumbnail(String thumbnail) { this.thumbnail = thumbnail; }
+
+    public String getVideoUrl() { return videoUrl; }
+    public void setVideoUrl(String videoUrl) { this.videoUrl = videoUrl; }
+
+    public int getViewsCount() { return viewsCount; }
+    public void setViewsCount(int viewsCount) { this.viewsCount = viewsCount; }
 
     public int getLikes() { return likes; }
     public void setLikes(int likes) { this.likes = likes; }

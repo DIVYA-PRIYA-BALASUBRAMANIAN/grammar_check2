@@ -16,6 +16,8 @@ public class DoctorProfile {
 
     private String email;
     private String phone;
+    private String passwordHash;
+    private String role = "VERIFIED_DOCTOR";
     private String headline;
     private String coverImage;
     private String licenseNumber;
@@ -110,6 +112,12 @@ public class DoctorProfile {
 
     public String getBio() { return bio; }
     public void setBio(String bio) { this.bio = bio; }
+
+    public String getPasswordHash() { return passwordHash; }
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
+
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

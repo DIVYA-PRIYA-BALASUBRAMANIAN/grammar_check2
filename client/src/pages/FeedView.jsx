@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import heroVetImg from '../assets/hero_vet_dog.jpg';
 import { SPECIALTIES, STATES_INDIA } from '../data/mockData';
+import { api } from '../services/api';
+import { Avatar } from '../components/Avatar';
 
 export function FeedView({ 
   posts = [], 
@@ -41,13 +43,24 @@ export function FeedView({
   const [selectedState, setSelectedState] = useState('All states');
   const [selectedType, setSelectedType] = useState('All posts');
 
-  // Expanded comments for each post: { [postId]: boolean }
   const [openComments, setOpenComments] = useState({});
   const [commentInputs, setCommentInputs] = useState({});
   const [activeMenuPostId, setActiveMenuPostId] = useState(null);
+  const [fetchedCommentsMap, setFetchedCommentsMap] = useState({});
 
-  const toggleComments = (postId) => {
-    setOpenComments(prev => ({ ...prev, [postId]: !prev[postId] }));
+  const toggleComments = async (postId) => {
+    const willOpen = !openComments[postId];
+    setOpenComments(prev => ({ ...prev, [postId]: willOpen }));
+    if (willOpen && !fetchedCommentsMap[postId]) {
+      try {
+        const comments = await api.feed.getComments(postId);
+        if (comments && comments.length > 0) {
+          setFetchedCommentsMap(prev => ({ ...prev, [postId]: comments }));
+        }
+      } catch (e) {
+        // quiet fallback
+      }
+    }
   };
 
   const handleCommentSubmit = (e, postId) => {
@@ -57,6 +70,17 @@ export function FeedView({
     if (onAddComment) {
       onAddComment(postId, text);
     }
+    const myComment = {
+      id: Date.now(),
+      authorName: currentUser?.name || 'Dr. You',
+      authorAvatar: currentUser?.avatar || null,
+      content: text,
+      createdAt: new Date().toISOString()
+    };
+    setFetchedCommentsMap(prev => ({
+      ...prev,
+      [postId]: [...(prev[postId] || []), myComment]
+    }));
     setCommentInputs(prev => ({ ...prev, [postId]: '' }));
   };
 
@@ -260,7 +284,24 @@ export function FeedView({
 
       {/* 5. Feed Posts Stream */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {filteredPosts.map((post) => {
+        {filteredPosts.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '48px 24px', background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
+            <PawPrint size={40} color="#059669" style={{ margin: '0 auto 12px' }} />
+            <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#111827', marginBottom: '6px' }}>Your Feed is Clear</h3>
+            <p style={{ fontSize: '13px', color: '#6B7280', maxWidth: '380px', margin: '0 auto 16px' }}>
+              Publish a clinical observation, case report, or share a clinical update to start the discussion with peers.
+            </p>
+            <button 
+              className="btn-make-mark" 
+              onClick={() => onOpenCreatePost('GENERAL_POST')}
+              style={{ margin: '0 auto' }}
+            >
+              <span>Create First Post</span>
+              <ArrowRight size={15} />
+            </button>
+          </div>
+        ) : (
+          filteredPosts.map((post) => {
           const isOwnPost = currentUser && (
             post.authorId === currentUser.id ||
             post.authorName === currentUser.name ||
@@ -271,7 +312,12 @@ export function FeedView({
             <article key={post.id} className="feed-post-card" id={`post-${post.id}`}>
               <div className="post-card-header">
                 <div className="post-author-block">
-                  <img src={post.authorAvatar} alt={post.authorName} className="post-avatar-img" />
+                  <Avatar 
+                    src={post.authorAvatar} 
+                    name={post.authorName} 
+                    size={40} 
+                    className="post-avatar-img" 
+                  />
                   <div>
                     <div className="post-author-name-row">
                       <h3 className="post-author-name">{post.authorName}</h3>
@@ -458,13 +504,18 @@ export function FeedView({
                   gap: '10px'
                 }}>
                   {/* Comments Stream */}
-                  {(post.comments && post.comments.length > 0) ? (
-                    post.comments.map((c, idx) => (
+                  {(() => {
+                    const postComments = (fetchedCommentsMap[post.id] && fetchedCommentsMap[post.id].length > 0)
+                      ? fetchedCommentsMap[post.id]
+                      : (post.comments || []);
+                    return postComments.length > 0 ? (
+                      postComments.map((c, idx) => (
                       <div key={c.id || idx} style={{ display: 'flex', gap: '8px', fontSize: '12.5px' }}>
-                        <img 
-                          src={c.authorAvatar || "https://images.unsplash.com/photo-1594824813575-5858e94a5392?auto=format&fit=crop&w=150&q=80"} 
-                          alt={c.authorName}
-                          style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                        <Avatar 
+                          src={c.authorAvatar} 
+                          name={c.authorName}
+                          size={28}
+                          style={{ flexShrink: 0 }}
                         />
                         <div style={{
                           backgroundColor: '#F9FAFB',
@@ -481,7 +532,8 @@ export function FeedView({
                     <p style={{ margin: '4px 0', fontSize: '12px', color: '#9CA3AF', fontStyle: 'italic' }}>
                       No comments yet. Start the clinical discussion!
                     </p>
-                  )}
+                  );
+                })()}
 
                   {/* Add Comment Input Form */}
                   <form 
@@ -527,7 +579,8 @@ export function FeedView({
               )}
             </article>
           );
-        })}
+        })
+      )}
       </div>
     </div>
   );

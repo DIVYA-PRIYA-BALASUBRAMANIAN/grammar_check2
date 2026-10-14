@@ -25,16 +25,7 @@ import { CreatePostModal } from './components/CreatePostModal';
 
 // API Service
 import { api } from './services/api';
-
-// Mock Data Fallbacks
-import {
-  MOCK_DOCTORS,
-  MOCK_STORIES,
-  MOCK_POSTS,
-  MOCK_CLINICAL_CASES,
-  MOCK_SHORT_VIDEOS,
-  MOCK_CONVERSATIONS
-} from './data/mockData';
+import { createStompClient } from './services/websocket';
 
 export function App() {
   const [activeTab, setActiveTab] = useState('feed');
@@ -44,64 +35,32 @@ export function App() {
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const saved = localStorage.getItem('doctor_vet_user');
-      return saved ? JSON.parse(saved) : {
-        id: 1,
-        name: 'Dr. Ananya Sharma',
-        specialty: 'Small Animal Medicine',
-        city: 'Bengaluru',
-        state: 'Karnataka',
-        avatar: 'https://images.unsplash.com/photo-1594824813575-5858e94a5392?auto=format&fit=crop&w=300&q=80',
-        verified: true
-      };
+      if (!saved) return null;
+      const parsed = JSON.parse(saved);
+      if (parsed && parsed.avatar && typeof parsed.avatar === 'string' && parsed.avatar.includes('unsplash.com')) {
+        parsed.avatar = '';
+        localStorage.setItem('doctor_vet_user', JSON.stringify(parsed));
+      }
+      return parsed;
     } catch (e) {
       return null;
     }
   });
   const [isLoginView, setIsLoginView] = useState(false);
 
-  // Dynamic App State
-  const [doctors, setDoctors] = useState(MOCK_DOCTORS);
-  const [posts, setPosts] = useState(MOCK_POSTS);
-  const [clinicalCases, setClinicalCases] = useState(MOCK_CLINICAL_CASES);
-  const [videos, setVideos] = useState(MOCK_SHORT_VIDEOS);
-  const [stories, setStories] = useState(MOCK_STORIES);
-  const [conversations, setConversations] = useState(MOCK_CONVERSATIONS);
-  const [connectedMap, setConnectedMap] = useState({ 'doc-2': true, '2': true });
+  // Dynamic App State (Directly populated from Spring Boot API)
+  const [doctors, setDoctors] = useState([]);
+  const [posts, setPosts] = useState([]);
+  const [clinicalCases, setClinicalCases] = useState([]);
+  const [videos, setVideos] = useState([]);
+  const [stories, setStories] = useState([]);
+  const [conversations, setConversations] = useState([]);
+  const [connectedMap, setConnectedMap] = useState({});
 
   // Connection & Notification State
-  const [pendingRequests, setPendingRequests] = useState([
-    {
-      id: 101,
-      senderId: 3,
-      senderName: 'Dr. Priya Nair',
-      senderSpecialty: 'Veterinary Dermatology · Kochi',
-      senderAvatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=300&q=80',
-      receiverId: 1
-    }
-  ]);
+  const [pendingRequests, setPendingRequests] = useState([]);
   const [sentRequests, setSentRequests] = useState([]);
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      senderName: 'Dr. Priya Nair',
-      senderAvatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=300&q=80',
-      type: 'CONNECTION_REQUEST',
-      message: 'Dr. Priya Nair sent you a connection request.',
-      targetId: 101,
-      read: false,
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 2,
-      senderName: 'Dr. Arjun Mehta',
-      senderAvatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80',
-      type: 'CONNECTION_ACCEPTED',
-      message: 'Dr. Arjun Mehta accepted your connection request.',
-      targetId: 2,
-      read: true,
-      createdAt: new Date(Date.now() - 3600000).toISOString()
-    }
-  ]);
+  const [notifications, setNotifications] = useState([]);
 
   // Active Modals
   const [selectedDoctor, setSelectedDoctor] = useState(null);
@@ -124,6 +83,15 @@ export function App() {
         const docs = await api.doctors.getAll();
         if (docs && docs.length > 0) {
           setDoctors(docs);
+          if (currentUser?.id) {
+            const fresh = docs.find(d => d.id === currentUser.id);
+            if (fresh) {
+              setCurrentUser(fresh);
+              try {
+                localStorage.setItem('doctor_vet_user', JSON.stringify(fresh));
+              } catch (err) {}
+            }
+          }
         }
       } catch (e) {
         console.log('Using local doctors catalog');
@@ -137,6 +105,45 @@ export function App() {
         }
       } catch (e) {
         console.log('Using local feed posts');
+      }
+
+      try {
+        // Load active 24h stories
+        const backendStories = await api.stories.getAll();
+        if (backendStories && backendStories.length > 0) {
+          setStories(backendStories.map(s => ({
+            id: s.id,
+            doctorName: s.doctorName || 'Doctor',
+            fullDoctorName: s.doctorName || 'Doctor',
+            avatar: s.avatar || 'https://images.unsplash.com/photo-1594824813575-5858e94a5392?auto=format&fit=crop&w=300&q=80',
+            image: s.mediaUrl || 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=800&q=80',
+            videoUrl: s.mediaType === 'VIDEO' ? s.mediaUrl : null,
+            caption: s.caption || 'Moments from clinical practice',
+            time: 'Active'
+          })));
+        }
+      } catch (e) {
+        console.log('Using local stories');
+      }
+
+      try {
+        // Load clinical cases
+        const backendCases = await api.cases.getAll();
+        if (backendCases && backendCases.length > 0) {
+          setClinicalCases(backendCases);
+        }
+      } catch (e) {
+        console.log('Using local clinical cases');
+      }
+
+      try {
+        // Load short videos
+        const backendVideos = await api.videos.getAll();
+        if (backendVideos && backendVideos.length > 0) {
+          setVideos(backendVideos);
+        }
+      } catch (e) {
+        console.log('Using local short videos');
       }
 
       try {
@@ -164,14 +171,139 @@ export function App() {
           if (pending && pending.length > 0) {
             setPendingRequests(pending);
           }
+          const sent = await api.connections.getSent(currentUser.id);
+          if (sent && sent.length > 0) {
+            setSentRequests(sent);
+          }
         }
       } catch (e) {
-        console.log('Using local connection states');
+        console.log('No connections yet');
+      }
+
+      try {
+        // Load chat conversations
+        // Load chat conversations with dynamic message history
+        if (currentUser?.id) {
+          const convList = await api.chat.getConversations(currentUser.id);
+          if (convList && convList.length > 0) {
+            const fullConvs = await Promise.all(convList.map(async (c) => {
+              let msgs = [];
+              try {
+                msgs = await api.chat.getMessages(c.id);
+              } catch (e) {}
+              return {
+                id: c.id,
+                doctor: {
+                  id: c.doctor1Id === currentUser.id ? c.doctor2Id : c.doctor1Id,
+                  name: c.doctor1Id === currentUser.id ? c.doctor2Name : c.doctor1Name,
+                  avatar: c.doctor1Id === currentUser.id ? c.doctor2Avatar : c.doctor1Avatar,
+                  specialty: 'Veterinary Practitioner',
+                  city: 'Bengaluru'
+                },
+                lastMessage: c.lastMessage,
+                timestamp: 'Active',
+                unread: c.doctor1Id === currentUser.id ? c.unreadCountDoctor1 : c.unreadCountDoctor2,
+                messages: (msgs || []).map(m => ({
+                  id: m.id,
+                  sender: m.senderId === currentUser.id ? 'user' : 'doctor',
+                  senderId: m.senderId,
+                  text: m.text,
+                  attachmentUrl: m.attachmentUrl,
+                  attachmentType: m.attachmentType,
+                  time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Active'
+                }))
+              };
+            }));
+            setConversations(fullConvs);
+          }
+        }
+      } catch (e) {
+        console.log('No chat conversations yet');
       }
     }
 
     loadBackendData();
   }, [currentUser]);
+
+  // STOMP WebSocket for real-time notifications & 2-way messages
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    let client = null;
+    try {
+      client = createStompClient((stomp) => {
+        // Subscribe to live notifications
+        stomp.subscribe(`/topic/user/${currentUser.id}/notifications`, () => {
+          api.notifications.getNotifications(currentUser.id).then(notifs => {
+            if (notifs) setNotifications(notifs);
+          }).catch(() => {});
+        });
+
+        // Subscribe to live incoming direct chat messages
+        stomp.subscribe(`/topic/user/${currentUser.id}/messages`, (frame) => {
+          try {
+            const incoming = JSON.parse(frame.body);
+            setConversations(prev => {
+              const convIdx = prev.findIndex(c => c.id === incoming.conversationId);
+              const formattedMsg = {
+                id: incoming.id || Date.now(),
+                sender: incoming.senderId === currentUser.id ? 'user' : 'doctor',
+                senderId: incoming.senderId,
+                text: incoming.text,
+                attachmentUrl: incoming.attachmentUrl,
+                attachmentType: incoming.attachmentType,
+                time: incoming.createdAt ? new Date(incoming.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'
+              };
+
+              if (convIdx >= 0) {
+                const updated = [...prev];
+                const existingList = updated[convIdx].messages || [];
+                if (!existingList.some(m => m.id === incoming.id)) {
+                  updated[convIdx] = {
+                    ...updated[convIdx],
+                    lastMessage: incoming.text || 'Sent an attachment',
+                    timestamp: 'Just now',
+                    unread: incoming.senderId !== currentUser.id ? (updated[convIdx].unread || 0) + 1 : updated[convIdx].unread,
+                    messages: [...existingList, formattedMsg]
+                  };
+                }
+                return updated;
+              } else {
+                // If brand new conversation started from peer, fetch conversations
+                api.chat.getConversations(currentUser.id).then(list => {
+                  if (list) {
+                    setConversations(list.map(c => ({
+                      id: c.id,
+                      doctor: {
+                        id: c.doctor1Id === currentUser.id ? c.doctor2Id : c.doctor1Id,
+                        name: c.doctor1Id === currentUser.id ? c.doctor2Name : c.doctor1Name,
+                        avatar: c.doctor1Id === currentUser.id ? c.doctor2Avatar : c.doctor1Avatar,
+                        specialty: 'Veterinary Practitioner',
+                        city: 'Bengaluru'
+                      },
+                      lastMessage: c.lastMessage,
+                      timestamp: 'Just now',
+                      unread: 1,
+                      messages: [formattedMsg]
+                    })));
+                  }
+                }).catch(() => {});
+                return prev;
+              }
+            });
+          } catch (e) {}
+        });
+      });
+    } catch (e) {
+      console.warn('STOMP client connection error:', e);
+    }
+
+    return () => {
+      if (client && client.deactivate) {
+        try { client.deactivate(); } catch (e) {}
+      }
+    };
+  }, [currentUser?.id]);
 
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
@@ -339,27 +471,39 @@ export function App() {
     const authorAvatar = currentUser?.avatar || 'https://images.unsplash.com/photo-1594824813575-5858e94a5392?auto=format&fit=crop&w=300&q=80';
 
     if (postType === 'STORY') {
-      const newStory = {
-        id: `story-${Date.now()}`,
-        doctorName: currentUser?.name ? currentUser.name.replace('Dr. ', '').split(' ')[0] : 'You',
-        fullDoctorName: authorName,
+      const storyPayload = {
+        doctorId: currentUser?.id || 1,
+        doctorName: currentUser?.name || 'Dr. You',
         avatar: authorAvatar,
-        image: imageUrl || 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=800&q=80',
-        videoUrl: videoUrl || null,
-        caption: content || 'Moments from clinical practice',
-        time: 'Just now'
+        mediaUrl: imageUrl || 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=800&q=80',
+        mediaType: videoUrl ? 'VIDEO' : 'IMAGE',
+        caption: content || 'Moments from clinical practice'
       };
-      setStories([newStory, ...stories]);
+      try {
+        const savedStory = await api.stories.create(storyPayload);
+        const formattedStory = {
+          id: savedStory.id || `story-${Date.now()}`,
+          doctorName: currentUser?.name ? currentUser.name.replace('Dr. ', '').split(' ')[0] : 'You',
+          fullDoctorName: authorName,
+          avatar: authorAvatar,
+          image: savedStory.mediaUrl || imageUrl,
+          videoUrl: savedStory.mediaType === 'VIDEO' ? savedStory.mediaUrl : null,
+          caption: savedStory.caption || content,
+          time: 'Just now'
+        };
+        setStories(prev => [formattedStory, ...prev]);
+      } catch (e) {
+        console.warn('Backend story persistence error:', e);
+      }
       alert('Your 24-hour story is now live in the community moments bar!');
       return;
     }
 
     if (postType === 'SHORT_VIDEO') {
-      const newVideo = {
-        id: `vid-${Date.now()}`,
-        title: videoTitle || content.slice(0, 50) || 'Clinical Technique Reel',
+      const videoPayload = {
+        title: videoTitle || (content ? content.slice(0, 50) : 'Clinical Technique Reel'),
         doctorName: authorName,
-        doctorSpecialty: `${authorSpecialty} · Bengaluru`,
+        doctorSpecialty: `${authorSpecialty} · ${currentUser?.city || 'Bengaluru'}`,
         views: '1',
         duration: duration || '0:45',
         thumbnail: imageUrl || 'https://images.unsplash.com/photo-1576201836106-db1758fd1c97?auto=format&fit=crop&w=500&q=80',
@@ -367,44 +511,16 @@ export function App() {
         likes: 1,
         comments: 0
       };
-      setVideos([newVideo, ...videos]);
       try {
-        await api.videos.create(newVideo);
-      } catch (e) {}
+        const savedVideo = await api.videos.create(videoPayload);
+        setVideos(prev => [savedVideo, ...prev]);
+      } catch (e) {
+        setVideos(prev => [{ ...videoPayload, id: `vid-${Date.now()}` }, ...prev]);
+      }
     }
 
-    const newPost = {
-      id: `post-${Date.now()}`,
-      authorId: currentUser?.id || 1,
-      authorName,
-      authorSpecialty,
-      authorCity: currentUser?.city || 'Bengaluru',
-      authorAvatar,
-      timeAgo: 'Just now',
-      type: postType,
-      badgeLabel: postType === 'CLINICAL_CASE' 
-        ? 'CLINICAL CASE REPORT' 
-        : postType === 'SHORT_VIDEO'
-        ? 'CLINICAL REEL · VIDEO'
-        : 'CLINICAL UPDATE',
-      content: videoTitle ? `${videoTitle} — ${content}` : content,
-      imageUrl,
-      videoUrl,
-      likes: 1,
-      commentsCount: 0,
-      isLiked: false,
-      species: species || 'Canine',
-      comments: []
-    };
-
-    setPosts([newPost, ...posts]);
-    try {
-      await api.feed.createPost(newPost);
-    } catch (e) {}
-
     if (postType === 'CLINICAL_CASE') {
-      const newCase = {
-        id: `case-${Date.now()}`,
+      const casePayload = {
         title: (videoTitle || content).slice(0, 50) + '...',
         authorName,
         authorSpecialty,
@@ -419,35 +535,143 @@ export function App() {
         comments: 0,
         mediaUrl: imageUrl
       };
-      setClinicalCases([newCase, ...clinicalCases]);
       try {
-        await api.cases.create(newCase);
-      } catch (e) {}
+        const savedCase = await api.cases.create(casePayload);
+        setClinicalCases(prev => [savedCase, ...prev]);
+      } catch (e) {
+        setClinicalCases(prev => [{ ...casePayload, id: `case-${Date.now()}` }, ...prev]);
+      }
+    }
+
+    const postPayload = {
+      authorId: currentUser?.id || 1,
+      authorName,
+      authorSpecialty,
+      authorCity: currentUser?.city || 'Bengaluru',
+      authorAvatar,
+      postType,
+      badgeLabel: postType === 'CLINICAL_CASE' 
+        ? 'CLINICAL CASE REPORT' 
+        : postType === 'SHORT_VIDEO'
+        ? 'CLINICAL REEL · VIDEO'
+        : 'CLINICAL UPDATE',
+      content: videoTitle ? `${videoTitle} — ${content}` : content,
+      imageUrl,
+      videoUrl,
+      species: species || 'Canine',
+      likes: 1,
+      commentsCount: 0
+    };
+
+    try {
+      const savedPost = await api.feed.createPost(postPayload);
+      setPosts(prev => [savedPost, ...prev]);
+    } catch (e) {
+      setPosts(prev => [{ ...postPayload, id: `post-${Date.now()}`, comments: [] }, ...prev]);
     }
   };
 
-  // Messaging Handlers
-  const handleOpenDirectChat = (doctor) => {
+  // Real-time Messaging Handlers
+  const handleOpenDirectChat = async (doctor) => {
     setActiveChatDoctor(doctor);
-    const existing = conversations.find(c => c.doctor.id === doctor.id || c.doctor.name === doctor.name);
+    let existing = conversations.find(c => c.doctor.id === doctor.id || c.doctor.name === doctor.name);
     if (!existing) {
-      const newConv = {
-        id: `chat-${Date.now()}`,
-        doctor,
-        lastMessage: 'Started new direct consultation.',
-        timestamp: 'Just now',
-        unread: 0,
-        messages: [
-          { id: 1, sender: 'doctor', text: `Hello Doctor, this is ${doctor.name}. How can I assist you with this clinical case?`, time: 'Just now' }
-        ]
-      };
-      setConversations([newConv, ...conversations]);
+      try {
+        const started = await api.chat.startConversation(currentUser?.id || 1, doctor.id, `Hello Doctor, this is ${currentUser?.name || 'Dr. You'}.`);
+        let msgs = [];
+        if (started && started.id) {
+          try {
+            msgs = await api.chat.getMessages(started.id);
+          } catch (e) {}
+          existing = {
+            id: started.id,
+            doctor,
+            lastMessage: started.lastMessage || 'Started new consultation.',
+            timestamp: 'Just now',
+            unread: 0,
+            messages: (msgs || []).map(m => ({
+              id: m.id,
+              sender: m.senderId === currentUser?.id ? 'user' : 'doctor',
+              senderId: m.senderId,
+              text: m.text,
+              attachmentUrl: m.attachmentUrl,
+              attachmentType: m.attachmentType,
+              time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'
+            }))
+          };
+          setConversations(prev => [existing, ...prev]);
+        }
+      } catch (e) {
+        existing = {
+          id: `chat-${Date.now()}`,
+          doctor,
+          lastMessage: 'Started new direct consultation.',
+          timestamp: 'Just now',
+          unread: 0,
+          messages: [
+            { id: 1, sender: 'doctor', text: `Hello Doctor, this is ${doctor.name}. How can I assist you with this clinical case?`, time: 'Just now' }
+          ]
+        };
+        setConversations(prev => [existing, ...prev]);
+      }
+    } else if (typeof existing.id === 'number') {
+      try {
+        const msgs = await api.chat.getMessages(existing.id);
+        setConversations(prev => prev.map(c => c.id === existing.id ? {
+          ...c,
+          messages: (msgs || []).map(m => ({
+            id: m.id,
+            sender: m.senderId === currentUser?.id ? 'user' : 'doctor',
+            senderId: m.senderId,
+            text: m.text,
+            attachmentUrl: m.attachmentUrl,
+            attachmentType: m.attachmentType,
+            time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'
+          }))
+        } : c));
+      } catch (e) {}
     }
     setActiveTab('messages');
   };
 
+  const handleSelectConversation = async (conv) => {
+    setActiveChatDoctor(conv.doctor);
+    if (conv?.id && typeof conv.id === 'number') {
+      try {
+        const msgs = await api.chat.getMessages(conv.id);
+        setConversations(prev => prev.map(c => {
+          if (c.id === conv.id) {
+            return {
+              ...c,
+              unread: 0,
+              messages: (msgs || []).map(m => ({
+                id: m.id,
+                sender: m.senderId === currentUser?.id ? 'user' : 'doctor',
+                senderId: m.senderId,
+                text: m.text,
+                attachmentUrl: m.attachmentUrl,
+                attachmentType: m.attachmentType,
+                time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'
+              }))
+            };
+          }
+          return c;
+        }));
+        api.chat.markAsRead(conv.id, currentUser?.id || 1).catch(() => {});
+      } catch (e) {}
+    }
+  };
+
   const handleSendMessage = async ({ conversationId, receiverId, text, attachmentUrl, attachmentType }) => {
-    const newMessage = {
+    let targetConvId = conversationId;
+    if (typeof conversationId !== 'number' && receiverId) {
+      try {
+        const started = await api.chat.startConversation(currentUser?.id || 1, receiverId, text);
+        if (started?.id) targetConvId = started.id;
+      } catch (e) {}
+    }
+
+    const optimisticMsg = {
       id: Date.now(),
       sender: 'user',
       senderId: currentUser?.id || 1,
@@ -458,12 +682,13 @@ export function App() {
     };
 
     setConversations(prev => prev.map(conv => {
-      if (conv.id === conversationId) {
+      if (conv.id === conversationId || conv.id === targetConvId) {
         return {
           ...conv,
+          id: targetConvId,
           lastMessage: text || 'Sent an attachment',
           timestamp: 'Just now',
-          messages: [...(conv.messages || []), newMessage]
+          messages: [...(conv.messages || []), optimisticMsg]
         };
       }
       return conv;
@@ -471,14 +696,16 @@ export function App() {
 
     try {
       await api.chat.sendMessage({
-        conversationId: typeof conversationId === 'number' ? conversationId : 1,
+        conversationId: typeof targetConvId === 'number' ? targetConvId : 1,
         senderId: currentUser?.id || 1,
         receiverId: receiverId || 2,
         text,
         attachmentUrl,
         attachmentType
       });
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Real-time chat persistence fallback:', e);
+    }
   };
 
   // Notifications Handlers
@@ -498,14 +725,14 @@ export function App() {
 
   const unreadNotifsCount = notifications.filter(n => !n.read).length;
 
-  if (isLoginView || activeTab === 'login') {
+  if (!currentUser || isLoginView || activeTab === 'login') {
     return (
       <LoginPage
         onLoginSuccess={handleLoginSuccess}
-        onCancel={() => {
+        onCancel={currentUser ? () => {
           setIsLoginView(false);
           if (activeTab === 'login') setActiveTab('feed');
-        }}
+        } : null}
       />
     );
   }
@@ -623,7 +850,7 @@ export function App() {
               <MessagesView
                 conversations={conversations}
                 activeChatDoctor={activeChatDoctor}
-                onSelectConversation={(c) => setActiveChatDoctor(c.doctor)}
+                onSelectConversation={handleSelectConversation}
                 onSendMessage={handleSendMessage}
                 onOpenDoctorProfile={(doc) => setSelectedDoctor(doc)}
                 currentUser={currentUser}
@@ -632,9 +859,11 @@ export function App() {
 
             {activeTab === 'search' && (
               <SearchView
+                doctors={doctors}
                 onSelectDoctor={(doc) => setSelectedDoctor(doc)}
                 onSelectCase={(c) => setSelectedCase(c)}
                 onSelectVideo={(v) => setSelectedVideo(v)}
+                onOpenChat={handleOpenDirectChat}
               />
             )}
 
@@ -654,6 +883,8 @@ export function App() {
             doctors={doctors}
             onSelectDoctor={(doc) => setSelectedDoctor(doc)}
             onViewAllDoctors={() => setActiveTab('network')}
+            onSendRequest={handleSendRequest}
+            connectedDoctors={Object.keys(connectedMap).map(k => ({ id: isNaN(k) ? k : Number(k) }))}
           />
         </div>
       </div>
@@ -670,15 +901,28 @@ export function App() {
         onSelectCase={(c) => setSelectedCase(c)}
         cases={clinicalCases}
         posts={posts}
+        currentUser={currentUser}
+        onEditProfile={() => setIsCreateProfileOpen(true)}
       />
 
       <CreateProfileModal
         isOpen={isCreateProfileOpen}
         onClose={() => setIsCreateProfileOpen(false)}
-        onProfileCreated={(newDoc) => {
-          setDoctors([newDoc, ...doctors]);
-          setCurrentUser(newDoc);
-          setActiveTab('network');
+        currentUser={currentUser}
+        onProfileCreated={(savedDoc) => {
+          setDoctors(prev => {
+            const idx = prev.findIndex(d => d.id === savedDoc.id);
+            if (idx >= 0) {
+              const copy = [...prev];
+              copy[idx] = savedDoc;
+              return copy;
+            }
+            return [savedDoc, ...prev];
+          });
+          setCurrentUser(savedDoc);
+          try {
+            localStorage.setItem('doctor_vet_user', JSON.stringify(savedDoc));
+          } catch (e) {}
         }}
       />
 

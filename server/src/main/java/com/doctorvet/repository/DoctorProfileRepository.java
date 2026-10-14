@@ -10,4 +10,5 @@ public interface DoctorProfileRepository extends JpaRepository<DoctorProfile, Lo
     List<DoctorProfile> findBySpecialty(String specialty);
     List<DoctorProfile> findByState(String state);
     List<DoctorProfile> findByCityIgnoreCase(String city);
+    java.util.Optional<DoctorProfile> findByEmailIgnoreCase(String email);
 }

@@ -1,7 +1,7 @@
 package com.doctorvet.controller;
 
 import com.doctorvet.model.DoctorProfile;
-import com.doctorvet.repository.DoctorProfileRepository;
+import com.doctorvet.service.DoctorProfileService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,10 +13,10 @@ import java.util.Optional;
 @CrossOrigin(originPatterns = "*")
 public class AuthController {
 
-    private final DoctorProfileRepository doctorRepo;
+    private final DoctorProfileService doctorService;
 
-    public AuthController(DoctorProfileRepository doctorRepo) {
-        this.doctorRepo = doctorRepo;
+    public AuthController(DoctorProfileService doctorService) {
+        this.doctorService = doctorService;
     }
 
     public record LoginRequest(String identifier, String password) {}
@@ -26,68 +26,92 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req) {
         if (req.identifier() == null || req.identifier().isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Identifier is required"));
+            return ResponseEntity.badRequest().body(Map.of("message", "Email or registered username is required."));
+        }
+        if (req.password() == null || req.password().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Password is required."));
         }
 
-        // Try to match an existing doctor in MySQL database
-        Optional<DoctorProfile> docOpt = doctorRepo.findAll().stream()
-                .filter(d -> d.getName().toLowerCase().contains(req.identifier().toLowerCase()))
-                .findFirst();
+        // Try to match an existing doctor in database via service
+        Optional<DoctorProfile> docOpt = doctorService.findByEmailOrName(req.identifier());
 
-        DoctorProfile profile = docOpt.orElseGet(() -> {
-            DoctorProfile d = new DoctorProfile();
-            d.setName(req.identifier().contains("@") ? req.identifier().split("@")[0] : req.identifier());
-            d.setSpecialty("Veterinary Medicine");
-            d.setCity("Bengaluru");
-            d.setState("Karnataka");
-            d.setVerified(true);
-            d.setAvatar("https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80");
-            return d;
-        });
+        if (docOpt.isEmpty()) {
+            return ResponseEntity.status(401).body(Map.of(
+                    "message", "No veterinary account found with this email or username. Please create an account first."
+            ));
+        }
 
-        return ResponseEntity.ok(Map.of(
-                "token", "dvet-jwt-" + System.currentTimeMillis(),
-                "id", profile.getId() != null ? profile.getId() : 1L,
-                "name", profile.getName(),
-                "specialty", profile.getSpecialty(),
-                "city", profile.getCity() != null ? profile.getCity() : "Bengaluru",
-                "state", profile.getState() != null ? profile.getState() : "Karnataka",
-                "avatar", profile.getAvatar() != null ? profile.getAvatar() : "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80",
-                "verified", true
-        ));
+        DoctorProfile profile = docOpt.get();
+
+        // Check password if hashed/set
+        if (profile.getPasswordHash() != null && !profile.getPasswordHash().isBlank()) {
+            if (!profile.getPasswordHash().equals(req.password())) {
+                return ResponseEntity.status(401).body(Map.of(
+                        "message", "Invalid password credentials. Please verify your password and try again."
+                ));
+            }
+        }
+
+        return ResponseEntity.ok(toAuthResponse(profile));
     }
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest req) {
         if (req.name() == null || req.name().isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Doctor name is required"));
+            return ResponseEntity.badRequest().body(Map.of("message", "Doctor full name is required."));
+        }
+        if (req.email() == null || req.email().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Official email address is required."));
+        }
+        if (req.password() == null || req.password().length() < 4) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Password must be at least 4 characters long."));
+        }
+
+        // Verify email uniqueness
+        if (doctorService.findByEmail(req.email()).isPresent()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", "A veterinary practitioner is already registered with this email address. Please sign in."
+            ));
         }
 
         DoctorProfile newDoctor = new DoctorProfile(
                 req.name(),
-                req.specialty() != null ? req.specialty() : "Veterinary Medicine",
-                "BVSc & AH (Verified VCI)",
+                req.specialty() != null && !req.specialty().isBlank() ? req.specialty() : "Veterinary Medicine",
+                "BVSc & AH (Verified Doctor)",
                 "Clinical Practice",
-                req.city() != null ? req.city() : "Bengaluru",
-                req.state() != null ? req.state() : "Karnataka",
-                "https://images.unsplash.com/photo-1594824813575-5858e94a5392?auto=format&fit=crop&w=300&q=80",
+                req.city() != null && !req.city().isBlank() ? req.city() : "Bengaluru",
+                req.state() != null && !req.state().isBlank() ? req.state() : "Karnataka",
+                "",
                 true,
                 1,
                 0,
-                "Registered veterinary practitioner under VCI: " + (req.vciNumber() != null ? req.vciNumber() : "VCI-REG-NEW")
+                "Registered veterinary clinical practitioner with verified credentials."
         );
+        newDoctor.setEmail(req.email().trim().toLowerCase());
+        newDoctor.setPasswordHash(req.password());
+        newDoctor.setRole("VERIFIED_DOCTOR");
+        newDoctor.setConnectionsCount(0);
+        newDoctor.setCasesCount(0);
 
-        DoctorProfile saved = doctorRepo.save(newDoctor);
+        DoctorProfile saved = doctorService.createProfile(newDoctor);
 
-        return ResponseEntity.ok(Map.of(
-                "token", "dvet-jwt-" + System.currentTimeMillis(),
-                "id", saved.getId(),
-                "name", saved.getName(),
-                "specialty", saved.getSpecialty(),
-                "city", saved.getCity(),
-                "state", saved.getState(),
-                "avatar", saved.getAvatar(),
-                "verified", true
-        ));
+        return ResponseEntity.ok(toAuthResponse(saved));
+    }
+
+    private Map<String, Object> toAuthResponse(DoctorProfile profile) {
+        Map<String, Object> res = new java.util.LinkedHashMap<>();
+        res.put("token", "dvet-jwt-" + System.currentTimeMillis());
+        res.put("id", profile.getId() != null ? profile.getId() : 1L);
+        res.put("name", profile.getName());
+        res.put("email", profile.getEmail() != null ? profile.getEmail() : "");
+        res.put("specialty", profile.getSpecialty() != null ? profile.getSpecialty() : "Veterinary Medicine");
+        res.put("city", profile.getCity() != null ? profile.getCity() : "Bengaluru");
+        res.put("state", profile.getState() != null ? profile.getState() : "Karnataka");
+        res.put("avatar", profile.getAvatar() != null ? profile.getAvatar() : "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80");
+        res.put("verified", profile.isVerified());
+        res.put("role", profile.getRole() != null ? profile.getRole() : "VERIFIED_DOCTOR");
+        res.put("connectionsCount", profile.getConnectionsCount());
+        res.put("casesCount", profile.getCasesCount());
+        return res;
     }
 }

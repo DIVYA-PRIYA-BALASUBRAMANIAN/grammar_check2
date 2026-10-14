@@ -13,7 +13,13 @@ async function fetchJson(endpoint, options = {}) {
     });
     if (!res.ok) {
       const errText = await res.text();
-      throw new Error(`API error ${res.status}: ${errText}`);
+      let errorMsg = `HTTP ${res.status}: ${errText}`;
+      try {
+        const parsed = JSON.parse(errText);
+        if (parsed.message) errorMsg = parsed.message;
+        else if (parsed.error) errorMsg = parsed.error;
+      } catch (e) {}
+      throw new Error(errorMsg);
     }
     return await res.json();
   } catch (err) {
@@ -113,6 +119,44 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ reporterId, reason })
       })
+  },
+
+  // Stories (24h ephemeral)
+  stories: {
+    getAll: () => fetchJson('/stories'),
+    create: (story) => fetchJson('/stories', {
+      method: 'POST',
+      body: JSON.stringify(story)
+    })
+  },
+
+  // Media File Upload
+  media: {
+    upload: async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`${BASE_URL}/media/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      if (!res.ok) {
+        throw new Error(`Media upload failed with HTTP ${res.status}`);
+      }
+      return await res.json();
+    }
+  },
+
+  // Unified Search
+  search: {
+    query: (q) => fetchJson(`/search?q=${encodeURIComponent(q || '')}`)
+  },
+
+  // AI Assistant Clinical Engine
+  ai: {
+    diagnose: (data) => fetchJson('/ai-assist/diagnose', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
   },
 
   // 1-to-1 Chat
