@@ -118,7 +118,7 @@ export function CampaignFormModal({ isOpen, onClose, onCampaignCreated, token, a
             fontSize: '13px',
             marginBottom: '14px'
           }}>
-            <AlertCircle size={16} flexShrink={0} />
+            <AlertCircle size={16} style={{ flexShrink: 0 }} />
             <span>{errorMsg}</span>
           </div>
         )}
