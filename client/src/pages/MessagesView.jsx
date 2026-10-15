@@ -14,6 +14,7 @@ import {
   MessageSquare,
   ArrowRight,
   UserCheck,
+  UserPlus,
   Sparkles,
   Shield
 } from 'lucide-react';
@@ -30,7 +31,8 @@ export function MessagesView({
   connectedDoctors = [],
   onOpenLogin,
   onNavigateTab,
-  onOpenCreateProfile
+  onOpenCreateProfile,
+  onSendRequest
 }) {
   const [messageText, setMessageText] = useState('');
   const [attachmentUrl, setAttachmentUrl] = useState('');
@@ -349,7 +351,7 @@ export function MessagesView({
     });
 
     const list = Array.from(map.values());
-    // Sort: unread chats at the very top, then active chats
+    // Sort: unread chats at the very top, then active chats, then connected
     return list.sort((a, b) => {
       const unreadDiff = (b.unread || 0) - (a.unread || 0);
       if (unreadDiff !== 0) return unreadDiff;
@@ -357,7 +359,20 @@ export function MessagesView({
       if (a.conv && !b.conv) return -1;
       return 0;
     });
-  }, [conversations, userConnections, doctors]);
+  }, [conversations, userConnections, doctors, currentUser]);
+
+  // Format real-time message timestamp
+  const formatTime = (t) => {
+    if (!t) return 'Just now';
+    if (typeof t === 'string' && (t.includes(':') || t.toLowerCase() === 'just now')) return t;
+    try {
+      const d = new Date(t);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+    } catch (e) { }
+    return String(t);
+  };
 
   // Filter contacts by search query
   const filteredContacts = allContacts.filter(item => {
@@ -371,7 +386,11 @@ export function MessagesView({
 
   // Selected conversation strictly belonging to this user
   const selectedConv = conversations.find(c =>
-    activeChatDoctor && (c.doctor?.id === activeChatDoctor.id || c.doctor?.name === activeChatDoctor.name)
+    activeChatDoctor && (
+      c.doctor?.id === activeChatDoctor.id ||
+      String(c.doctor?.id || '').replace('doc-', '') === String(activeChatDoctor.id || '').replace('doc-', '') ||
+      c.doctor?.name === activeChatDoctor.name
+    )
   ) || (conversations.length > 0 ? conversations[0] : null);
 
   // Auto-mark conversation as read immediately when viewed (Instagram Direct Messages behavior)
@@ -398,9 +417,31 @@ export function MessagesView({
   // Active chat message stream (strictly from user's selected conversation)
   const chatMessages = selectedConv?.messages || [];
 
+  // Check if current doctor is connected to allow messaging
+  const isPeerConnected = useMemo(() => {
+    if (!currentDoctor) return false;
+    const isConn = (connectedDoctors || []).some(c =>
+      c.id === currentDoctor.id ||
+      String(c.id).replace('doc-', '') === String(currentDoctor.id).replace('doc-', '') ||
+      (c.name && currentDoctor.name && c.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentDoctor.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+    );
+    const hasConvWithMessages = (conversations || []).some(c =>
+      c.doctor && (
+        c.doctor.id === currentDoctor.id ||
+        String(c.doctor.id).replace('doc-', '') === String(currentDoctor.id).replace('doc-', '') ||
+        (c.doctor.name && currentDoctor.name && c.doctor.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentDoctor.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+      ) && c.messages && c.messages.length > 0
+    );
+    return isConn || hasConvWithMessages;
+  }, [currentDoctor, connectedDoctors, conversations]);
+
   // Handle Send
   const handleSend = (e) => {
     e?.preventDefault();
+    if (!isPeerConnected) {
+      alert(`You must connect with ${currentDoctor?.name || 'this doctor'} first before messaging.`);
+      return;
+    }
     if (!messageText.trim() && !attachmentUrl) return;
 
     if (onSendMessage) {
@@ -490,7 +531,7 @@ export function MessagesView({
                     width: '11px',
                     height: '11px',
                     borderRadius: '50%',
-                    backgroundColor: '#10B981',
+                    backgroundColor: currentDoctor.active ? '#10B981' : '#9CA3AF',
                     border: '2px solid #FFFFFF'
                   }} />
                 </div>
@@ -513,17 +554,17 @@ export function MessagesView({
                       width: '8px',
                       height: '8px',
                       borderRadius: '50%',
-                      backgroundColor: '#10B981',
+                      backgroundColor: currentDoctor.active ? '#10B981' : '#9CA3AF',
                       display: 'inline-block'
                     }} />
                   </div>
                   <p style={{
                     margin: '2px 0 0 0',
                     fontSize: '12px',
-                    color: '#059669',
+                    color: currentDoctor.active ? '#059669' : '#6B7280',
                     fontWeight: 600
                   }}>
-                    {currentDoctor.specialty || 'Veterinary Practitioner'} · Active Now
+                    {currentDoctor.specialty || 'Veterinary Practitioner'} · {currentDoctor.active ? 'Active Now' : 'Inactive'}
                   </p>
                 </div>
               </div>
@@ -670,7 +711,7 @@ export function MessagesView({
                           fontSize: '10.5px',
                           color: isMe ? 'rgba(255, 255, 255, 0.75)' : '#9CA3AF'
                         }}>
-                          <span>{msg.time || 'Just now'}</span>
+                          <span>{formatTime(msg.time)}</span>
                           {isMe && <CheckCheck size={13} color="#A7F3D0" />}
                         </div>
                       </div>
@@ -699,186 +740,246 @@ export function MessagesView({
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Quick Consultation Prompt Chips */}
-            <div style={{
-              padding: '6px 24px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              overflowX: 'auto',
-              backgroundColor: '#FFFFFF',
-              borderTop: '1px solid #F9FAFB'
-            }}>
-              {quickPrompts.map((prompt, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setMessageText(prompt)}
-                  style={{
-                    backgroundColor: '#FFFFFF',
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '9999px',
-                    padding: '7px 16px',
-                    fontSize: '11.5px',
-                    color: '#4B5563',
-                    whiteSpace: 'nowrap',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    flexShrink: 0
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#10B981';
-                    e.currentTarget.style.backgroundColor = '#F0FDF4';
-                    e.currentTarget.style.color = '#065F46';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = '#E5E7EB';
-                    e.currentTarget.style.backgroundColor = '#FFFFFF';
-                    e.currentTarget.style.color = '#4B5563';
-                  }}
-                >
-                  {prompt}
-                </button>
-              ))}
-            </div>
-
-            {/* Attachment preview if image chosen */}
-            {attachmentUrl && (
-              <div style={{
-                margin: '4px 24px',
-                padding: '8px 14px',
-                backgroundColor: '#ECFDF5',
-                border: '1px solid #A7F3D0',
-                borderRadius: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ImageIcon size={16} color="#059669" />
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#065F46' }}>
-                    Clinical image attached
-                  </span>
+            {/* Bottom Controls: Gated strictly by connection */}
+            {isPeerConnected ? (
+              <>
+                {/* Quick Consultation Prompt Chips */}
+                <div style={{
+                  padding: '6px 24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  overflowX: 'auto',
+                  backgroundColor: '#FFFFFF',
+                  borderTop: '1px solid #F9FAFB'
+                }}>
+                  {quickPrompts.map((prompt, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setMessageText(prompt)}
+                      style={{
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '9999px',
+                        padding: '7px 16px',
+                        fontSize: '11.5px',
+                        color: '#4B5563',
+                        whiteSpace: 'nowrap',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        flexShrink: 0
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#10B981';
+                        e.currentTarget.style.backgroundColor = '#F0FDF4';
+                        e.currentTarget.style.color = '#065F46';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#E5E7EB';
+                        e.currentTarget.style.backgroundColor = '#FFFFFF';
+                        e.currentTarget.style.color = '#4B5563';
+                      }}
+                    >
+                      {prompt}
+                    </button>
+                  ))}
                 </div>
-                <button
-                  onClick={() => setAttachmentUrl('')}
-                  style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer' }}
-                >
-                  <X size={15} />
-                </button>
-              </div>
-            )}
 
-            {/* Bottom Message Input Bar */}
-            <form onSubmit={handleSend} style={{
-              padding: '12px 24px 20px 24px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              backgroundColor: '#FFFFFF'
-            }}>
-              {/* File Input */}
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="image/*"
-                style={{ display: 'none' }}
-              />
+                {/* Attachment preview if image chosen */}
+                {attachmentUrl && (
+                  <div style={{
+                    margin: '4px 24px',
+                    padding: '8px 14px',
+                    backgroundColor: '#ECFDF5',
+                    border: '1px solid #A7F3D0',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <ImageIcon size={16} color="#059669" />
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#065F46' }}>
+                        Clinical image attached
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setAttachmentUrl('')}
+                      style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer' }}
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+                )}
 
-              {/* Attachment Paperclip Button */}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                title="Attach Radiograph, Scan or Case Photo"
-                style={{
+                {/* Bottom Message Input Bar */}
+                <form onSubmit={handleSend} style={{
+                  padding: '12px 24px 20px 24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  backgroundColor: '#FFFFFF'
+                }}>
+                  {/* File Input */}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                  />
+
+                  {/* Attachment Paperclip Button */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Attach Radiograph, Scan or Case Photo"
+                    style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '50%',
+                      backgroundColor: '#FFFFFF',
+                      border: '1px solid #E5E7EB',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#4B5563',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#0D4B2D';
+                      e.currentTarget.style.color = '#0D4B2D';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#E5E7EB';
+                      e.currentTarget.style.color = '#4B5563';
+                    }}
+                  >
+                    <Paperclip size={18} style={{ transform: 'rotate(-45deg)' }} />
+                  </button>
+
+                  {/* Message Input Field */}
+                  <input
+                    type="text"
+                    placeholder={`Message ${currentDoctor?.name || 'Doctor'}...`}
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    style={{
+                      flex: 1,
+                      padding: '13px 22px',
+                      borderRadius: '9999px',
+                      border: '1px solid #E5E7EB',
+                      backgroundColor: '#F9FAFB',
+                      fontSize: '13.5px',
+                      color: '#111827',
+                      outline: 'none',
+                      transition: 'border-color 0.15s ease, background-color 0.15s ease'
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = '#0D4B2D';
+                      e.currentTarget.style.backgroundColor = '#FFFFFF';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = '#E5E7EB';
+                      e.currentTarget.style.backgroundColor = '#F9FAFB';
+                    }}
+                  />
+
+                  {/* Send Circular Button */}
+                  <button
+                    type="submit"
+                    disabled={!messageText.trim() && !attachmentUrl}
+                    style={{
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '50%',
+                      backgroundColor: (!messageText.trim() && !attachmentUrl) ? '#E5E7EB' : '#0D4B2D',
+                      color: (!messageText.trim() && !attachmentUrl) ? '#9CA3AF' : '#FFFFFF',
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: (!messageText.trim() && !attachmentUrl) ? 'default' : 'pointer',
+                      flexShrink: 0,
+                      transition: 'all 0.15s ease',
+                      boxShadow: (!messageText.trim() && !attachmentUrl) ? 'none' : '0 4px 12px rgba(13, 75, 45, 0.25)'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (messageText.trim() || attachmentUrl) {
+                        e.currentTarget.style.backgroundColor = '#083B24';
+                        e.currentTarget.style.transform = 'scale(1.04)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (messageText.trim() || attachmentUrl) {
+                        e.currentTarget.style.backgroundColor = '#0D4B2D';
+                        e.currentTarget.style.transform = 'scale(1)';
+                      }
+                    }}
+                  >
+                    <Send size={17} style={{ marginLeft: '2px' }} />
+                  </button>
+                </form>
+              </>
+            ) : (
+              <div style={{
+                padding: '24px 20px',
+                backgroundColor: '#FAFAFA',
+                borderTop: '1px solid #E5E7EB',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+                gap: '8px'
+              }}>
+                <div style={{
                   width: '42px',
                   height: '42px',
                   borderRadius: '50%',
-                  backgroundColor: '#FFFFFF',
-                  border: '1px solid #E5E7EB',
+                  backgroundColor: '#FEF3C7',
+                  color: '#D97706',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#4B5563',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                  transition: 'all 0.15s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#0D4B2D';
-                  e.currentTarget.style.color = '#0D4B2D';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#E5E7EB';
-                  e.currentTarget.style.color = '#4B5563';
-                }}
-              >
-                <Paperclip size={18} style={{ transform: 'rotate(-45deg)' }} />
-              </button>
-
-              {/* Message Input Field */}
-              <input
-                type="text"
-                placeholder={`Message ${currentDoctor?.name || 'Doctor'}...`}
-                value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
-                style={{
-                  flex: 1,
-                  padding: '13px 22px',
-                  borderRadius: '9999px',
-                  border: '1px solid #E5E7EB',
-                  backgroundColor: '#F9FAFB',
-                  fontSize: '13.5px',
-                  color: '#111827',
-                  outline: 'none',
-                  transition: 'border-color 0.15s ease, background-color 0.15s ease'
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = '#0D4B2D';
-                  e.currentTarget.style.backgroundColor = '#FFFFFF';
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#E5E7EB';
-                  e.currentTarget.style.backgroundColor = '#F9FAFB';
-                }}
-              />
-
-              {/* Send Circular Button */}
-              <button
-                type="submit"
-                disabled={!messageText.trim() && !attachmentUrl}
-                style={{
-                  width: '44px',
-                  height: '44px',
-                  borderRadius: '50%',
-                  backgroundColor: (!messageText.trim() && !attachmentUrl) ? '#E5E7EB' : '#0D4B2D',
-                  color: (!messageText.trim() && !attachmentUrl) ? '#9CA3AF' : '#FFFFFF',
-                  border: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: (!messageText.trim() && !attachmentUrl) ? 'default' : 'pointer',
-                  flexShrink: 0,
-                  transition: 'all 0.15s ease',
-                  boxShadow: (!messageText.trim() && !attachmentUrl) ? 'none' : '0 4px 12px rgba(13, 75, 45, 0.25)'
-                }}
-                onMouseEnter={(e) => {
-                  if (messageText.trim() || attachmentUrl) {
-                    e.currentTarget.style.backgroundColor = '#083B24';
-                    e.currentTarget.style.transform = 'scale(1.04)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (messageText.trim() || attachmentUrl) {
-                    e.currentTarget.style.backgroundColor = '#0D4B2D';
-                    e.currentTarget.style.transform = 'scale(1)';
-                  }
-                }}
-              >
-                <Send size={17} style={{ marginLeft: '2px' }} />
-              </button>
-            </form>
+                  justifyContent: 'center'
+                }}>
+                  <Lock size={20} />
+                </div>
+                <h4 style={{ margin: 0, fontSize: '14.5px', fontWeight: 700, color: '#111827' }}>
+                  Connect to Message {currentDoctor?.name || 'Doctor'}
+                </h4>
+                <p style={{ margin: 0, fontSize: '12.5px', color: '#6B7280', maxWidth: '380px', lineHeight: 1.4 }}>
+                  To ensure clinical privacy and mutual professional consent, you can only message peers after connecting with them.
+                </p>
+                {onSendRequest && currentDoctor && (
+                  <button
+                    type="button"
+                    onClick={() => onSendRequest(currentDoctor)}
+                    style={{
+                      marginTop: '6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      backgroundColor: '#003822',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '9999px',
+                      padding: '8px 20px',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 6px rgba(0, 56, 34, 0.2)'
+                    }}
+                  >
+                    <UserPlus size={15} />
+                    <span>Connect with Doctor</span>
+                  </button>
+                )}
+              </div>
+            )}
           </>
         ) : (
           <div style={{
@@ -1069,7 +1170,7 @@ export function MessagesView({
                         width: '9px',
                         height: '9px',
                         borderRadius: '50%',
-                        backgroundColor: '#10B981',
+                        backgroundColor: person.active ? '#10B981' : '#9CA3AF',
                         border: '1.5px solid #FFFFFF'
                       }} />
                     </div>

@@ -408,20 +408,37 @@ export function VetNetworkView({
 
                 {/* Card Body */}
                 <div style={{ padding: '8px 16px 16px 16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                  <h3
-                    onClick={() => onSelectDoctor && onSelectDoctor(doc)}
-                    style={{
-                      margin: '0 0 2px 0',
-                      fontSize: '15px',
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '2px' }}>
+                    <h3
+                      onClick={() => onSelectDoctor && onSelectDoctor(doc)}
+                      style={{
+                        margin: 0,
+                        fontSize: '15px',
+                        fontWeight: 700,
+                        color: '#111827',
+                        cursor: 'pointer'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = '#059669'}
+                      onMouseLeave={(e) => e.currentTarget.style.color = '#111827'}
+                    >
+                      {doc.name}
+                    </h3>
+                    <span style={{
+                      fontSize: '10px',
                       fontWeight: 700,
-                      color: '#111827',
-                      cursor: 'pointer'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = '#059669'}
-                    onMouseLeave={(e) => e.currentTarget.style.color = '#111827'}
-                  >
-                    {doc.name}
-                  </h3>
+                      padding: '2px 6px',
+                      borderRadius: '9999px',
+                      backgroundColor: doc.active ? '#ECFDF5' : '#F3F4F6',
+                      color: doc.active ? '#065F46' : '#6B7280',
+                      border: doc.active ? '1px solid #A7F3D0' : '1px solid #E5E7EB',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '3px'
+                    }}>
+                      <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: doc.active ? '#10B981' : '#9CA3AF' }} />
+                      {doc.active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
 
                   <p style={{ margin: '0 0 4px 0', fontSize: '12.5px', color: '#003822', fontWeight: 600 }}>
                     {doc.specialty}

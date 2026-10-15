@@ -112,6 +112,7 @@ public class ChatService {
             try {
                 messagingTemplate.convertAndSend("/topic/messages/" + conversationId, saved);
                 messagingTemplate.convertAndSend("/topic/user/" + receiverId + "/messages", saved);
+                messagingTemplate.convertAndSend("/topic/user/" + senderId + "/messages", saved);
                 messagingTemplate.convertAndSend("/topic/user/" + receiverId + "/notifications", "NEW_MESSAGE");
             } catch (Exception ignored) {}
         }
