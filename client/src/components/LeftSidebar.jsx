@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import zenveLogo from '../assets/zenve_logo.png';
 import sidebarDoctorBg from '../assets/sidebar_vet_doctor.jpg';
+import { Avatar } from './Avatar';
 
 export function LeftSidebar({
   activeTab,
