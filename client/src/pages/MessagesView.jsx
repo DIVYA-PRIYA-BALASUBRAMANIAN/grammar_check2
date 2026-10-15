@@ -288,24 +288,6 @@ export function MessagesView({
               <span>Join as a Doctor</span>
             </button>
           </div>
-
-          {/* Demo Login Banner */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            padding: '10px 18px',
-            backgroundColor: '#EDF8F2',
-            border: '1px solid #A4DFBE',
-            borderRadius: '14px',
-            maxWidth: '540px'
-          }}>
-            <Sparkles size={16} color="#0B7A48" style={{ flexShrink: 0 }} />
-            <p style={{ margin: 0, fontSize: '12px', color: '#0B6B3F', textAlign: 'left', lineHeight: 1.45 }}>
-              <strong>Quick Demo:</strong> Use 1-click Demo Accounts (Dr. Arjun Mehta or Dr. Ananya Sharma) on the Sign In page to test real-time peer messaging.
-            </p>
-          </div>
-
         </div>
       </div>
     );

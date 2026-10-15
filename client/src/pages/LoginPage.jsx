@@ -384,15 +384,6 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
               </button>
             </form>
 
-            {/* OR Divider - Only in Sign In */}
-            {!isRegister && (
-              <div className="auth-card-or-divider">
-                <span className="or-line" />
-                <span className="or-text">OR</span>
-                <span className="or-line" />
-              </div>
-            )}
-
             {/* Regulatory Compliance Footer */}
             <div className={`auth-regulatory-box ${isRegister ? 'is-register-mode' : ''}`}>
               <Shield size={15} className="regulatory-icon" />

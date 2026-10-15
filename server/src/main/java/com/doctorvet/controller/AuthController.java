@@ -60,22 +60,7 @@ public class AuthController {
                         || search.contains(d.getName().toLowerCase()))
                 .findFirst();
 
-        // 2. Demo account mapping fallbacks if not matched
-        DoctorProfile profile = docOpt.orElseGet(() -> {
-            if (search.contains("arjun")) {
-                return doctorRepo.findAll().stream()
-                        .filter(d -> d.getName().toLowerCase().contains("arjun"))
-                        .findFirst()
-                        .orElse(null);
-            }
-            if (search.contains("ananya")) {
-                return doctorRepo.findAll().stream()
-                        .filter(d -> d.getName().toLowerCase().contains("ananya"))
-                        .findFirst()
-                        .orElse(null);
-            }
-            return null;
-        });
+        DoctorProfile profile = docOpt.orElse(null);
 
         // 3. If still not found, create new doctor profile
         if (profile == null) {

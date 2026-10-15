@@ -34,6 +34,11 @@ export function App() {
   // Authentication State: strictly initialized from stored session or null
   const [currentUser, setCurrentUser] = useState(() => {
     try {
+      const token = localStorage.getItem('doctor_vet_token');
+      if (!token) {
+        localStorage.removeItem('doctor_vet_user');
+        return null;
+      }
       const saved = localStorage.getItem('doctor_vet_user');
       if (!saved) return null;
       const parsed = JSON.parse(saved);
@@ -78,6 +83,11 @@ export function App() {
   useEffect(() => {
     async function validateSession() {
       const token = localStorage.getItem('doctor_vet_token');
+      if (currentUser && !token) {
+        console.warn('Doctor session user exists without token. Logging out.');
+        handleLogout();
+        return;
+      }
       if (currentUser && token) {
         try {
           const profile = await api.auth.getMe();
@@ -116,10 +126,22 @@ export function App() {
           if (currentUser?.id) {
             const fresh = docs.find(d => d.id === currentUser.id || String(d.id).replace('doc-', '') === String(currentUser.id).replace('doc-', ''));
             if (fresh) {
-              setCurrentUser(fresh);
-              try {
-                localStorage.setItem('doctor_vet_user', JSON.stringify(fresh));
-              } catch (err) { }
+              setCurrentUser(prev => {
+                if (!prev) return fresh;
+                const hasChanged = fresh.name !== prev.name ||
+                  fresh.avatar !== prev.avatar ||
+                  fresh.specialty !== prev.specialty ||
+                  fresh.verified !== prev.verified ||
+                  fresh.headline !== prev.headline;
+                if (hasChanged) {
+                  const merged = { ...prev, ...fresh };
+                  try {
+                    localStorage.setItem('doctor_vet_user', JSON.stringify(merged));
+                  } catch (err) { }
+                  return merged;
+                }
+                return prev;
+              });
             }
           }
         }
@@ -193,8 +215,9 @@ export function App() {
         console.log('Using local short videos');
       }
 
-      // Private Endpoints: ONLY requested when user is authenticated
-      if (currentUser?.id) {
+      // Private Endpoints: ONLY requested when user is authenticated AND token exists
+      const token = localStorage.getItem('doctor_vet_token');
+      if (currentUser?.id && token) {
         const rawId = currentUser.id;
         const docId = typeof rawId === 'string' && rawId.startsWith('doc-')
           ? parseInt(rawId.replace('doc-', ''), 10)
@@ -288,7 +311,7 @@ export function App() {
     }
 
     loadBackendData();
-  }, [currentUser]);
+  }, [currentUser?.id]);
 
   // STOMP WebSocket for real-time notifications & 2-way messages
   useEffect(() => {
@@ -1087,7 +1110,7 @@ export function App() {
         ) : (
           <div className="workspace-two-column-layout">
             {/* Main Feed Column */}
-            <main className="feed-main-column">
+            <main className={`feed-main-column ${activeTab === 'advertise' ? 'full-width-column' : ''}`}>
               {activeTab === 'feed' && (
                 <FeedView
                   posts={posts}
@@ -1170,14 +1193,16 @@ export function App() {
               )}
             </main>
 
-            {/* Right Rail Widgets (People to Know & Network Advantage) */}
-            <RightSidebar
-              doctors={doctors}
-              onSelectDoctor={handleOpenDoctorProfile}
-              onViewAllDoctors={() => setActiveTab('network')}
-              onSendRequest={handleSendRequest}
-              connectedDoctors={Object.keys(connectedMap).map(k => ({ id: isNaN(k) ? k : Number(k) }))}
-            />
+            {/* Right Rail Widgets (People to Know & Network Advantage) - Hidden on full-width Advertise Dashboard */}
+            {activeTab !== 'advertise' && (
+              <RightSidebar
+                doctors={doctors}
+                onSelectDoctor={handleOpenDoctorProfile}
+                onViewAllDoctors={() => setActiveTab('network')}
+                onSendRequest={handleSendRequest}
+                connectedDoctors={Object.keys(connectedMap).map(k => ({ id: isNaN(k) ? k : Number(k) }))}
+              />
+            )}
           </div>
         )}
       </div>

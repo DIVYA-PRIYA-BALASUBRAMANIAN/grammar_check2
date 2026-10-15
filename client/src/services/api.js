@@ -2,12 +2,31 @@
 
 const BASE_URL = 'http://localhost:8080/api/v1';
 
+let lastAuthUnauthorizedTime = 0;
+
 async function fetchJson(endpoint, options = {}) {
-  const token = localStorage.getItem('doctor_vet_token');
+  const isAdvertiser = options.isAdvertiser || endpoint.startsWith('/advertisers') || endpoint.startsWith('/campaigns');
+
+  let authHeader = null;
+  if (isAdvertiser) {
+    if (options.headers?.Authorization) {
+      authHeader = options.headers.Authorization;
+    } else {
+      const advToken = localStorage.getItem('zenve_advertiser_token');
+      if (advToken) authHeader = `Bearer ${advToken}`;
+    }
+  } else {
+    if (options.headers?.Authorization) {
+      authHeader = options.headers.Authorization;
+    } else {
+      const docToken = localStorage.getItem('doctor_vet_token');
+      if (docToken) authHeader = `Bearer ${docToken}`;
+    }
+  }
 
   const headers = {
     'Content-Type': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...(authHeader ? { 'Authorization': authHeader } : {}),
     ...(options.headers || {})
   };
 
@@ -18,11 +37,26 @@ async function fetchJson(endpoint, options = {}) {
     });
 
     if (res.status === 401) {
-      console.warn(`Unauthorized request on ${endpoint}. Clearing session.`);
-      localStorage.removeItem('doctor_vet_user');
-      localStorage.removeItem('doctor_vet_token');
-      window.dispatchEvent(new CustomEvent('auth:unauthorized', { detail: { endpoint } }));
-      throw new Error('Unauthorized: Session expired or invalid credentials');
+      if (isAdvertiser) {
+        console.warn(`Unauthorized advertiser request on ${endpoint}. Clearing advertiser credentials.`);
+        localStorage.removeItem('zenve_advertiser_token');
+        localStorage.removeItem('zenve_advertiser_account');
+        window.dispatchEvent(new CustomEvent('advertiser:unauthorized', { detail: { endpoint } }));
+        throw new Error('Unauthorized: Advertiser session expired or invalid credentials');
+      } else {
+        const isAuthPublic = endpoint.startsWith('/auth/login') || endpoint.startsWith('/auth/register');
+        if (!isAuthPublic) {
+          const now = Date.now();
+          if (now - lastAuthUnauthorizedTime > 1500) {
+            lastAuthUnauthorizedTime = now;
+            console.warn(`Unauthorized request on ${endpoint}. Clearing doctor session.`);
+            localStorage.removeItem('doctor_vet_user');
+            localStorage.removeItem('doctor_vet_token');
+            window.dispatchEvent(new CustomEvent('auth:unauthorized', { detail: { endpoint } }));
+          }
+        }
+        throw new Error('Unauthorized: Session expired or invalid credentials');
+      }
     }
 
     if (!res.ok) {
@@ -44,6 +78,7 @@ async function fetchJson(endpoint, options = {}) {
     throw err;
   }
 }
+
 
 export const api = {
   // Auth
@@ -231,5 +266,110 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(caseData)
     })
+  },
+
+  // Media File Upload
+  media: {
+    upload: async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`${BASE_URL}/media/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      if (!res.ok) {
+        throw new Error('Image upload failed');
+      }
+      return await res.json();
+    }
+  },
+
+  // Advertiser Account & Campaign Management
+  advertisers: {
+    register: (data) => fetchJson('/advertisers/register', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+    login: (email, password) => fetchJson('/advertisers/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password })
+    }),
+    loginWithKey: (accessKey) => fetchJson('/advertisers/login-with-key', {
+      method: 'POST',
+      body: JSON.stringify({ accessKey })
+    }),
+    getMe: (token, accessKey) => {
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (accessKey) headers['X-Advertiser-Key'] = accessKey;
+      return fetchJson('/advertisers/me', { headers });
+    },
+    regenerateKey: (token) => fetchJson('/advertisers/regenerate-key', {
+      method: 'POST',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    }),
+    forgotPassword: (email) => fetchJson('/advertisers/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    })
+  },
+
+  campaigns: {
+    getAll: (token, accessKey) => {
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (accessKey) headers['X-Advertiser-Key'] = accessKey;
+      return fetchJson('/campaigns', { headers });
+    },
+    getById: (id) => fetchJson(`/campaigns/${id}`),
+    create: (data, token, accessKey) => {
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (accessKey) headers['X-Advertiser-Key'] = accessKey;
+      return fetchJson('/campaigns', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers
+      });
+    },
+    update: (id, data, token, accessKey) => {
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (accessKey) headers['X-Advertiser-Key'] = accessKey;
+      return fetchJson(`/campaigns/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+        headers
+      });
+    },
+    delete: (id, token, accessKey) => {
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (accessKey) headers['X-Advertiser-Key'] = accessKey;
+      return fetchJson(`/campaigns/${id}`, {
+        method: 'DELETE',
+        headers
+      });
+    },
+    updateStatus: (id, status) => fetchJson(`/campaigns/${id}/status`, {
+      method: 'POST',
+      body: JSON.stringify({ status })
+    }),
+    recordEvent: (id, eventType, sessionId) => fetchJson(`/campaigns/${id}/events`, {
+      method: 'POST',
+      body: JSON.stringify({ eventType, sessionId })
+    }),
+    getReports: (params = {}, token, accessKey) => {
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (accessKey) headers['X-Advertiser-Key'] = accessKey;
+      const qs = new URLSearchParams(params).toString();
+      return fetchJson(`/campaigns/reports${qs ? '?' + qs : ''}`, { headers });
+    },
+    getCsvUrl: (from, to, token, accessKey) => {
+      let url = `${BASE_URL}/campaigns/reports/csv?from=${from || ''}&to=${to || ''}`;
+      return url;
+    },
+    getPublicLive: (placement) => fetchJson(`/campaigns/public/live${placement ? '?placement=' + encodeURIComponent(placement) : ''}`)
   }
 };
