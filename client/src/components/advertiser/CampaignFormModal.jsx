@@ -6,15 +6,23 @@ import {
   AlertCircle,
   ArrowRight,
   Calendar,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Video
 } from 'lucide-react';
 import { api } from '../../services/api';
+
+const isVideoMedia = (url) => {
+  if (!url) return false;
+  const clean = url.split('?')[0].toLowerCase();
+  return clean.endsWith('.mp4') || clean.endsWith('.webm') || clean.endsWith('.mov') || clean.endsWith('.ogg') || clean.endsWith('.mkv');
+};
 
 export function CampaignFormModal({ isOpen, onClose, onCampaignCreated, token, accessKey }) {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [posterUploading, setPosterUploading] = useState(false);
 
+  const [durationPreset, setDurationPreset] = useState('14 Days');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -24,11 +32,52 @@ export function CampaignFormModal({ isOpen, onClose, onCampaignCreated, token, a
     targetAudience: 'All Veterinarians',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    endDateTime: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
     dailyBudget: '2500',
     posterUrl: ''
   });
 
   if (!isOpen) return null;
+
+  const handleDurationPresetChange = (preset) => {
+    setDurationPreset(preset);
+    const now = Date.now();
+    let newEndDateTime = null;
+    let daysToAdd = 14;
+
+    if (preset === '1 Minute') {
+      newEndDateTime = new Date(now + 60 * 1000).toISOString();
+      daysToAdd = 0;
+    } else if (preset === '5 Minutes') {
+      newEndDateTime = new Date(now + 5 * 60 * 1000).toISOString();
+      daysToAdd = 0;
+    } else if (preset === '1 Hour') {
+      newEndDateTime = new Date(now + 60 * 60 * 1000).toISOString();
+      daysToAdd = 0;
+    } else if (preset === '1 Day') {
+      newEndDateTime = new Date(now + 24 * 60 * 60 * 1000).toISOString();
+      daysToAdd = 1;
+    } else if (preset === '3 Days') {
+      newEndDateTime = new Date(now + 3 * 24 * 60 * 60 * 1000).toISOString();
+      daysToAdd = 3;
+    } else if (preset === '7 Days') {
+      newEndDateTime = new Date(now + 7 * 24 * 60 * 60 * 1000).toISOString();
+      daysToAdd = 7;
+    } else if (preset === '14 Days') {
+      newEndDateTime = new Date(now + 14 * 24 * 60 * 60 * 1000).toISOString();
+      daysToAdd = 14;
+    } else if (preset === '30 Days') {
+      newEndDateTime = new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString();
+      daysToAdd = 30;
+    }
+
+    const calculatedEndDate = new Date(now + daysToAdd * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    setFormData(prev => ({
+      ...prev,
+      endDate: calculatedEndDate,
+      endDateTime: newEndDateTime
+    }));
+  };
 
   const handleImageFileChange = async (e) => {
     const file = e.target.files?.[0];
@@ -72,9 +121,10 @@ export function CampaignFormModal({ isOpen, onClose, onCampaignCreated, token, a
         targetAudience: formData.targetAudience,
         startDate: formData.startDate,
         endDate: formData.endDate,
+        endDateTime: formData.endDateTime,
         dailyBudget: Number(formData.dailyBudget || 2500),
         posterUrl: formData.posterUrl,
-        status: 'Live' // Submitted & active for immediate testing, or 'Pending Review'
+        status: 'Live'
       }, token, accessKey);
 
       onCampaignCreated(res);
@@ -85,6 +135,7 @@ export function CampaignFormModal({ isOpen, onClose, onCampaignCreated, token, a
       setLoading(false);
     }
   };
+
 
   return (
     <div className="advertiser-modal-backdrop" onClick={onClose}>
@@ -222,6 +273,30 @@ export function CampaignFormModal({ isOpen, onClose, onCampaignCreated, token, a
             </div>
           </div>
 
+          <div>
+            <label className="advertiser-form-label">
+              Campaign Live Duration & Auto-Expire *
+            </label>
+            <select
+              className="advertiser-form-input"
+              value={durationPreset}
+              onChange={(e) => handleDurationPresetChange(e.target.value)}
+            >
+              <option value="1 Minute">1 Minute (Quick Live Feed Auto-Expire Test)</option>
+              <option value="5 Minutes">5 Minutes (Quick Live Feed Test)</option>
+              <option value="1 Hour">1 Hour</option>
+              <option value="1 Day">1 Day</option>
+              <option value="3 Days">3 Days</option>
+              <option value="7 Days">7 Days</option>
+              <option value="14 Days">14 Days (Standard)</option>
+              <option value="30 Days">30 Days</option>
+              <option value="Custom">Custom Date</option>
+            </select>
+            <span style={{ fontSize: '11px', color: '#059669', display: 'block', marginTop: '3px' }}>
+              ℹ When time ends, the ad automatically deletes from the Live Feed, but stays in your Advertiser Dashboard History!
+            </span>
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
               <label className="advertiser-form-label">Start Date *</label>
@@ -246,9 +321,11 @@ export function CampaignFormModal({ isOpen, onClose, onCampaignCreated, token, a
             </div>
           </div>
 
-          {/* Advertisement Poster Image Upload */}
+          {/* Advertisement Creative (Image or Video) Upload */}
           <div>
-            <label className="advertiser-form-label">Advertisement Poster / Image</label>
+            <label className="advertiser-form-label">
+              Advertisement Creative (Image or Video)
+            </label>
             <div style={{
               border: '2px dashed #cbd5e1',
               borderRadius: '12px',
@@ -258,18 +335,93 @@ export function CampaignFormModal({ isOpen, onClose, onCampaignCreated, token, a
               cursor: 'pointer'
             }}>
               <label style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-                <UploadCloud size={24} color="#003822" />
-                <span style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>
-                  {posterUploading ? 'Uploading poster...' : (formData.posterUrl ? 'Replace Poster Image' : 'Choose Poster Image (PNG, JPG, WebP)')}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <ImageIcon size={22} color="#003822" />
+                  <Video size={22} color="#003822" />
+                </div>
+                <span style={{ fontSize: '13.5px', fontWeight: '700', color: '#111827' }}>
+                  {posterUploading ? 'Uploading creative...' : (formData.posterUrl ? 'Replace Creative File' : 'Choose Image or Video (PNG, JPG, MP4, WebM)')}
                 </span>
-                <span style={{ fontSize: '11.5px', color: '#6b7280' }}>Recommended size: 1200 × 630 or 1080 × 1080</span>
-                <input type="file" accept="image/*" onChange={handleImageFileChange} style={{ display: 'none' }} />
+                <span style={{ fontSize: '11.5px', color: '#6b7280' }}>
+                  Supports High-Res Images & Clinical Videos up to 100MB
+                </span>
+                <input
+                  type="file"
+                  accept="image/*,video/*"
+                  onChange={handleImageFileChange}
+                  style={{ display: 'none' }}
+                />
               </label>
 
               {formData.posterUrl && (
-                <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#047857', fontSize: '12px', fontWeight: '600' }}>
-                  <CheckCircle2 size={15} />
-                  <span>Poster successfully uploaded</span>
+                <div style={{ marginTop: '12px' }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    color: '#047857',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    marginBottom: '8px'
+                  }}>
+                    <CheckCircle2 size={15} />
+                    <span>Creative successfully attached ({isVideoMedia(formData.posterUrl) ? 'Video' : 'Image'})</span>
+                  </div>
+
+                  {/* Visual Creative Preview */}
+                  <div style={{
+                    position: 'relative',
+                    borderRadius: '10px',
+                    overflow: 'hidden',
+                    maxHeight: '220px',
+                    background: '#090d16',
+                    border: '1px solid #e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    {isVideoMedia(formData.posterUrl) ? (
+                      <video
+                        src={formData.posterUrl}
+                        controls
+                        muted
+                        style={{ width: '100%', maxHeight: '220px', objectFit: 'contain' }}
+                      />
+                    ) : (
+                      <img
+                        src={formData.posterUrl}
+                        alt="Creative preview"
+                        style={{ width: '100%', maxHeight: '220px', objectFit: 'cover' }}
+                      />
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFormData(prev => ({ ...prev, posterUrl: '' }));
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: '8px',
+                        right: '8px',
+                        background: 'rgba(0,0,0,0.7)',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '24px',
+                        height: '24px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer'
+                      }}
+                      title="Remove creative"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

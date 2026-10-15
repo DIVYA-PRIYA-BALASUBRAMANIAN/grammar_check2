@@ -2,8 +2,10 @@ package com.doctorvet.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Entity
 @Table(name = "campaigns", indexes = {
@@ -46,6 +48,8 @@ public class Campaign {
     private LocalDate startDate = LocalDate.now();
 
     private LocalDate endDate = LocalDate.now().plusDays(14);
+
+    private Instant endDateTime;
 
     private Double dailyBudget = 2500.0;
 
@@ -182,6 +186,27 @@ public class Campaign {
 
     public void setEndDate(LocalDate endDate) {
         this.endDate = endDate;
+    }
+
+    public Instant getEndDateTime() {
+        return endDateTime;
+    }
+
+    public void setEndDateTime(Instant endDateTime) {
+        this.endDateTime = endDateTime;
+    }
+
+    @Transient
+    public boolean isExpired() {
+        Instant now = Instant.now();
+        if (endDateTime != null) {
+            return now.isAfter(endDateTime);
+        }
+        if (endDate != null) {
+            Instant endInstant = endDate.atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant();
+            return now.isAfter(endInstant);
+        }
+        return false;
     }
 
     public Double getDailyBudget() {

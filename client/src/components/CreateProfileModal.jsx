@@ -19,13 +19,11 @@ import {
   Check, 
   ChevronDown, 
   Send,
-  Heart,
   Camera,
   UploadCloud,
   Phone,
   Mail
 } from 'lucide-react';
-import modalPetsImg from '../assets/modal_pets_header.jpg';
 import { SPECIALTIES, STATES_INDIA } from '../data/mockData';
 import { api } from '../services/api';
 import { Avatar } from './Avatar';
@@ -264,28 +262,6 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentU
                 {currentUser ? 'Update your clinical credentials, contact info, and practice details' : 'Join the Zenve Vet verified veterinary registry'}
               </p>
             </div>
-          </div>
-
-          {/* Right Pets Banner Illustration with Floating Badges */}
-          <div className="create-profile-pets-banner">
-            <div className="pets-banner-backdrop" />
-            
-            {/* Floating Badge 1: Stethoscope/Heart in Blue */}
-            <div className="floating-badge badge-heart" title="Compassionate Veterinary Care">
-              <Heart size={13} fill="#ffffff" color="#ffffff" />
-            </div>
-
-            {/* Floating Badge 2: Paw in Mint */}
-            <div className="floating-badge badge-paw" title="Pet Health & Medicine">
-              <PawPrint size={13} fill="#ffffff" color="#ffffff" />
-            </div>
-
-            {/* Dog & Cat Duo Image */}
-            <img 
-              src={modalPetsImg} 
-              alt="Golden retriever and tabby cat" 
-              className="create-profile-pets-img" 
-            />
           </div>
         </div>
 

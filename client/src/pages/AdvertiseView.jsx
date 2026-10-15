@@ -23,7 +23,7 @@ import { AnalyticsChart } from '../components/advertiser/AnalyticsChart';
 import { CampaignPerformanceTable } from '../components/advertiser/CampaignPerformanceTable';
 import { AdvertiseHeroBanner } from '../components/advertiser/AdvertiseHeroBanner';
 
-export function AdvertiseView() {
+export function AdvertiseView({ onCampaignsUpdated }) {
   // 1. Authentication State
   const [token, setToken] = useState(() => localStorage.getItem('zenve_advertiser_token') || '');
   const [account, setAccount] = useState(() => {
@@ -215,8 +215,9 @@ export function AdvertiseView() {
   // Handle Campaign Created
   const handleCampaignCreated = (newCamp) => {
     setCampaigns(prev => [newCamp, ...prev]);
-    showToast('Campaign successfully submitted and published live!');
+    showToast('Campaign successfully submitted and published live on Home Feed!');
     fetchCampaigns();
+    if (onCampaignsUpdated) onCampaignsUpdated();
   };
 
   // Handle Preset Selection
@@ -256,6 +257,7 @@ export function AdvertiseView() {
   // Computed Metrics
   const totalCampaigns = campaigns.length;
   const liveCampaigns = campaigns.filter(c => c.status === 'Live').length;
+  const completedCampaigns = campaigns.filter(c => c.status === 'Completed').length;
   const totalViews = campaigns.reduce((acc, c) => acc + (c.views || 0), 0);
   const totalClicks = campaigns.reduce((acc, c) => acc + (c.clicks || 0), 0);
 
@@ -410,23 +412,23 @@ export function AdvertiseView() {
           {/* 4 Metric Stat Cards */}
           <div className="advertiser-metric-grid-4">
             <div className="advertiser-stat-card">
-              <div className="advertiser-stat-label">CAMPAIGNS</div>
+              <div className="advertiser-stat-label">TOTAL CAMPAIGNS</div>
               <div className="advertiser-stat-value">{totalCampaigns}</div>
             </div>
 
             <div className="advertiser-stat-card">
-              <div className="advertiser-stat-label">LIVE</div>
-              <div className="advertiser-stat-value">{liveCampaigns}</div>
+              <div className="advertiser-stat-label" style={{ color: '#047857' }}>ACTIVE ON LIVE FEED</div>
+              <div className="advertiser-stat-value" style={{ color: '#047857' }}>{liveCampaigns}</div>
+            </div>
+
+            <div className="advertiser-stat-card">
+              <div className="advertiser-stat-label" style={{ color: '#475569' }}>CAMPAIGN HISTORY</div>
+              <div className="advertiser-stat-value" style={{ color: '#475569' }}>{completedCampaigns}</div>
             </div>
 
             <div className="advertiser-stat-card">
               <div className="advertiser-stat-label">ALL-TIME VIEWS</div>
               <div className="advertiser-stat-value">{totalViews.toLocaleString()}</div>
-            </div>
-
-            <div className="advertiser-stat-card">
-              <div className="advertiser-stat-label">ALL-TIME CLICKS</div>
-              <div className="advertiser-stat-value">{totalClicks.toLocaleString()}</div>
             </div>
           </div>
 

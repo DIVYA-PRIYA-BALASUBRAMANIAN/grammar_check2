@@ -22,7 +22,7 @@ import {
   Phone
 } from 'lucide-react';
 import zenveLogo from '../assets/zenve_logo.png';
-import loginBgVet from '../assets/login_bg_vet.png';
+import loginBgVet from '../assets/login_bg_vet.jpg';
 import { SPECIALTIES, STATES_INDIA } from '../data/mockData';
 import { api } from '../services/api';
 
@@ -136,13 +136,13 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
 
           {/* Primary Headline */}
           <h1 className="portal-hero-title">
-            A World of Care.<br />
-            <span className="hero-gradient-text">Connected.</span>
+            A World of Care<br />
+            <span className="hero-gradient-text">Connected</span>
           </h1>
 
           {/* Subtitle */}
           <p className="portal-hero-subtitle">
-            Join 10,000+ veterinary surgeons, physicians, and specialists across 28 states.
+
           </p>
         </section>
 
@@ -323,7 +323,7 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
                 <>
                   {/* Email / Phone / Doctor Name */}
                   <div className="auth-field-group">
-                    <label className="auth-field-label">Email ID, Phone Number, or Doctor Name *</label>
+                    <label className="auth-field-label">Email ID, Phone Number</label>
                     <div className="auth-input-container">
                       <User size={16} className="auth-input-lead-icon" />
                       <input

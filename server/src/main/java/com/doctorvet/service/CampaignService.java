@@ -7,7 +7,12 @@ import com.doctorvet.repository.CampaignRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -33,6 +38,7 @@ public class CampaignService {
             String targetAudience,
             LocalDate startDate,
             LocalDate endDate,
+            String endDateTime,
             Double dailyBudget,
             String status
     ) {}
@@ -60,6 +66,29 @@ public class CampaignService {
             List<DailyMetric> chartData,
             List<CampaignPerformanceItem> campaigns
     ) {}
+
+    private Instant parseEndDateTime(String raw, LocalDate endDate) {
+        if (raw != null && !raw.isBlank()) {
+            raw = raw.trim();
+            try {
+                return Instant.parse(raw);
+            } catch (DateTimeParseException e1) {
+                try {
+                    return LocalDateTime.parse(raw).atZone(ZoneId.systemDefault()).toInstant();
+                } catch (Exception e2) {
+                    try {
+                        return OffsetDateTime.parse(raw).toInstant();
+                    } catch (Exception e3) {
+                        // ignore and fall back
+                    }
+                }
+            }
+        }
+        if (endDate != null) {
+            return endDate.atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant();
+        }
+        return null;
+    }
 
     @Transactional
     public Campaign createCampaign(Long advertiserId, CampaignDto dto) {
@@ -89,12 +118,21 @@ public class CampaignService {
                 dto.dailyBudget() != null ? dto.dailyBudget() : 2500.0,
                 dto.status() != null ? dto.status() : "Live"
         );
+        campaign.setEndDateTime(parseEndDateTime(dto.endDateTime(), dto.endDate()));
 
         return campaignRepo.save(campaign);
     }
 
+    @Transactional
     public List<Campaign> getAdvertiserCampaigns(Long advertiserId) {
-        return campaignRepo.findByAdvertiserIdOrderByCreatedAtDesc(advertiserId);
+        List<Campaign> campaigns = campaignRepo.findByAdvertiserIdOrderByCreatedAtDesc(advertiserId);
+        for (Campaign c : campaigns) {
+            if ("Live".equalsIgnoreCase(c.getStatus()) && c.isExpired()) {
+                c.setStatus("Completed");
+                campaignRepo.save(c);
+            }
+        }
+        return campaigns;
     }
 
     public Optional<Campaign> getById(Long id) {
@@ -123,6 +161,9 @@ public class CampaignService {
         if (dto.targetAudience() != null) campaign.setTargetAudience(dto.targetAudience());
         if (dto.startDate() != null) campaign.setStartDate(dto.startDate());
         if (dto.endDate() != null) campaign.setEndDate(dto.endDate());
+        if (dto.endDateTime() != null) {
+            campaign.setEndDateTime(parseEndDateTime(dto.endDateTime(), campaign.getEndDate()));
+        }
         if (dto.dailyBudget() != null) campaign.setDailyBudget(dto.dailyBudget());
         if (dto.status() != null) campaign.setStatus(dto.status());
 
@@ -274,14 +315,25 @@ public class CampaignService {
         return sb.toString();
     }
 
+    @Transactional
     public List<Campaign> getPublicLiveCampaigns(String placement) {
         List<Campaign> live = campaignRepo.findByStatusIgnoreCase("Live");
-        if (placement == null || placement.isBlank()) {
-            return live;
+        List<Campaign> activeLive = new ArrayList<>();
+
+        for (Campaign c : live) {
+            if (c.isExpired()) {
+                // Auto-expire from live feed, but retain in database as Completed for advertiser history!
+                c.setStatus("Completed");
+                campaignRepo.save(c);
+            } else {
+                if (placement == null || placement.isBlank()
+                        || c.getPlacement().toLowerCase().contains(placement.toLowerCase())
+                        || placement.toLowerCase().contains(c.getPlacement().toLowerCase())) {
+                    activeLive.add(c);
+                }
+            }
         }
-        return live.stream()
-                .filter(c -> c.getPlacement().toLowerCase().contains(placement.toLowerCase())
-                        || placement.toLowerCase().contains(c.getPlacement().toLowerCase()))
-                .toList();
+
+        return activeLive;
     }
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowRight,
   Plus,
@@ -17,17 +17,34 @@ import {
   Send,
   Trash2,
   Flag,
-  MoreHorizontal
+  MoreHorizontal,
+  Megaphone,
+  ExternalLink,
+  Clock
 } from 'lucide-react';
 import heroVetImg from '../assets/hero_vet_dog.jpg';
 import { SPECIALTIES, STATES_INDIA } from '../data/mockData';
 import { api } from '../services/api';
 import { Avatar } from '../components/Avatar';
 
+const isVideoMedia = (url) => {
+  if (!url) return false;
+  const clean = url.split('?')[0].toLowerCase();
+  return clean.endsWith('.mp4') || clean.endsWith('.webm') || clean.endsWith('.mov') || clean.endsWith('.ogg') || clean.endsWith('.mkv');
+};
+
+const resolveMediaUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('/uploads/')) return `http://localhost:8080${url}`;
+  return url;
+};
+
 export function FeedView({
   posts = [],
   stories = [],
   doctors = [],
+  liveCampaigns = [],
+  onExpireCampaign,
   onOpenStory,
   onOpenCreatePost,
   onOpenAiAssistant,
@@ -49,6 +66,65 @@ export function FeedView({
   const [commentInputs, setCommentInputs] = useState({});
   const [activeMenuPostId, setActiveMenuPostId] = useState(null);
   const [fetchedCommentsMap, setFetchedCommentsMap] = useState({});
+  const loggedViewsRef = useRef({});
+  const [, setTimerTick] = useState(0);
+
+  // Auto-record views for active live campaigns in feed
+  useEffect(() => {
+    if (!liveCampaigns || liveCampaigns.length === 0) return;
+    liveCampaigns.forEach(c => {
+      if (!loggedViewsRef.current[c.id]) {
+        loggedViewsRef.current[c.id] = true;
+        api.campaigns.recordEvent(c.id, 'VIEW').catch(() => { });
+      }
+    });
+  }, [liveCampaigns]);
+
+  // Live Auto-Expire check:
+  // When endDateTime or endDate has passed, immediately delete/remove from live feed!
+  useEffect(() => {
+    if (!liveCampaigns || liveCampaigns.length === 0) return;
+
+    const checkExpiration = () => {
+      const now = new Date();
+      liveCampaigns.forEach(c => {
+        let isEnded = false;
+        if (c.endDateTime) {
+          isEnded = now.getTime() >= new Date(c.endDateTime).getTime();
+        } else if (c.endDate) {
+          isEnded = now.getTime() >= new Date(`${c.endDate}T23:59:59`).getTime();
+        }
+
+        if (isEnded) {
+          if (onExpireCampaign) {
+            onExpireCampaign(c.id);
+          }
+        }
+      });
+    };
+
+    checkExpiration();
+    const interval = setInterval(() => {
+      checkExpiration();
+      setTimerTick(t => t + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [liveCampaigns, onExpireCampaign]);
+
+  const getRemainingTime = (camp) => {
+    if (!camp.endDateTime && !camp.endDate) return 'Live';
+    const target = camp.endDateTime ? new Date(camp.endDateTime) : new Date(`${camp.endDate}T23:59:59`);
+    const diff = target.getTime() - Date.now();
+    if (diff <= 0) return 'Ending now';
+    const totalSecs = Math.floor(diff / 1000);
+    if (totalSecs < 60) return `${Math.max(1, totalSecs)}s left`;
+    const mins = Math.floor(totalSecs / 60);
+    if (mins < 60) return `${mins}m left`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h left`;
+    const days = Math.floor(hours / 24);
+    return `${days}d left`;
+  };
 
   const toggleComments = async (postId) => {
     const willOpen = !openComments[postId];
@@ -102,8 +178,8 @@ export function FeedView({
           <div className="hero-text-content">
             <span className="hero-tag-kicker">The Zenve Vet Community</span>
             <h1 className="hero-headline">
-              A world of care.<br />
-              <span className="hero-headline-highlight">Connected.</span>
+              A world of care<br />
+              <span className="hero-headline-highlight">Connected</span>
             </h1>
             <p className="hero-subtext">
               Meet your peers. Share your clinical cases. Move veterinary practice forward.
@@ -296,6 +372,194 @@ export function FeedView({
 
       {/* 5. Feed Posts Stream */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+        {/* Live Sponsored Campaigns from Zenve Ecosystem Partners */}
+        {liveCampaigns && liveCampaigns.length > 0 && liveCampaigns.map((camp) => (
+          <article
+            key={`live-campaign-${camp.id}`}
+            className="feed-post-card"
+            style={{
+              border: '1.5px solid rgba(16, 185, 129, 0.45)',
+              position: 'relative',
+              overflow: 'hidden',
+              background: 'linear-gradient(180deg, rgba(240, 253, 244, 0.5) 0%, rgba(255, 255, 255, 0.95) 100%)'
+            }}
+          >
+            {/* Top decorative accent bar */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '4px',
+              background: 'linear-gradient(90deg, #059669 0%, #10b981 50%, #34d399 100%)'
+            }} />
+
+            {/* Sponsored Header */}
+            <div className="post-card-header" style={{ marginBottom: '12px', paddingTop: '4px' }}>
+              <div className="post-author-block">
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #003822 0%, #064e3b 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#ffffff',
+                  boxShadow: '0 2px 8px rgba(0, 56, 34, 0.15)'
+                }}>
+                  <Megaphone size={20} color="#a7f3d0" />
+                </div>
+                <div>
+                  <div className="post-author-name-row" style={{ alignItems: 'center', gap: '6px' }}>
+                    <h3 className="post-author-name" style={{ fontSize: '15px', color: '#064e3b' }}>
+                      Zenve Clinical Partner
+                    </h3>
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '2px 8px',
+                      borderRadius: '10px',
+                      background: '#dcfce7',
+                      border: '1px solid #bbf7d0',
+                      color: '#047857',
+                      fontSize: '11px',
+                      fontWeight: '800',
+                      letterSpacing: '0.4px',
+                      textTransform: 'uppercase'
+                    }}>
+                      <Sparkles size={11} color="#059669" />
+                      Sponsored
+                    </span>
+                  </div>
+                  <span className="post-author-meta" style={{ color: '#059669', fontWeight: '600' }}>
+                    {camp.campaignType || 'Veterinary Clinical Partner'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Expiration live badge */}
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                background: '#ecfdf5',
+                border: '1px solid #a7f3d0',
+                padding: '4px 10px',
+                borderRadius: '12px',
+                fontSize: '11.5px',
+                fontWeight: '700',
+                color: '#065f46'
+              }}>
+                <Clock size={12} color="#059669" />
+                <span>{getRemainingTime(camp)}</span>
+              </div>
+            </div>
+
+            {/* Campaign Content */}
+            <div style={{ marginBottom: '14px' }}>
+              <h2 style={{ fontSize: '17px', fontWeight: '800', color: '#111827', marginBottom: '8px', lineHeight: 1.35 }}>
+                {camp.title}
+              </h2>
+
+              {camp.description && (
+                <p style={{ fontSize: '14px', color: '#374151', lineHeight: 1.55, whiteSpace: 'pre-line', marginBottom: '14px' }}>
+                  {camp.description}
+                </p>
+              )}
+
+              {camp.posterUrl && (
+                <div style={{
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  border: '1px solid #e5e7eb',
+                  marginBottom: '14px',
+                  background: '#090d16',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {isVideoMedia(camp.posterUrl) ? (
+                    <video
+                      src={resolveMediaUrl(camp.posterUrl)}
+                      controls
+                      playsInline
+                      autoPlay
+                      muted
+                      loop
+                      style={{
+                        width: '100%',
+                        maxHeight: '460px',
+                        objectFit: 'contain',
+                        display: 'block'
+                      }}
+                    />
+                  ) : (
+                    <img
+                      src={resolveMediaUrl(camp.posterUrl)}
+                      alt={camp.title}
+                      loading="lazy"
+                      onError={(e) => {
+                        // Prevent broken image icon if file missing
+                        e.target.style.display = 'none';
+                      }}
+                      style={{
+                        width: '100%',
+                        maxHeight: '460px',
+                        objectFit: 'cover',
+                        display: 'block'
+                      }}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Campaign Action Bar */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingTop: '12px',
+              borderTop: '1px solid rgba(16, 185, 129, 0.15)'
+            }}>
+              <span style={{ fontSize: '11.5px', color: '#6b7280' }}>
+                Verified partnership initiative for India's veterinary practitioners
+              </span>
+
+              <a
+                href={camp.destinationUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => {
+                  try {
+                    api.campaigns.recordEvent(camp.id, 'CLICK');
+                  } catch (e) { }
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'linear-gradient(135deg, #003822 0%, #064e3b 100%)',
+                  color: '#ffffff',
+                  padding: '9px 18px',
+                  borderRadius: '8px',
+                  fontWeight: '700',
+                  fontSize: '13px',
+                  textDecoration: 'none',
+                  boxShadow: '0 2px 8px rgba(0, 56, 34, 0.2)',
+                  transition: 'transform 0.15s ease'
+                }}
+              >
+                <span>Learn More / Register</span>
+                <ExternalLink size={13} />
+              </a>
+            </div>
+          </article>
+        ))}
+
         {filteredPosts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '48px 24px', background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
             <PawPrint size={40} color="#059669" style={{ margin: '0 auto 12px' }} />

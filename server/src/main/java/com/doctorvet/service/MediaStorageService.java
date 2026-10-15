@@ -41,6 +41,11 @@ public class MediaStorageService {
 
         try {
             Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+            Path rootUploads = Paths.get("..", "uploads").toAbsolutePath().normalize();
+            if (Files.exists(rootUploads.getParent())) {
+                if (!Files.exists(rootUploads)) Files.createDirectories(rootUploads);
+                Files.copy(targetLocation, rootUploads.resolve(uniqueFileName), StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException e) {
             throw new RuntimeException("Failed to store file " + uniqueFileName, e);
         }

@@ -66,6 +66,7 @@ export function App() {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [sentRequests, setSentRequests] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [liveCampaigns, setLiveCampaigns] = useState([]);
 
   // Active Modals
   const [selectedDoctor, setSelectedDoctor] = useState(null);
@@ -218,6 +219,16 @@ export function App() {
         console.log('Using local short videos');
       }
 
+      try {
+        // Load active public live advertising campaigns for live feed
+        const liveAds = await api.campaigns.getPublicLive('Feed');
+        if (liveAds && Array.isArray(liveAds)) {
+          setLiveCampaigns(liveAds);
+        }
+      } catch (e) {
+        console.log('Using local live ads');
+      }
+
       // Private Endpoints: ONLY requested when user is authenticated AND token exists
       const token = localStorage.getItem('doctor_vet_token');
       if (currentUser?.id && token) {
@@ -315,6 +326,17 @@ export function App() {
 
     loadBackendData();
   }, [currentUser?.id]);
+
+  // Whenever the user switches to the 'feed' tab, refresh public live campaigns
+  useEffect(() => {
+    if (activeTab === 'feed') {
+      api.campaigns.getPublicLive('Feed')
+        .then(liveAds => {
+          if (Array.isArray(liveAds)) setLiveCampaigns(liveAds);
+        })
+        .catch(() => {});
+    }
+  }, [activeTab]);
 
   // STOMP WebSocket for real-time notifications & 2-way messages
   useEffect(() => {
@@ -1199,6 +1221,11 @@ export function App() {
                   posts={posts}
                   stories={stories}
                   doctors={doctors}
+                  liveCampaigns={liveCampaigns}
+                  onExpireCampaign={(campId) => {
+                    setLiveCampaigns(prev => prev.filter(c => c.id !== campId));
+                    api.campaigns.updateStatus(campId, 'Completed').catch(() => {});
+                  }}
                   onOpenStory={(s) => setSelectedStory(s)}
                   onOpenCreatePost={handleOpenCreatePost}
                   onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
@@ -1337,7 +1364,14 @@ export function App() {
               )}
 
               {activeTab === 'advertise' && (
-                <AdvertiseView />
+                <AdvertiseView
+                  onCampaignsUpdated={async () => {
+                    try {
+                      const liveAds = await api.campaigns.getPublicLive('Feed');
+                      if (Array.isArray(liveAds)) setLiveCampaigns(liveAds);
+                    } catch (e) {}
+                  }}
+                />
               )}
             </main>
 
