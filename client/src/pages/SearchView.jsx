@@ -20,7 +20,7 @@ import heroVetImg from '../assets/hero_vet_dog.jpg';
 import { api } from '../services/api';
 import { Avatar } from '../components/Avatar';
 
-export function SearchView({ doctors: initialDoctors = [], onSelectDoctor, onOpenChat, onSelectCase, onSelectVideo }) {
+export function SearchView({ doctors: initialDoctors = [], onSelectDoctor, onOpenChat, onSelectCase, onSelectVideo, connectedDoctors = {} }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('ALL');
   const [savedDoctors, setSavedDoctors] = useState({});
@@ -256,10 +256,27 @@ export function SearchView({ doctors: initialDoctors = [], onSelectDoctor, onOpe
                 />
 
                 <div className="doctor-dir-info-col">
-                  {/* Verified Indicator */}
-                  <div className="doctor-dir-verified-tag">
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981' }} />
-                    <span>Verified</span>
+                  {/* Verified & Active Status Indicators */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div className="doctor-dir-verified-tag">
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981' }} />
+                      <span>Verified</span>
+                    </div>
+                    <span style={{
+                      fontSize: '10.5px',
+                      fontWeight: 700,
+                      padding: '2px 7px',
+                      borderRadius: '9999px',
+                      backgroundColor: doctor.active ? '#ECFDF5' : '#F3F4F6',
+                      color: doctor.active ? '#065F46' : '#6B7280',
+                      border: doctor.active ? '1px solid #A7F3D0' : '1px solid #E5E7EB',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: doctor.active ? '#10B981' : '#9CA3AF' }} />
+                      {doctor.active ? 'Active' : 'Inactive'}
+                    </span>
                   </div>
 
                   {/* Doctor Name */}
@@ -303,13 +320,21 @@ export function SearchView({ doctors: initialDoctors = [], onSelectDoctor, onOpe
                   <ArrowRight size={13} />
                 </button>
 
-                <button 
-                  className="btn-chat-icon-square"
-                  onClick={() => onOpenChat && onOpenChat(doctor)}
-                  title="Message Doctor"
-                >
-                  <MessageSquare size={16} />
-                </button>
+                {(() => {
+                  const isConnected = !!connectedDoctors[doctor.id] ||
+                    !!connectedDoctors[`doc-${doctor.id}`] ||
+                    (Array.isArray(connectedDoctors) && connectedDoctors.some(c => c.id === doctor.id || String(c.id).replace('doc-', '') === String(doctor.id).replace('doc-', '')));
+
+                  return isConnected ? (
+                    <button 
+                      className="btn-chat-icon-square"
+                      onClick={() => onOpenChat && onOpenChat(doctor)}
+                      title="Message Doctor"
+                    >
+                      <MessageSquare size={16} />
+                    </button>
+                  ) : null;
+                })()}
               </div>
             </div>
           );

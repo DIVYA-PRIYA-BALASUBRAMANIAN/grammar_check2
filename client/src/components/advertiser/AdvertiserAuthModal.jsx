@@ -158,7 +158,7 @@ export function AdvertiserAuthModal({ isOpen, onClose, onAuthSuccess, initialMod
             fontSize: '13px',
             marginBottom: '16px'
           }}>
-            <AlertCircle size={16} flexShrink={0} />
+            <AlertCircle size={16} style={{ flexShrink: 0 }} />
             <span>{errorMsg}</span>
           </div>
         )}
@@ -176,7 +176,7 @@ export function AdvertiserAuthModal({ isOpen, onClose, onAuthSuccess, initialMod
             fontSize: '13px',
             marginBottom: '16px'
           }}>
-            <CheckCircle2 size={16} flexShrink={0} />
+            <CheckCircle2 size={16} style={{ flexShrink: 0 }} />
             <span>{successMsg}</span>
           </div>
         )}

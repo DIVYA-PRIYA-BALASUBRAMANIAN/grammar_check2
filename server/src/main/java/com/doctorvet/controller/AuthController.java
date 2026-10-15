@@ -49,7 +49,8 @@ public class AuthController {
             Integer experienceYears,
             boolean verified,
             int connectionsCount,
-            int casesCount) {
+            int casesCount,
+            boolean active) {
     }
 
 
@@ -92,7 +93,11 @@ public class AuthController {
                     12,
                     "Veterinary practitioner registered on Zenve Vet.");
             newDoc.setEmail(req.identifier().contains("@") ? req.identifier() : null);
+            newDoc.setActive(true);
             profile = doctorRepo.save(newDoc);
+        } else {
+            profile.setActive(true);
+            profile = doctorRepo.save(profile);
         }
 
         // Generate signed token
@@ -127,6 +132,7 @@ public class AuthController {
                         + (req.vciNumber() != null ? req.vciNumber() : "VCI-REG-NEW"));
         newDoctor.setEmail(req.email() != null ? req.email() : null);
         newDoctor.setPhone(req.phone() != null ? req.phone() : null);
+        newDoctor.setActive(true);
         DoctorProfile saved = doctorRepo.save(newDoctor);
 
         String token = tokenService.generateToken(saved.getId(), saved.getName(), saved.getEmail());
@@ -178,13 +184,21 @@ public class AuthController {
                 p.getExperienceYears(),
                 p.isVerified(),
                 p.getConnectionsCount(),
-                p.getCasesCount());
+                p.getCasesCount(),
+                p.isActive());
     }
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7).trim();
+            Long doctorId = tokenService.getDoctorIdFromToken(token);
+            if (doctorId != null) {
+                doctorRepo.findById(doctorId).ifPresent(doc -> {
+                    doc.setActive(false);
+                    doctorRepo.save(doc);
+                });
+            }
             tokenService.invalidateToken(token);
         }
         return ResponseEntity.ok(Map.of("message", "Successfully signed out"));

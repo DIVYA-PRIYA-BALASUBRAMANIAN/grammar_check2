@@ -427,25 +427,27 @@ export function ProfileView({
                 </button>
               ) : (
                 <>
-                  <button
-                    onClick={() => onOpenChat && onOpenChat(activeDoc)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '7px',
-                      backgroundColor: '#003822',
-                      color: '#FFFFFF',
-                      border: 'none',
-                      borderRadius: '9999px',
-                      padding: '9px 20px',
-                      fontSize: '13.5px',
-                      fontWeight: 700,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <MessageSquare size={15} />
-                    <span>Message</span>
-                  </button>
+                  {isConnected && (
+                    <button
+                      onClick={() => onOpenChat && onOpenChat(activeDoc)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '7px',
+                        backgroundColor: '#003822',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: '9999px',
+                        padding: '9px 20px',
+                        fontSize: '13.5px',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <MessageSquare size={15} />
+                      <span>Message</span>
+                    </button>
+                  )}
 
                   {isConnected ? (
                     <button
@@ -510,13 +512,24 @@ export function ProfileView({
 
           {/* Title & Headline */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: '800', color: '#111827', margin: 0 }}>
                 {activeDoc.name || 'Veterinary Practitioner'}
               </h1>
               {activeDoc.verified && (
                 <span style={{ fontSize: '11.5px', color: '#065F46', backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', padding: '3px 10px', borderRadius: '6px', fontWeight: 700 }}>
                   Verified VCI Member
+                </span>
+              )}
+              {activeDoc.active ? (
+                <span style={{ fontSize: '11.5px', color: '#065F46', backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', padding: '3px 10px', borderRadius: '9999px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10B981' }} />
+                  Active
+                </span>
+              ) : (
+                <span style={{ fontSize: '11.5px', color: '#6B7280', backgroundColor: '#F3F4F6', border: '1px solid #E5E7EB', padding: '3px 10px', borderRadius: '9999px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#9CA3AF' }} />
+                  Inactive
                 </span>
               )}
             </div>

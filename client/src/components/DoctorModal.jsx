@@ -348,28 +348,30 @@ export function DoctorModal({
                 </button>
               ) : (
                 <>
-                  <button
-                    onClick={() => {
-                      onClose();
-                      onOpenChat && onOpenChat(doctor);
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      backgroundColor: '#003822',
-                      color: '#FFFFFF',
-                      border: 'none',
-                      borderRadius: '9999px',
-                      padding: '8px 18px',
-                      fontSize: '13px',
-                      fontWeight: 700,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <MessageSquare size={14} />
-                    <span>Message</span>
-                  </button>
+                  {isConnected && (
+                    <button
+                      onClick={() => {
+                        onClose();
+                        onOpenChat && onOpenChat(doctor);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        backgroundColor: '#003822',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: '9999px',
+                        padding: '8px 18px',
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <MessageSquare size={14} />
+                      <span>Message</span>
+                    </button>
+                  )}
 
                   {isConnected ? (
                     <button
@@ -434,13 +436,24 @@ export function DoctorModal({
 
           {/* Name & Headline */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: '800', color: '#111827', margin: 0 }}>
                 {activeDoc.name}
               </h2>
               {activeDoc.verified && (
                 <span style={{ fontSize: '11px', color: '#065F46', backgroundColor: '#ECFDF5', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
                   Verified Practitioner
+                </span>
+              )}
+              {activeDoc.active ? (
+                <span style={{ fontSize: '11px', color: '#065F46', backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', padding: '2px 8px', borderRadius: '9999px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10B981' }} />
+                  Active
+                </span>
+              ) : (
+                <span style={{ fontSize: '11px', color: '#6B7280', backgroundColor: '#F3F4F6', border: '1px solid #E5E7EB', padding: '2px 8px', borderRadius: '9999px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#9CA3AF' }} />
+                  Inactive
                 </span>
               )}
             </div>

@@ -111,6 +111,11 @@ public class DoctorProfileService {
                 d.setExperienceYears(Integer.parseInt(updates.get("experienceYears").toString()));
             } catch (Exception ignored) {}
         }
+        if (updates.containsKey("active")) {
+            try {
+                d.setActive(Boolean.parseBoolean(updates.get("active").toString()));
+            } catch (Exception ignored) {}
+        }
         return Optional.of(repository.save(d));
     }
 }

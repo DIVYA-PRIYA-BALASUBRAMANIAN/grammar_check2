@@ -356,8 +356,14 @@ export function App() {
         stomp.subscribe(`/topic/user/${currentUser.id}/messages`, (frame) => {
           try {
             const incoming = JSON.parse(frame.body);
+            const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             setConversations(prev => {
-              const convIdx = prev.findIndex(c => c.id === incoming.conversationId);
+              const convIdx = prev.findIndex(c =>
+                (c.id != null && incoming.conversationId != null && String(c.id).replace(/\D/g, '') === String(incoming.conversationId).replace(/\D/g, '')) ||
+                (c.doctor && (
+                  (c.doctor.id != null && (String(c.doctor.id).replace(/\D/g, '') === String(incoming.senderId).replace(/\D/g, '') || String(c.doctor.id).replace(/\D/g, '') === String(incoming.receiverId).replace(/\D/g, '')))
+                ))
+              );
               const formattedMsg = {
                 id: incoming.id || Date.now(),
                 sender: incoming.senderId === currentUser.id ? 'user' : 'doctor',
@@ -365,7 +371,7 @@ export function App() {
                 text: incoming.text,
                 attachmentUrl: incoming.attachmentUrl,
                 attachmentType: incoming.attachmentType,
-                time: incoming.createdAt ? new Date(incoming.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'
+                time: incoming.createdAt ? new Date(incoming.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : nowTime
               };
 
               if (convIdx >= 0) {
@@ -382,8 +388,9 @@ export function App() {
                   }
                   updated[convIdx] = {
                     ...updated[convIdx],
+                    id: incoming.conversationId || updated[convIdx].id,
                     lastMessage: incoming.text || 'Sent an attachment',
-                    timestamp: 'Just now',
+                    timestamp: formattedMsg.time,
                     unread: (incoming.senderId !== currentUser.id && !isCurrentChatOpen) ? (updated[convIdx].unread || 0) + 1 : 0,
                     messages: [...existingList, formattedMsg]
                   };
@@ -426,19 +433,109 @@ export function App() {
     };
   }, [currentUser?.id]);
 
+  // Real-time chat & registered doctors sync: guarantees live peer updates & new registrations
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    const interval = setInterval(async () => {
+      // 1. Refresh active conversation messages in real-time when in messages tab
+      if (activeTab === 'messages' && activeChatDoctor) {
+        const targetConv = conversations.find(c =>
+          (c.doctor?.id && (c.doctor.id === activeChatDoctor.id || String(c.doctor.id).replace(/\D/g, '') === String(activeChatDoctor.id).replace(/\D/g, ''))) ||
+          (c.doctor?.name && c.doctor.name === activeChatDoctor.name)
+        );
+        const convId = targetConv?.id;
+        const numId = typeof convId === 'number' ? convId : parseInt(String(convId || '').replace(/\D/g, ''), 10);
+        if (!isNaN(numId) && numId > 0) {
+          try {
+            const msgs = await api.chat.getMessages(numId);
+            if (msgs && Array.isArray(msgs)) {
+              setConversations(prev => prev.map(c => {
+                const isMatch = (c.id === convId || c.id === numId) ||
+                  (c.doctor && (c.doctor.id === activeChatDoctor.id || String(c.doctor.id).replace(/\D/g, '') === String(activeChatDoctor.id).replace(/\D/g, '')));
+                if (isMatch) {
+                  const existingMsgMap = new Map();
+                  (c.messages || []).forEach(m => {
+                    const key = m.id || `${m.senderId}-${m.text}`;
+                    existingMsgMap.set(key, m);
+                  });
+
+                  let hasNew = false;
+                  const formatted = msgs.map(m => {
+                    if (!existingMsgMap.has(m.id)) hasNew = true;
+                    return {
+                      id: m.id,
+                      sender: m.senderId === currentUser.id ? 'user' : 'doctor',
+                      senderId: m.senderId,
+                      text: m.text,
+                      attachmentUrl: m.attachmentUrl,
+                      attachmentType: m.attachmentType,
+                      time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    };
+                  });
+
+                  if (hasNew || (c.messages || []).length < formatted.length) {
+                    const last = formatted[formatted.length - 1];
+                    return {
+                      ...c,
+                      id: numId,
+                      lastMessage: last ? last.text : c.lastMessage,
+                      timestamp: last ? last.time : c.timestamp,
+                      messages: formatted
+                    };
+                  }
+                }
+                return c;
+              }));
+            }
+          } catch (e) { }
+        }
+      }
+
+      // 2. Poll registered doctors list to dynamically show any newly registered doctors in "People to Know"
+      try {
+        const liveDocs = await api.doctors.getAll();
+        if (liveDocs && Array.isArray(liveDocs) && liveDocs.length > 0) {
+          setDoctors(prev => {
+            if (liveDocs.length !== prev.length || liveDocs.some((d, idx) => !prev[idx] || prev[idx].id !== d.id)) {
+              return liveDocs;
+            }
+            return prev;
+          });
+        }
+      } catch (e) { }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [currentUser?.id, activeTab, activeChatDoctor?.id, conversations.length]);
+
   const handleLoginSuccess = (user) => {
-    setCurrentUser(user);
+    const activeUser = { ...user, active: true };
+    setCurrentUser(activeUser);
+    setDoctors(prev => prev.map(d =>
+      (d.id === user.id || String(d.id).replace('doc-', '') === String(user.id).replace('doc-', ''))
+        ? { ...d, active: true }
+        : d
+    ));
     setIsLoginView(false);
     setActiveTab('feed');
   };
 
   const handleLogout = async () => {
+    const oldUserId = currentUser?.id;
     try {
       await api.auth.logout();
     } catch (e) { }
     localStorage.removeItem('doctor_vet_user');
     localStorage.removeItem('doctor_vet_token');
     setCurrentUser(null);
+    if (oldUserId) {
+      setDoctors(prev => prev.map(d =>
+        (d.id === oldUserId || String(d.id).replace('doc-', '') === String(oldUserId).replace('doc-', ''))
+          ? { ...d, active: false }
+          : d
+      ));
+    }
     setConversations([]);
     setConnectedMap({});
     setMyConnections([]);
@@ -762,6 +859,16 @@ export function App() {
 
   // Real-time Messaging Handlers
   const handleOpenDirectChat = async (doctor) => {
+    // Doctors can only message after connecting
+    const isConnected = !!connectedMap[doctor.id] ||
+      !!connectedMap[`doc-${doctor.id}`] ||
+      myConnections.some(c => c.id === doctor.id || String(c.id).replace('doc-', '') === String(doctor.id).replace('doc-', ''));
+
+    if (!isConnected) {
+      alert(`Please connect with Dr. ${doctor.name} first before messaging.`);
+      return;
+    }
+
     setActiveChatDoctor(doctor);
     let existing = conversations.find(c => c.doctor.id === doctor.id || c.doctor.name === doctor.name);
     if (!existing) {
@@ -913,6 +1020,8 @@ export function App() {
       } catch (e) { }
     }
 
+    const now = new Date();
+    const timeFormatted = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const optimisticMsg = {
       id: Date.now(),
       sender: 'user',
@@ -920,7 +1029,7 @@ export function App() {
       text,
       attachmentUrl,
       attachmentType,
-      time: 'Just now'
+      time: timeFormatted
     };
 
     setConversations(prev => prev.map(conv => {
@@ -929,7 +1038,7 @@ export function App() {
           ...conv,
           id: targetConvId,
           lastMessage: text || 'Sent an attachment',
-          timestamp: 'Just now',
+          timestamp: timeFormatted,
           messages: [...(conv.messages || []), optimisticMsg]
         };
       }
@@ -1210,6 +1319,7 @@ export function App() {
               onOpenLogin={() => setIsLoginView(true)}
               onNavigateTab={handleTabNavigation}
               onOpenCreateProfile={() => setIsCreateProfileOpen(true)}
+              onSendRequest={handleSendRequest}
             />
           </div>
         ) : (
@@ -1350,6 +1460,7 @@ export function App() {
               {activeTab === 'search' && (
                 <SearchView
                   doctors={doctors}
+                  connectedDoctors={connectedMap}
                   onSelectDoctor={handleOpenDoctorProfile}
                   onSelectCase={(c) => setSelectedCase(c)}
                   onSelectVideo={(v) => setSelectedVideo(v)}
@@ -1379,7 +1490,9 @@ export function App() {
             {activeTab !== 'advertise' && (
               <RightSidebar
                 doctors={doctors}
+                currentUser={currentUser}
                 onSelectDoctor={handleOpenDoctorProfile}
+                onOpenChat={handleOpenDirectChat}
                 onViewAllDoctors={() => setActiveTab('network')}
                 onSendRequest={handleSendRequest}
                 connectedDoctors={Object.keys(connectedMap).map(k => ({ id: isNaN(k) ? k : Number(k) }))}
