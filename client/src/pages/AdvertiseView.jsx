@@ -67,7 +67,7 @@ export function AdvertiseView() {
       <div className="cases-hero-banner-light">
         <div className="hero-banner-inner">
           <div className="hero-text-content">
-            <span className="hero-tag-kicker">Doctor Vet Partner Ecosystem</span>
+            <span className="hero-tag-kicker">Zenve Vet Partner Ecosystem</span>
             <h1 className="hero-headline">Reach 10,000+ Verified Veterinary Doctors.</h1>
             <p className="hero-subtext">
               Connect your pharmaceutical portfolio, surgical instrumentation, or academic conferences with India's leading veterinary minds.

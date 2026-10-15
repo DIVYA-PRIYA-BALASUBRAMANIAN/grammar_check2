@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { 
-  ArrowRight, 
-  Plus, 
-  Image as ImageIcon, 
-  Briefcase, 
-  Video, 
-  Sparkles, 
-  Heart, 
-  MessageSquare, 
-  Bookmark, 
-  Share2, 
+import {
+  ArrowRight,
+  Plus,
+  Image as ImageIcon,
+  Briefcase,
+  Video,
+  Sparkles,
+  Heart,
+  MessageSquare,
+  Bookmark,
+  Share2,
   CheckCircle2,
   Stethoscope,
   Users,
@@ -24,20 +24,21 @@ import { SPECIALTIES, STATES_INDIA } from '../data/mockData';
 import { api } from '../services/api';
 import { Avatar } from '../components/Avatar';
 
-export function FeedView({ 
-  posts = [], 
-  stories = [], 
+export function FeedView({
+  posts = [],
+  stories = [],
   doctors = [],
-  onOpenStory, 
-  onOpenCreatePost, 
-  onOpenAiAssistant, 
-  onOpenClinicalCase, 
+  onOpenStory,
+  onOpenCreatePost,
+  onOpenAiAssistant,
+  onOpenClinicalCase,
   onLikePost,
   onAddComment,
   onDeletePost,
   onBookmarkPost,
   onReportPost,
-  currentUser
+  currentUser,
+  onOpenDoctorProfile
 }) {
   const [activeTab, setActiveTab] = useState('for_you');
   const [selectedSpecialty, setSelectedSpecialty] = useState('All specialties');
@@ -99,7 +100,7 @@ export function FeedView({
       <div className="feed-hero-banner">
         <div className="hero-banner-inner">
           <div className="hero-text-content">
-            <span className="hero-tag-kicker">The Doctor Vet Community</span>
+            <span className="hero-tag-kicker">The Zenve Vet Community</span>
             <h1 className="hero-headline">
               A world of care.<br />
               <span className="hero-headline-highlight">Connected.</span>
@@ -107,7 +108,7 @@ export function FeedView({
             <p className="hero-subtext">
               Meet your peers. Share your clinical cases. Move veterinary practice forward.
             </p>
-            <button 
+            <button
               className="btn-make-mark"
               onClick={() => onOpenCreatePost('CLINICAL_CASE')}
             >
@@ -118,10 +119,10 @@ export function FeedView({
 
           <div className="hero-photo-wrap">
             <PawPrint size={90} className="hero-paw-watermark" />
-            <img 
-              src={heroVetImg} 
-              alt="Veterinarian with dog" 
-              className="hero-photo-img" 
+            <img
+              src={heroVetImg}
+              alt="Veterinarian with dog"
+              className="hero-photo-img"
             />
           </div>
         </div>
@@ -135,7 +136,7 @@ export function FeedView({
             <span>Moments from the community</span>
           </div>
 
-          <button 
+          <button
             className="stories-view-all-link"
             onClick={() => stories.length > 0 && onOpenStory(stories[0])}
           >
@@ -156,9 +157,9 @@ export function FeedView({
           {/* Doctor Community Stories */}
           {stories.map((story, index) => {
             const hasActiveDot = index === stories.length - 1;
-            const storyDoc = (doctors || []).find(d => 
-              d.id === story.doctorId || 
-              String(d.id).replace('doc-', '') === String(story.doctorId).replace('doc-', '') || 
+            const storyDoc = (doctors || []).find(d =>
+              d.id === story.doctorId ||
+              String(d.id).replace('doc-', '') === String(story.doctorId).replace('doc-', '') ||
               (d.name && story.doctorName && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === story.doctorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
             );
             const resolvedStoryAvatar = (storyDoc && storyDoc.avatar && !storyDoc.avatar.includes('unsplash.com'))
@@ -166,8 +167,8 @@ export function FeedView({
               : (story.avatar || '');
 
             return (
-              <button 
-                key={story.id} 
+              <button
+                key={story.id}
                 className="story-circle-item"
                 onClick={() => onOpenStory({ ...story, avatar: resolvedStoryAvatar })}
               >
@@ -188,7 +189,7 @@ export function FeedView({
           <div className="composer-stethoscope-badge">
             <Stethoscope size={21} />
           </div>
-          <div 
+          <div
             className="composer-fake-input-pill"
             onClick={() => onOpenCreatePost('CLINICAL_CASE')}
           >
@@ -236,19 +237,19 @@ export function FeedView({
       <div className="feed-filter-bar">
         <div className="feed-tabs-row">
           <div className="feed-tabs-group">
-            <button 
+            <button
               className={`feed-tab-btn ${activeTab === 'for_you' ? 'active' : ''}`}
               onClick={() => setActiveTab('for_you')}
             >
               For you
             </button>
-            <button 
+            <button
               className={`feed-tab-btn ${activeTab === 'popular' ? 'active' : ''}`}
               onClick={() => setActiveTab('popular')}
             >
               Popular
             </button>
-            <button 
+            <button
               className={`feed-tab-btn ${activeTab === 'following' ? 'active' : ''}`}
               onClick={() => setActiveTab('following')}
             >
@@ -263,7 +264,7 @@ export function FeedView({
         </div>
 
         <div className="filter-dropdowns-strip">
-          <select 
+          <select
             className="pill-select-control"
             value={selectedSpecialty}
             onChange={(e) => setSelectedSpecialty(e.target.value)}
@@ -271,7 +272,7 @@ export function FeedView({
             {SPECIALTIES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
 
-          <select 
+          <select
             className="pill-select-control"
             value={selectedState}
             onChange={(e) => setSelectedState(e.target.value)}
@@ -279,7 +280,7 @@ export function FeedView({
             {STATES_INDIA.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
 
-          <select 
+          <select
             className="pill-select-control"
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value)}
@@ -302,8 +303,8 @@ export function FeedView({
             <p style={{ fontSize: '13px', color: '#6B7280', maxWidth: '380px', margin: '0 auto 16px' }}>
               Publish a clinical observation, case report, or share a clinical update to start the discussion with peers.
             </p>
-            <button 
-              className="btn-make-mark" 
+            <button
+              className="btn-make-mark"
               onClick={() => onOpenCreatePost('GENERAL_POST')}
               style={{ margin: '0 auto' }}
             >
@@ -313,336 +314,345 @@ export function FeedView({
           </div>
         ) : (
           filteredPosts.map((post) => {
-          const isOwnPost = currentUser && (
-            post.authorId === currentUser.id ||
-            post.authorName === currentUser.name ||
-            post.authorId === 'doc-me' ||
-            (post.authorName && currentUser.name && post.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
-          );
-          const postDoc = doctors?.find(d => 
-            d.id === post.authorId || 
-            (d.name && post.authorName && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === post.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
-          );
-          const authorAvatar = (isOwnPost && currentUser?.avatar) ? currentUser.avatar : (postDoc?.avatar || post.authorAvatar);
+            const isOwnPost = currentUser && (
+              post.authorId === currentUser.id ||
+              post.authorName === currentUser.name ||
+              post.authorId === 'doc-me' ||
+              (post.authorName && currentUser.name && post.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+            );
+            const postDoc = doctors?.find(d =>
+              d.id === post.authorId ||
+              (d.name && post.authorName && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === post.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+            );
+            const authorAvatar = (isOwnPost && currentUser?.avatar) ? currentUser.avatar : (postDoc?.avatar || post.authorAvatar);
 
-          return (
-            <article key={post.id} className="feed-post-card" id={`post-${post.id}`}>
-              <div className="post-card-header">
-                <div className="post-author-block">
-                  <Avatar 
-                    src={authorAvatar} 
-                    name={post.authorName} 
-                    size={40} 
-                    className="post-avatar-img" 
-                  />
-                  <div>
-                    <div className="post-author-name-row">
-                      <h3 className="post-author-name">{post.authorName}</h3>
-                      <CheckCircle2 size={15} color="#00a86b" />
+            return (
+              <article key={post.id} className="feed-post-card" id={`post-${post.id}`}>
+                <div className="post-card-header">
+                  <div
+                    className="post-author-block"
+                    style={{ cursor: onOpenDoctorProfile ? 'pointer' : 'default' }}
+                    onClick={() => {
+                      if (onOpenDoctorProfile) {
+                        onOpenDoctorProfile(postDoc || { id: post.authorId, name: post.authorName, avatar: authorAvatar, specialty: post.authorSpecialty, city: post.authorCity });
+                      }
+                    }}
+                    title={`View ${post.authorName}'s Profile`}
+                  >
+                    <Avatar
+                      src={authorAvatar}
+                      name={post.authorName}
+                      size={40}
+                      className="post-avatar-img"
+                    />
+                    <div>
+                      <div className="post-author-name-row">
+                        <h3 className="post-author-name">{post.authorName}</h3>
+                        <CheckCircle2 size={15} color="#00a86b" />
+                      </div>
+                      <span className="post-author-meta">{post.authorSpecialty} · {post.authorCity}</span>
                     </div>
-                    <span className="post-author-meta">{post.authorSpecialty} · {post.authorCity}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}>
+                    <button
+                      onClick={() => onBookmarkPost && onBookmarkPost(post.id)}
+                      style={{ background: 'none', border: 'none', color: post.isBookmarked ? '#C5A059' : '#9ca3af', cursor: 'pointer', padding: '4px' }}
+                      title={post.isBookmarked ? 'Bookmarked' : 'Save post'}
+                    >
+                      <Bookmark size={18} fill={post.isBookmarked ? '#C5A059' : 'none'} />
+                    </button>
+
+                    <button
+                      onClick={() => setActiveMenuPostId(activeMenuPostId === post.id ? null : post.id)}
+                      style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: '4px' }}
+                      title="Options"
+                    >
+                      <MoreHorizontal size={18} />
+                    </button>
+
+                    {/* Post Options Dropdown */}
+                    {activeMenuPostId === post.id && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '28px',
+                        right: 0,
+                        backgroundColor: '#FFFFFF',
+                        borderRadius: '8px',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                        border: '1px solid #E5E7EB',
+                        padding: '4px',
+                        zIndex: 30,
+                        width: '140px'
+                      }}>
+                        {isOwnPost && onDeletePost && (
+                          <button
+                            onClick={() => {
+                              setActiveMenuPostId(null);
+                              onDeletePost(post.id);
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              width: '100%',
+                              padding: '6px 10px',
+                              border: 'none',
+                              background: 'none',
+                              color: '#DC2626',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              borderRadius: '4px'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#FEE2E2'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            <Trash2 size={13} />
+                            <span>Delete Post</span>
+                          </button>
+                        )}
+                        {onReportPost && (
+                          <button
+                            onClick={() => {
+                              setActiveMenuPostId(null);
+                              onReportPost(post.id);
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              width: '100%',
+                              padding: '6px 10px',
+                              border: 'none',
+                              background: 'none',
+                              color: '#4B5563',
+                              fontSize: '12px',
+                              fontWeight: 500,
+                              cursor: 'pointer',
+                              borderRadius: '4px'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F3F4F6'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            <Flag size={13} />
+                            <span>Report Post</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}>
-                  <button 
-                    onClick={() => onBookmarkPost && onBookmarkPost(post.id)}
-                    style={{ background: 'none', border: 'none', color: post.isBookmarked ? '#C5A059' : '#9ca3af', cursor: 'pointer', padding: '4px' }}
-                    title={post.isBookmarked ? 'Bookmarked' : 'Save post'}
-                  >
-                    <Bookmark size={18} fill={post.isBookmarked ? '#C5A059' : 'none'} />
-                  </button>
+                {post.badgeLabel && (
+                  <div className="post-badge-pill">
+                    <Stethoscope size={13} />
+                    <span>{post.badgeLabel}</span>
+                  </div>
+                )}
 
-                  <button
-                    onClick={() => setActiveMenuPostId(activeMenuPostId === post.id ? null : post.id)}
-                    style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: '4px' }}
-                    title="Options"
-                  >
-                    <MoreHorizontal size={18} />
-                  </button>
+                <p className="post-body-text">{post.content}</p>
 
-                  {/* Post Options Dropdown */}
-                  {activeMenuPostId === post.id && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '28px',
-                      right: 0,
-                      backgroundColor: '#FFFFFF',
-                      borderRadius: '8px',
-                      boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-                      border: '1px solid #E5E7EB',
-                      padding: '4px',
-                      zIndex: 30,
-                      width: '140px'
-                    }}>
-                      {isOwnPost && onDeletePost && (
-                        <button
-                          onClick={() => {
-                            setActiveMenuPostId(null);
-                            onDeletePost(post.id);
-                          }}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            width: '100%',
-                            padding: '6px 10px',
-                            border: 'none',
-                            background: 'none',
-                            color: '#DC2626',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            borderRadius: '4px'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#FEE2E2'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                        >
-                          <Trash2 size={13} />
-                          <span>Delete Post</span>
-                        </button>
-                      )}
-                      {onReportPost && (
-                        <button
-                          onClick={() => {
-                            setActiveMenuPostId(null);
-                            onReportPost(post.id);
-                          }}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            width: '100%',
-                            padding: '6px 10px',
-                            border: 'none',
-                            background: 'none',
-                            color: '#4B5563',
-                            fontSize: '12px',
-                            fontWeight: 500,
-                            cursor: 'pointer',
-                            borderRadius: '4px'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F3F4F6'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                        >
-                          <Flag size={13} />
-                          <span>Report Post</span>
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
+                {/* Video Player or Image Preview */}
+                {(() => {
+                  const isVideo = post.videoUrl || (post.imageUrl && (post.imageUrl.endsWith('.mp4') || post.imageUrl.endsWith('.webm') || post.imageUrl.endsWith('.mov') || post.imageUrl.includes('data:video')));
+                  const videoSrc = post.videoUrl || (isVideo ? post.imageUrl : null);
 
-              {post.badgeLabel && (
-                <div className="post-badge-pill">
-                  <Stethoscope size={13} />
-                  <span>{post.badgeLabel}</span>
-                </div>
-              )}
-
-              <p className="post-body-text">{post.content}</p>
-
-              {/* Video Player or Image Preview */}
-              {(() => {
-                const isVideo = post.videoUrl || (post.imageUrl && (post.imageUrl.endsWith('.mp4') || post.imageUrl.endsWith('.webm') || post.imageUrl.endsWith('.mov') || post.imageUrl.includes('data:video')));
-                const videoSrc = post.videoUrl || (isVideo ? post.imageUrl : null);
-
-                if (videoSrc) {
-                  return (
-                    <div style={{
-                      borderRadius: '14px',
-                      overflow: 'hidden',
-                      backgroundColor: '#0a0a0a',
-                      maxHeight: '440px',
-                      width: '100%',
-                      marginBottom: '14px',
-                      position: 'relative',
-                      boxShadow: '0 4px 18px rgba(0,0,0,0.14)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <video 
-                        src={videoSrc} 
-                        controls 
-                        playsInline 
-                        preload="metadata"
-                        style={{
-                          width: '100%',
-                          maxHeight: '440px',
-                          objectFit: 'contain',
-                          display: 'block',
-                          backgroundColor: '#000'
-                        }} 
-                      />
-                    </div>
-                  );
-                }
-
-                if (post.imageUrl) {
-                  return (
-                    <div 
-                      className="post-image-preview-container"
-                      onClick={() => onOpenClinicalCase && onOpenClinicalCase({
-                        title: post.badgeLabel || "Clinical Case Finding",
-                        authorName: post.authorName,
-                        authorSpecialty: post.authorSpecialty,
-                        species: post.species || "Canine",
-                        presentingComplaint: post.content,
-                        clinicalFindings: "Presented for routine follow-up and specialized examination.",
-                        diagnostics: "Microscopic cytology and diagnostic imaging evaluated.",
-                        diagnosis: "Presumptive / Confirmed Clinical Case",
-                        treatmentProtocol: "Medical management with targeted therapeutics.",
-                        outcome: "Full clinical remission observed at follow-up.",
-                        mediaUrl: post.imageUrl
-                      })}
-                      style={{ cursor: 'pointer' }}
-                      title="Click to review clinical details"
-                    >
-                      <img src={post.imageUrl} alt="Clinical case" className="post-image-preview" loading="lazy" />
-                    </div>
-                  );
-                }
-
-                return null;
-              })()}
-
-              {/* Action Buttons */}
-              <div className="post-card-footer">
-                <div className="post-actions-group">
-                  <button 
-                    className={`post-action-btn ${post.isLiked ? 'liked' : ''}`}
-                    onClick={() => onLikePost(post.id)}
-                  >
-                    <Heart size={17} fill={post.isLiked ? '#ef4444' : 'none'} color={post.isLiked ? '#ef4444' : '#6b7280'} />
-                    <span>{post.likes}</span>
-                  </button>
-
-                  <button 
-                    className="post-action-btn"
-                    onClick={() => toggleComments(post.id)}
-                  >
-                    <MessageSquare size={17} color={openComments[post.id] ? '#059669' : '#6b7280'} />
-                    <span>{post.commentsCount || (post.comments ? post.comments.length : 0)} comments</span>
-                  </button>
-
-                  <button 
-                    className="post-action-btn"
-                    onClick={() => {
-                      navigator.clipboard?.writeText(window.location.href);
-                      alert('Post link copied to clipboard!');
-                    }}
-                  >
-                    <Share2 size={17} />
-                    <span>Share</span>
-                  </button>
-                </div>
-
-                <span style={{ fontSize: '12px', color: '#9ca3af' }}>{post.timeAgo || 'Recent'}</span>
-              </div>
-
-              {/* Expandable Comments Drawer */}
-              {openComments[post.id] && (
-                <div style={{
-                  marginTop: '12px',
-                  paddingTop: '12px',
-                  borderTop: '1px solid #F3F4F6',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px'
-                }}>
-                  {/* Comments Stream */}
-                  {(() => {
-                    const postComments = (fetchedCommentsMap[post.id] && fetchedCommentsMap[post.id].length > 0)
-                      ? fetchedCommentsMap[post.id]
-                      : (post.comments || []);
-                    return postComments.length > 0 ? (
-                      postComments.map((c, idx) => {
-                        const isOwnComment = currentUser && (
-                          c.authorId === currentUser.id || 
-                          c.authorName === currentUser.name ||
-                          (c.authorName && currentUser.name && c.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
-                        );
-                        const commentDoc = doctors?.find(d => 
-                          d.id === c.authorId || 
-                          (d.name && c.authorName && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === c.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
-                        );
-                        const commentAvatar = (isOwnComment && currentUser?.avatar) ? currentUser.avatar : (commentDoc?.avatar || c.authorAvatar);
-
-                        return (
-                          <div key={c.id || idx} style={{ display: 'flex', gap: '8px', fontSize: '12.5px' }}>
-                            <Avatar 
-                              src={commentAvatar} 
-                              name={c.authorName}
-                              size={28}
-                              style={{ flexShrink: 0 }}
-                            />
-                        <div style={{
-                          backgroundColor: '#F9FAFB',
-                          borderRadius: '8px',
-                          padding: '6px 12px',
-                          flex: 1
-                        }}>
-                          <strong style={{ color: '#111827', display: 'block', fontSize: '12px' }}>{c.authorName}</strong>
-                          <span style={{ color: '#4B5563', lineHeight: 1.35 }}>{c.content}</span>
-                        </div>
-                      </div>
-                    );
-                  })
-                  ) : (
-                    <p style={{ margin: '4px 0', fontSize: '12px', color: '#9CA3AF', fontStyle: 'italic' }}>
-                      No comments yet. Start the clinical discussion!
-                    </p>
-                  );
-                })()}
-
-                  {/* Add Comment Input Form */}
-                  <form 
-                    onSubmit={(e) => handleCommentSubmit(e, post.id)}
-                    style={{ display: 'flex', gap: '8px', marginTop: '6px' }}
-                  >
-                    <input 
-                      type="text" 
-                      placeholder="Add a clinical comment or inquiry..."
-                      value={commentInputs[post.id] || ''}
-                      onChange={(e) => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
-                      style={{
-                        flex: 1,
-                        padding: '8px 14px',
-                        borderRadius: '9999px',
-                        border: '1px solid #E5E7EB',
-                        backgroundColor: '#F9FAFB',
-                        fontSize: '12.5px',
-                        outline: 'none'
-                      }}
-                    />
-                    <button
-                      type="submit"
-                      style={{
-                        backgroundColor: '#003822',
-                        color: '#FFFFFF',
-                        border: 'none',
-                        borderRadius: '9999px',
-                        padding: '6px 14px',
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        cursor: 'pointer',
+                  if (videoSrc) {
+                    return (
+                      <div style={{
+                        borderRadius: '14px',
+                        overflow: 'hidden',
+                        backgroundColor: '#0a0a0a',
+                        maxHeight: '440px',
+                        width: '100%',
+                        marginBottom: '14px',
+                        position: 'relative',
+                        boxShadow: '0 4px 18px rgba(0,0,0,0.14)',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '4px'
+                        justifyContent: 'center'
+                      }}>
+                        <video
+                          src={videoSrc}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          style={{
+                            width: '100%',
+                            maxHeight: '440px',
+                            objectFit: 'contain',
+                            display: 'block',
+                            backgroundColor: '#000'
+                          }}
+                        />
+                      </div>
+                    );
+                  }
+
+                  if (post.imageUrl) {
+                    return (
+                      <div
+                        className="post-image-preview-container"
+                        onClick={() => onOpenClinicalCase && onOpenClinicalCase({
+                          title: post.badgeLabel || "Clinical Case Finding",
+                          authorName: post.authorName,
+                          authorSpecialty: post.authorSpecialty,
+                          species: post.species || "Canine",
+                          presentingComplaint: post.content,
+                          clinicalFindings: "Presented for routine follow-up and specialized examination.",
+                          diagnostics: "Microscopic cytology and diagnostic imaging evaluated.",
+                          diagnosis: "Presumptive / Confirmed Clinical Case",
+                          treatmentProtocol: "Medical management with targeted therapeutics.",
+                          outcome: "Full clinical remission observed at follow-up.",
+                          mediaUrl: post.imageUrl
+                        })}
+                        style={{ cursor: 'pointer' }}
+                        title="Click to review clinical details"
+                      >
+                        <img src={post.imageUrl} alt="Clinical case" className="post-image-preview" loading="lazy" />
+                      </div>
+                    );
+                  }
+
+                  return null;
+                })()}
+
+                {/* Action Buttons */}
+                <div className="post-card-footer">
+                  <div className="post-actions-group">
+                    <button
+                      className={`post-action-btn ${post.isLiked ? 'liked' : ''}`}
+                      onClick={() => onLikePost(post.id)}
+                    >
+                      <Heart size={17} fill={post.isLiked ? '#ef4444' : 'none'} color={post.isLiked ? '#ef4444' : '#6b7280'} />
+                      <span>{post.likes}</span>
+                    </button>
+
+                    <button
+                      className="post-action-btn"
+                      onClick={() => toggleComments(post.id)}
+                    >
+                      <MessageSquare size={17} color={openComments[post.id] ? '#059669' : '#6b7280'} />
+                      <span>{post.commentsCount || (post.comments ? post.comments.length : 0)} comments</span>
+                    </button>
+
+                    <button
+                      className="post-action-btn"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(window.location.href);
+                        alert('Post link copied to clipboard!');
                       }}
                     >
-                      <span>Send</span>
-                      <Send size={12} />
+                      <Share2 size={17} />
+                      <span>Share</span>
                     </button>
-                  </form>
+                  </div>
+
+                  <span style={{ fontSize: '12px', color: '#9ca3af' }}>{post.timeAgo || 'Recent'}</span>
                 </div>
-              )}
-            </article>
-          );
-        })
-      )}
+
+                {/* Expandable Comments Drawer */}
+                {openComments[post.id] && (
+                  <div style={{
+                    marginTop: '12px',
+                    paddingTop: '12px',
+                    borderTop: '1px solid #F3F4F6',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
+                  }}>
+                    {/* Comments Stream */}
+                    {(() => {
+                      const postComments = (fetchedCommentsMap[post.id] && fetchedCommentsMap[post.id].length > 0)
+                        ? fetchedCommentsMap[post.id]
+                        : (post.comments || []);
+                      return postComments.length > 0 ? (
+                        postComments.map((c, idx) => {
+                          const isOwnComment = currentUser && (
+                            c.authorId === currentUser.id ||
+                            c.authorName === currentUser.name ||
+                            (c.authorName && currentUser.name && c.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+                          );
+                          const commentDoc = doctors?.find(d =>
+                            d.id === c.authorId ||
+                            (d.name && c.authorName && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === c.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+                          );
+                          const commentAvatar = (isOwnComment && currentUser?.avatar) ? currentUser.avatar : (commentDoc?.avatar || c.authorAvatar);
+
+                          return (
+                            <div key={c.id || idx} style={{ display: 'flex', gap: '8px', fontSize: '12.5px' }}>
+                              <Avatar
+                                src={commentAvatar}
+                                name={c.authorName}
+                                size={28}
+                                style={{ flexShrink: 0 }}
+                              />
+                              <div style={{
+                                backgroundColor: '#F9FAFB',
+                                borderRadius: '8px',
+                                padding: '6px 12px',
+                                flex: 1
+                              }}>
+                                <strong style={{ color: '#111827', display: 'block', fontSize: '12px' }}>{c.authorName}</strong>
+                                <span style={{ color: '#4B5563', lineHeight: 1.35 }}>{c.content}</span>
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p style={{ margin: '4px 0', fontSize: '12px', color: '#9CA3AF', fontStyle: 'italic' }}>
+                          No comments yet. Start the clinical discussion!
+                        </p>
+                      );
+                    })()}
+
+                    {/* Add Comment Input Form */}
+                    <form
+                      onSubmit={(e) => handleCommentSubmit(e, post.id)}
+                      style={{ display: 'flex', gap: '8px', marginTop: '6px' }}
+                    >
+                      <input
+                        type="text"
+                        placeholder="Add a clinical comment or inquiry..."
+                        value={commentInputs[post.id] || ''}
+                        onChange={(e) => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
+                        style={{
+                          flex: 1,
+                          padding: '8px 14px',
+                          borderRadius: '9999px',
+                          border: '1px solid #E5E7EB',
+                          backgroundColor: '#F9FAFB',
+                          fontSize: '12.5px',
+                          outline: 'none'
+                        }}
+                      />
+                      <button
+                        type="submit"
+                        style={{
+                          backgroundColor: '#003822',
+                          color: '#FFFFFF',
+                          border: 'none',
+                          borderRadius: '9999px',
+                          padding: '6px 14px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <span>Send</span>
+                        <Send size={12} />
+                      </button>
+                    </form>
+                  </div>
+                )}
+              </article>
+            );
+          })
+        )}
       </div>
     </div>
   );

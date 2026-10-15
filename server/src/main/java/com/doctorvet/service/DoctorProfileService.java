@@ -70,26 +70,47 @@ public class DoctorProfileService {
 
     @Transactional
     public Optional<DoctorProfile> updateProfile(Long id, Map<String, Object> updates) {
-        return repository.findById(id).map(d -> {
-            if (updates.containsKey("name")) d.setName(updates.get("name").toString());
-            if (updates.containsKey("specialty")) d.setSpecialty(updates.get("specialty").toString());
-            if (updates.containsKey("qualification")) d.setQualification(updates.get("qualification").toString());
-            if (updates.containsKey("clinic")) d.setClinic(updates.get("clinic").toString());
-            if (updates.containsKey("city")) d.setCity(updates.get("city").toString());
-            if (updates.containsKey("state")) d.setState(updates.get("state").toString());
-            if (updates.containsKey("avatar")) d.setAvatar(updates.get("avatar").toString());
-            if (updates.containsKey("bio")) d.setBio(updates.get("bio").toString());
-            if (updates.containsKey("headline")) d.setHeadline(updates.get("headline").toString());
-            if (updates.containsKey("coverImage")) d.setCoverImage(updates.get("coverImage").toString());
-            if (updates.containsKey("phone")) d.setPhone(updates.get("phone").toString());
-            if (updates.containsKey("email")) d.setEmail(updates.get("email").toString());
-            if (updates.containsKey("licenseNumber")) d.setLicenseNumber(updates.get("licenseNumber").toString());
-            if (updates.containsKey("experienceYears")) {
-                try {
-                    d.setExperienceYears(Integer.parseInt(updates.get("experienceYears").toString()));
-                } catch (Exception ignored) {}
-            }
-            return repository.save(d);
-        });
+        DoctorProfile doc = null;
+        if (id != null) {
+            doc = repository.findById(id).orElse(null);
+        }
+        if (doc == null && updates.containsKey("email") && updates.get("email") != null) {
+            String email = updates.get("email").toString().trim().toLowerCase();
+            doc = repository.findAll().stream()
+                    .filter(d -> d.getEmail() != null && d.getEmail().toLowerCase().equals(email))
+                    .findFirst().orElse(null);
+        }
+        if (doc == null && updates.containsKey("name") && updates.get("name") != null) {
+            String name = updates.get("name").toString().trim().toLowerCase();
+            doc = repository.findAll().stream()
+                    .filter(d -> d.getName() != null && d.getName().toLowerCase().equals(name))
+                    .findFirst().orElse(null);
+        }
+        if (doc == null) {
+            doc = new DoctorProfile();
+            doc.setName(updates.containsKey("name") ? updates.get("name").toString() : "Doctor");
+            doc.setSpecialty(updates.containsKey("specialty") ? updates.get("specialty").toString() : "Veterinary Surgery");
+        }
+
+        final DoctorProfile d = doc;
+        if (updates.containsKey("name")) d.setName(updates.get("name").toString());
+        if (updates.containsKey("specialty")) d.setSpecialty(updates.get("specialty").toString());
+        if (updates.containsKey("qualification")) d.setQualification(updates.get("qualification").toString());
+        if (updates.containsKey("clinic")) d.setClinic(updates.get("clinic").toString());
+        if (updates.containsKey("city")) d.setCity(updates.get("city").toString());
+        if (updates.containsKey("state")) d.setState(updates.get("state").toString());
+        if (updates.containsKey("avatar")) d.setAvatar(updates.get("avatar").toString());
+        if (updates.containsKey("bio")) d.setBio(updates.get("bio").toString());
+        if (updates.containsKey("headline")) d.setHeadline(updates.get("headline").toString());
+        if (updates.containsKey("coverImage")) d.setCoverImage(updates.get("coverImage").toString());
+        if (updates.containsKey("phone")) d.setPhone(updates.get("phone").toString());
+        if (updates.containsKey("email")) d.setEmail(updates.get("email").toString());
+        if (updates.containsKey("licenseNumber")) d.setLicenseNumber(updates.get("licenseNumber").toString());
+        if (updates.containsKey("experienceYears")) {
+            try {
+                d.setExperienceYears(Integer.parseInt(updates.get("experienceYears").toString()));
+            } catch (Exception ignored) {}
+        }
+        return Optional.of(repository.save(d));
     }
 }

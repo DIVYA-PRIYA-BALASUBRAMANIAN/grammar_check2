@@ -21,7 +21,9 @@ import {
   Send,
   Heart,
   Camera,
-  UploadCloud
+  UploadCloud,
+  Phone,
+  Mail
 } from 'lucide-react';
 import modalPetsImg from '../assets/modal_pets_header.jpg';
 import { SPECIALTIES, STATES_INDIA } from '../data/mockData';
@@ -63,6 +65,7 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentU
     state: 'Karnataka',
     clinic: '',
     registrationNo: '',
+    phone: '',
     email: '',
     bio: '',
     avatar: '',
@@ -73,22 +76,24 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentU
   const coverInputRef = React.useRef(null);
 
   React.useEffect(() => {
-    if (currentUser) {
+    if (isOpen) {
+      const src = currentUser || {};
       setFormData({
-        name: currentUser.name || 'Dr. ',
-        specialty: currentUser.specialty || 'Small Animal Medicine',
-        qualification: currentUser.qualification || 'BVSc & AH',
-        city: currentUser.city || 'Bengaluru',
-        state: currentUser.state || 'Karnataka',
-        clinic: currentUser.clinic || '',
-        registrationNo: currentUser.licenseNumber || '',
-        email: currentUser.email || '',
-        bio: currentUser.bio || '',
-        avatar: currentUser.avatar || '',
-        coverImage: currentUser.coverImage || ''
+        name: src.name || 'Dr. ',
+        specialty: src.specialty || 'Small Animal Medicine',
+        qualification: src.qualification || 'BVSc & AH',
+        city: src.city || 'Bengaluru',
+        state: src.state || 'Karnataka',
+        clinic: src.clinic || '',
+        registrationNo: src.licenseNumber || '',
+        phone: src.phone || '',
+        email: src.email || '',
+        bio: src.bio || '',
+        avatar: src.avatar || '',
+        coverImage: src.coverImage || ''
       });
     }
-  }, [currentUser, isOpen]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -194,6 +199,7 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentU
       state: formData.state,
       avatar: formData.avatar,
       coverImage: formData.coverImage,
+      phone: formData.phone,
       email: formData.email,
       verified: true,
       qualification: formData.qualification,
@@ -206,17 +212,20 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentU
 
     try {
       let savedDoc = null;
-      if (currentUser?.id) {
-        savedDoc = await api.doctors.update(currentUser.id, payload);
+      const targetId = currentUser?.id ? (String(currentUser.id).replace(/^[^\d]+/g, '') || currentUser.id) : null;
+      if (targetId) {
+        savedDoc = await api.doctors.update(targetId, payload);
       } else {
         savedDoc = await api.doctors.create(payload);
       }
-      onProfileCreated && onProfileCreated(savedDoc);
-      alert('Doctor profile & photo updated successfully!');
+      const merged = { ...(currentUser || {}), ...(savedDoc || payload) };
+      onProfileCreated && onProfileCreated(merged);
+      alert('Doctor profile updated successfully!');
     } catch (err) {
       console.warn('Backend profile update fallback to local:', err);
-      onProfileCreated && onProfileCreated({ id: currentUser?.id || `doc-${Date.now()}`, ...payload });
-      alert('Doctor profile & photo updated!');
+      const fallback = { ...(currentUser || {}), ...payload };
+      onProfileCreated && onProfileCreated(fallback);
+      alert('Doctor profile updated!');
     }
     onClose && onClose();
   };
@@ -247,9 +256,13 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentU
               <DoctorPawLogo />
             </div>
             <div>
-              <h2 className="create-profile-title">Create Your Professional Page</h2>
+              <h2 className="create-profile-title">
+                {currentUser ? 'Edit Your Professional Profile' : 'Create Your Professional Page'}
+              </h2>
               <div className="create-profile-title-bar" />
-              <p className="create-profile-subtitle">Join the Zenve Vet verified veterinary registry</p>
+              <p className="create-profile-subtitle">
+                {currentUser ? 'Update your clinical credentials, contact info, and practice details' : 'Join the Zenve Vet verified veterinary registry'}
+              </p>
             </div>
           </div>
 
@@ -608,6 +621,51 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentU
             </div>
           </div>
 
+          {/* Row: Phone Number & Professional Email */}
+          <div className="cp-grid-two-col">
+            <div className="cp-form-group">
+              <label className="cp-label-row">
+                <span className="cp-label-badge badge-teal">
+                  <Phone size={14} strokeWidth={2.2} />
+                </span>
+                <span className="cp-label-text">
+                  Phone / Clinic Desk Number
+                </span>
+              </label>
+              <div className="cp-input-wrap">
+                <Phone size={17} className="cp-input-icon icon-teal" />
+                <input
+                  type="text"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="e.g. +91 98401 23456"
+                  className="cp-text-input"
+                />
+              </div>
+            </div>
+
+            <div className="cp-form-group">
+              <label className="cp-label-row">
+                <span className="cp-label-badge badge-blue">
+                  <Mail size={14} strokeWidth={2.2} />
+                </span>
+                <span className="cp-label-text">
+                  Professional Email Address
+                </span>
+              </label>
+              <div className="cp-input-wrap">
+                <Mail size={17} className="cp-input-icon icon-blue" />
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="e.g. dr.name@zenvevet.com"
+                  className="cp-text-input"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* 8. Bio & Clinical Focus */}
           <div className="cp-form-group">
             <label className="cp-label-row">
@@ -656,7 +714,7 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentU
               className="cp-submit-btn"
             >
               <Send size={15} strokeWidth={2.4} />
-              <span>Create Profile</span>
+              <span>{currentUser ? 'Save Changes' : 'Create Profile'}</span>
               <span className="cp-btn-arrow">→</span>
             </button>
           </div>

@@ -1,18 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  X, 
-  Image as ImageIcon, 
-  Video, 
-  Sparkles, 
-  Send, 
-  UploadCloud, 
-  Check, 
-  Plus, 
-  Play, 
-  Film, 
-  Camera, 
-  Trash2, 
-  Clock, 
+import {
+  X,
+  Image as ImageIcon,
+  Video,
+  Sparkles,
+  Send,
+  UploadCloud,
+  Check,
+  Plus,
+  Play,
+  Film,
+  Camera,
+  Trash2,
+  Clock,
   FileText,
   AlertCircle
 } from 'lucide-react';
@@ -22,25 +22,25 @@ const SAMPLE_PHOTOS = [];
 const SAMPLE_STORIES = [];
 const SAMPLE_VIDEOS = [];
 
-export function CreatePostModal({ 
-  isOpen, 
-  onClose, 
-  onPostSubmit, 
-  onOpenAiAssistant, 
+export function CreatePostModal({
+  isOpen,
+  onClose,
+  onPostSubmit,
+  onOpenAiAssistant,
   initialType = 'CLINICAL_CASE',
   currentUser
 }) {
   const [postType, setPostType] = useState(initialType);
   const [content, setContent] = useState('');
   const [species, setSpecies] = useState('Canine');
-  
+
   // Media states
   const [mediaUrl, setMediaUrl] = useState('');
   const [mediaFile, setMediaFile] = useState(null);
   const [fileDetails, setFileDetails] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadMode, setUploadMode] = useState('file'); // 'file' | 'url'
-  
+
   // Video specific states
   const [videoTitle, setVideoTitle] = useState('');
   const [videoSpecialty, setVideoSpecialty] = useState('Veterinary Surgery');
@@ -209,7 +209,7 @@ export function CreatePostModal({
         videoTitle: title,
         specialty: videoSpecialty,
         duration: videoDuration,
-        imageUrl: uploadedMediaUrl || 'https://images.unsplash.com/photo-1576201836106-db1758fd1c97?auto=format&fit=crop&w=500&q=80',
+        imageUrl: uploadedMediaUrl || null,
         videoUrl: uploadedVideoUrl || uploadedMediaUrl,
         species
       });
@@ -238,14 +238,14 @@ export function CreatePostModal({
 
   return (
     <div className="modal-overlay" onClick={handleClose}>
-      <div 
-        className="modal-content" 
+      <div
+        className="modal-content"
         onClick={(e) => e.stopPropagation()}
         style={{ maxWidth: '680px', width: '100%', borderRadius: '16px', overflow: 'hidden' }}
       >
         {/* Modal Header */}
         <div className="modal-header">
-          <h3 className="modal-title">Share to Doctor Vet Community</h3>
+          <h3 className="modal-title">Share to Zenve Vet Community</h3>
           <button className="btn-close-modal" onClick={handleClose} type="button">
             <X size={20} />
           </button>
@@ -291,7 +291,7 @@ export function CreatePostModal({
               {/* Species and Case meta selector */}
               <div style={{ display: 'flex', gap: '10px', marginBottom: '12px', alignItems: 'center' }}>
                 <label style={{ fontSize: '12.5px', fontWeight: '600', color: '#121A15' }}>Patient Species:</label>
-                <select 
+                <select
                   className="pill-select-control"
                   value={species}
                   onChange={(e) => setSpecies(e.target.value)}
@@ -307,7 +307,7 @@ export function CreatePostModal({
               </div>
 
               {/* Textarea */}
-              <textarea 
+              <textarea
                 rows="4"
                 className="custom-filter-select"
                 style={{ width: '100%', resize: 'vertical', marginBottom: '14px', fontSize: '13.5px', lineHeight: 1.5 }}
@@ -331,7 +331,7 @@ export function CreatePostModal({
                 {/* File Upload Box */}
                 {!mediaUrl ? (
                   <div>
-                    <div 
+                    <div
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
@@ -347,12 +347,12 @@ export function CreatePostModal({
                         marginBottom: '8px'
                       }}
                     >
-                      <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        onChange={handleFileInputChange} 
-                        accept="image/*" 
-                        style={{ display: 'none' }} 
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileInputChange}
+                        accept="image/*"
+                        style={{ display: 'none' }}
                       />
                       <UploadCloud size={24} color="#059669" style={{ margin: '0 auto 6px auto', display: 'block' }} />
                       <p style={{ margin: '0 0 2px 0', fontSize: '13px', fontWeight: 600, color: '#111827' }}>
@@ -365,7 +365,7 @@ export function CreatePostModal({
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                       <span style={{ fontSize: '11.5px', color: '#6B7280' }}>Or paste direct URL:</span>
-                      <input 
+                      <input
                         type="text"
                         placeholder="https://... (radiograph, cytology, or surgical photo)"
                         className="custom-filter-select"
@@ -411,10 +411,10 @@ export function CreatePostModal({
                     gap: '12px',
                     padding: '8px 12px'
                   }}>
-                    <img 
-                      src={mediaUrl} 
-                      alt="Clinical scan preview" 
-                      style={{ width: '64px', height: '64px', borderRadius: '8px', objectFit: 'cover' }} 
+                    <img
+                      src={mediaUrl}
+                      alt="Clinical scan preview"
+                      style={{ width: '64px', height: '64px', borderRadius: '8px', objectFit: 'cover' }}
                     />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ margin: '0 0 2px 0', fontSize: '13px', fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -424,7 +424,7 @@ export function CreatePostModal({
                         {fileDetails?.size || 'Attached photo'}
                       </span>
                     </div>
-                    <button 
+                    <button
                       type="button"
                       onClick={handleClearMedia}
                       style={{
@@ -453,7 +453,7 @@ export function CreatePostModal({
               {/* Species tag */}
               <div style={{ display: 'flex', gap: '10px', marginBottom: '12px', alignItems: 'center' }}>
                 <label style={{ fontSize: '12.5px', fontWeight: '600', color: '#121A15' }}>Category / Species:</label>
-                <select 
+                <select
                   className="pill-select-control"
                   value={species}
                   onChange={(e) => setSpecies(e.target.value)}
@@ -469,7 +469,7 @@ export function CreatePostModal({
               </div>
 
               {/* Textarea */}
-              <textarea 
+              <textarea
                 rows="4"
                 className="custom-filter-select"
                 style={{ width: '100%', resize: 'vertical', marginBottom: '14px', fontSize: '13.5px', lineHeight: 1.5 }}
@@ -524,7 +524,7 @@ export function CreatePostModal({
                 {!mediaUrl ? (
                   <div>
                     {uploadMode === 'file' ? (
-                      <div 
+                      <div
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
@@ -540,12 +540,12 @@ export function CreatePostModal({
                           marginBottom: '8px'
                         }}
                       >
-                        <input 
-                          type="file" 
-                          ref={fileInputRef} 
-                          onChange={handleFileInputChange} 
-                          accept="image/*" 
-                          style={{ display: 'none' }} 
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileInputChange}
+                          accept="image/*"
+                          style={{ display: 'none' }}
                         />
                         <div style={{
                           width: '44px',
@@ -569,7 +569,7 @@ export function CreatePostModal({
                       </div>
                     ) : (
                       <div style={{ marginBottom: '8px' }}>
-                        <input 
+                        <input
                           type="text"
                           placeholder="Paste image URL (https://...)"
                           className="custom-filter-select"
@@ -613,10 +613,10 @@ export function CreatePostModal({
                     backgroundColor: '#111827',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
                   }}>
-                    <img 
-                      src={mediaUrl} 
-                      alt="Uploaded preview" 
-                      style={{ width: '100%', maxHeight: '240px', objectFit: 'cover', display: 'block' }} 
+                    <img
+                      src={mediaUrl}
+                      alt="Uploaded preview"
+                      style={{ width: '100%', maxHeight: '240px', objectFit: 'cover', display: 'block' }}
                     />
                     <div style={{
                       position: 'absolute',
@@ -625,7 +625,7 @@ export function CreatePostModal({
                       display: 'flex',
                       gap: '8px'
                     }}>
-                      <button 
+                      <button
                         type="button"
                         onClick={handleClearMedia}
                         style={{
@@ -701,7 +701,7 @@ export function CreatePostModal({
                 <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '600', color: '#121A15', marginBottom: '4px' }}>
                   Story Caption / Patient Update
                 </label>
-                <input 
+                <input
                   type="text"
                   placeholder="e.g. Prepped for laparoscopic gastropexy in OR 2 🩺"
                   className="custom-filter-select"
@@ -722,7 +722,7 @@ export function CreatePostModal({
                   {/* Left: Upload Dropzone & Controls */}
                   <div>
                     {!mediaUrl ? (
-                      <div 
+                      <div
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
@@ -738,12 +738,12 @@ export function CreatePostModal({
                           marginBottom: '8px'
                         }}
                       >
-                        <input 
-                          type="file" 
-                          ref={storyInputRef} 
-                          onChange={handleFileInputChange} 
-                          accept="image/*,video/*" 
-                          style={{ display: 'none' }} 
+                        <input
+                          type="file"
+                          ref={storyInputRef}
+                          onChange={handleFileInputChange}
+                          accept="image/*,video/*"
+                          style={{ display: 'none' }}
                         />
                         <div style={{
                           width: '44px',
@@ -777,8 +777,8 @@ export function CreatePostModal({
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#111827' }}>Story Media Attached</span>
-                          <button 
-                            type="button" 
+                          <button
+                            type="button"
                             onClick={handleClearMedia}
                             style={{ background: 'none', border: 'none', color: '#DC2626', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
                           >
@@ -794,7 +794,7 @@ export function CreatePostModal({
                     {/* Or URL Input */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', marginBottom: '8px' }}>
                       <span style={{ fontSize: '11.5px', color: '#6B7280', whiteSpace: 'nowrap' }}>Or Image URL:</span>
-                      <input 
+                      <input
                         type="text"
                         placeholder="https://..."
                         className="custom-filter-select"
@@ -847,10 +847,10 @@ export function CreatePostModal({
 
                       {/* Header in Preview */}
                       <div style={{ position: 'absolute', top: 14, left: 8, right: 8, display: 'flex', alignItems: 'center', gap: 6, zIndex: 5 }}>
-                        <img 
-                          src={doctorAvatar} 
-                          alt="Doctor" 
-                          style={{ width: 22, height: 22, borderRadius: '50%', border: '1.5px solid #10B981' }} 
+                        <img
+                          src={doctorAvatar}
+                          alt="Doctor"
+                          style={{ width: 22, height: 22, borderRadius: '50%', border: '1.5px solid #10B981' }}
                         />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p style={{ color: '#FFF', fontSize: 10.5, fontWeight: 700, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -861,10 +861,10 @@ export function CreatePostModal({
                       </div>
 
                       {/* Story Media */}
-                      <img 
-                        src={mediaUrl} 
-                        alt="Story preview" 
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                      <img
+                        src={mediaUrl}
+                        alt="Story preview"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       />
 
                       {/* Caption Overlay */}
@@ -898,7 +898,7 @@ export function CreatePostModal({
                 <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '600', color: '#121A15', marginBottom: '4px' }}>
                   Clinical Reel Title
                 </label>
-                <input 
+                <input
                   type="text"
                   placeholder="e.g. Rapid Subdermal Suture Pattern for Tension Relief"
                   className="custom-filter-select"
@@ -915,7 +915,7 @@ export function CreatePostModal({
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#121A15', marginBottom: '4px' }}>
                     Specialty / Category
                   </label>
-                  <select 
+                  <select
                     className="pill-select-control"
                     value={videoSpecialty}
                     onChange={(e) => setVideoSpecialty(e.target.value)}
@@ -934,7 +934,7 @@ export function CreatePostModal({
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#121A15', marginBottom: '4px' }}>
                     Duration
                   </label>
-                  <select 
+                  <select
                     className="pill-select-control"
                     value={videoDuration}
                     onChange={(e) => setVideoDuration(e.target.value)}
@@ -949,7 +949,7 @@ export function CreatePostModal({
               </div>
 
               {/* Description textarea */}
-              <textarea 
+              <textarea
                 rows="3"
                 className="custom-filter-select"
                 style={{ width: '100%', resize: 'vertical', marginBottom: '14px', fontSize: '13px' }}
@@ -966,7 +966,7 @@ export function CreatePostModal({
 
                 {!videoFileUrl && !mediaUrl ? (
                   <div>
-                    <div 
+                    <div
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
@@ -982,12 +982,12 @@ export function CreatePostModal({
                         marginBottom: '8px'
                       }}
                     >
-                      <input 
-                        type="file" 
-                        ref={videoInputRef} 
-                        onChange={handleFileInputChange} 
-                        accept="video/mp4,video/webm,video/quicktime,image/*" 
-                        style={{ display: 'none' }} 
+                      <input
+                        type="file"
+                        ref={videoInputRef}
+                        onChange={handleFileInputChange}
+                        accept="video/mp4,video/webm,video/quicktime,image/*"
+                        style={{ display: 'none' }}
                       />
                       <div style={{
                         width: '44px',
@@ -1012,7 +1012,7 @@ export function CreatePostModal({
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                       <span style={{ fontSize: '11.5px', color: '#6B7280', whiteSpace: 'nowrap' }}>Or Video/Thumbnail URL:</span>
-                      <input 
+                      <input
                         type="text"
                         placeholder="https://... (direct video link or reel thumbnail)"
                         className="custom-filter-select"
@@ -1059,17 +1059,17 @@ export function CreatePostModal({
                     boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                   }}>
                     {videoFileUrl && (videoFileUrl.endsWith('.mp4') || videoFileUrl.startsWith('blob:') || videoFileUrl.startsWith('data:video')) ? (
-                      <video 
-                        src={videoFileUrl} 
-                        controls 
+                      <video
+                        src={videoFileUrl}
+                        controls
                         playsInline
-                        style={{ width: '100%', maxHeight: '240px', objectFit: 'contain', backgroundColor: '#000' }} 
+                        style={{ width: '100%', maxHeight: '240px', objectFit: 'contain', backgroundColor: '#000' }}
                       />
                     ) : (
-                      <img 
-                        src={mediaUrl} 
-                        alt="Reel preview" 
-                        style={{ width: '100%', maxHeight: '220px', objectFit: 'cover' }} 
+                      <img
+                        src={mediaUrl}
+                        alt="Reel preview"
+                        style={{ width: '100%', maxHeight: '220px', objectFit: 'cover' }}
                       />
                     )}
 
@@ -1085,7 +1085,7 @@ export function CreatePostModal({
                         <p style={{ margin: 0, fontSize: '13px', fontWeight: 600 }}>{videoTitle || 'Clinical Video Attached'}</p>
                         <span style={{ fontSize: '11.5px', color: '#9CA3AF' }}>{videoSpecialty} · {videoDuration}</span>
                       </div>
-                      <button 
+                      <button
                         type="button"
                         onClick={handleClearMedia}
                         style={{
@@ -1111,17 +1111,17 @@ export function CreatePostModal({
           {/* ======================================================== */}
           {/* FOOTER ACTIONS ROW - Exactly matching reference screenshot */}
           {/* ======================================================== */}
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            paddingTop: '14px', 
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingTop: '14px',
             borderTop: '1px solid #E5E9E5',
             marginTop: '8px'
           }}>
             {/* Left AI Assistant button */}
-            <button 
-              type="button" 
+            <button
+              type="button"
               className="btn-post-type ai-special"
               onClick={() => {
                 handleClose();
@@ -1145,8 +1145,8 @@ export function CreatePostModal({
             </button>
 
             {/* Right Submit Button */}
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="btn-submit-post"
               style={{
                 display: 'flex',

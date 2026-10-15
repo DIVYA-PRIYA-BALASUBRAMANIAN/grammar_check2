@@ -33,6 +33,9 @@ export function hasUserUploadedPhoto(src) {
   const trimmed = src.trim();
   if (!trimmed) return false;
   if (trimmed.includes('unsplash.com')) return false;
+  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://') && !trimmed.startsWith('data:image') && !trimmed.startsWith('/') && !trimmed.startsWith('blob:')) {
+    return false;
+  }
   return true;
 }
 
