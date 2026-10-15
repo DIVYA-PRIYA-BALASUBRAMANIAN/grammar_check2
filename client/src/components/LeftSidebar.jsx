@@ -16,21 +16,22 @@ import {
   GraduationCap,
   LogIn,
   LogOut,
-  CheckCircle2
+  CheckCircle2,
+  User
 } from 'lucide-react';
-import { Avatar } from './Avatar';
 import zenveLogo from '../assets/zenve_logo.png';
 import sidebarDoctorBg from '../assets/sidebar_vet_doctor.jpg';
 
 export function LeftSidebar({
   activeTab,
   onTabSelect,
-  unreadMessagesCount = 1,
+  unreadMessagesCount = 0,
   onOpenBenefitsModal,
   currentUser,
   onOpenLogin,
   onLogout,
-  onOpenCreateProfile
+  onOpenCreateProfile,
+  onOpenDoctorProfile
 }) {
   const navItems = [
     { id: 'feed', label: 'Home', icon: Home },
@@ -40,7 +41,8 @@ export function LeftSidebar({
     { id: 'messages', label: 'Messages', icon: MessageSquare, hasBadge: true },
     { id: 'search', label: 'Search', icon: Search },
     { id: 'benefits', label: 'Member Benefits', icon: Award },
-    { id: 'advertise', label: 'Advertise', icon: Megaphone }
+    { id: 'advertise', label: 'Advertise', icon: Megaphone },
+    { id: 'profile', label: 'My Profile', icon: User }
   ];
 
   const displayUser = currentUser || {

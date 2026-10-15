@@ -42,7 +42,8 @@ export function Header({
   onIgnoreRequest,
   onMarkNotificationRead,
   onMarkAllNotificationsRead,
-  onOpenCreatePost
+  onOpenCreatePost,
+  onOpenDirectChat
 }) {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -105,7 +106,7 @@ export function Header({
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.1 }}>
             <span style={{ fontSize: '15px', fontWeight: '800', color: '#003822', letterSpacing: '-0.3px', fontFamily: 'var(--font-display, inherit)' }}>
-              Doctor Vet
+              Zenve Vet
             </span>
             <span style={{ fontSize: '9.5px', fontWeight: '700', color: '#059669', letterSpacing: '0.6px', textTransform: 'uppercase' }}>
               Community
@@ -318,7 +319,17 @@ export function Header({
                   filteredNotifs.map((n) => (
                     <div
                       key={n.id}
-                      onClick={() => onMarkNotificationRead && onMarkNotificationRead(n.id)}
+                      onClick={() => {
+                        if (onMarkNotificationRead) onMarkNotificationRead(n.id);
+                        if (n.type === 'NEW_MESSAGE' || n.type === 'MESSAGE' || n.type === 'DIRECT_MESSAGE') {
+                          setIsNotificationsOpen(false);
+                          if (onOpenDirectChat && (n.senderId || n.senderName)) {
+                            onOpenDirectChat({ id: n.senderId, name: n.senderName, avatar: n.senderAvatar });
+                          } else if (onTabSelect) {
+                            onTabSelect('messages');
+                          }
+                        }
+                      }}
                       style={{
                         padding: '12px 16px',
                         borderBottom: '1px solid #F3F4F6',
@@ -435,7 +446,15 @@ export function Header({
                 padding: '12px',
                 zIndex: 100
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingBottom: '10px', borderBottom: '1px solid #F3F4F6' }}>
+                <div 
+                  onClick={() => {
+                    setIsProfileMenuOpen(false);
+                    if (onTabSelect) onTabSelect('profile');
+                    if (onOpenDoctorProfile) onOpenDoctorProfile(currentUser, true);
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingBottom: '10px', borderBottom: '1px solid #F3F4F6', cursor: 'pointer' }}
+                  title="View Full Profile"
+                >
                   <Avatar
                     src={currentUser.avatar}
                     name={currentUser.name}
@@ -452,7 +471,8 @@ export function Header({
                   <button
                     onClick={() => {
                       setIsProfileMenuOpen(false);
-                      onOpenDoctorProfile && onOpenDoctorProfile(currentUser);
+                      if (onTabSelect) onTabSelect('profile');
+                      if (onOpenDoctorProfile) onOpenDoctorProfile(currentUser, true);
                     }}
                     style={{
                       display: 'flex',

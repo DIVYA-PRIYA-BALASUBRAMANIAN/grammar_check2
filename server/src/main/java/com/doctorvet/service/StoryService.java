@@ -1,7 +1,6 @@
 package com.doctorvet.service;
 
 import com.doctorvet.model.Story;
-import com.doctorvet.model.DoctorProfile;
 import com.doctorvet.repository.StoryRepository;
 import com.doctorvet.repository.DoctorProfileRepository;
 import org.springframework.stereotype.Service;

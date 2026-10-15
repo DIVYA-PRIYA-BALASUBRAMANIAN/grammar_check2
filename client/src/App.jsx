@@ -13,6 +13,7 @@ import { SearchView } from './pages/SearchView';
 import { MemberBenefitsView } from './pages/MemberBenefitsView';
 import { AdvertiseView } from './pages/AdvertiseView';
 import { LoginPage } from './pages/LoginPage';
+import { ProfileView } from './pages/ProfileView';
 
 // Modals
 import { DoctorModal } from './components/DoctorModal';
@@ -68,6 +69,7 @@ export function App() {
 
   // Active Modals
   const [selectedDoctor, setSelectedDoctor] = useState(null);
+  const [viewedProfileDoctor, setViewedProfileDoctor] = useState(null);
   const [selectedStory, setSelectedStory] = useState(null);
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [selectedCase, setSelectedCase] = useState(null);
@@ -78,6 +80,7 @@ export function App() {
 
   // Active chat peer
   const [activeChatDoctor, setActiveChatDoctor] = useState(null);
+  const [profileReturnTab, setProfileReturnTab] = useState('feed');
 
   // 1. Validate session on startup with backend
   useEffect(() => {
@@ -347,11 +350,19 @@ export function App() {
                 const updated = [...prev];
                 const existingList = updated[convIdx].messages || [];
                 if (!existingList.some(m => m.id === incoming.id)) {
+                  const isCurrentChatOpen = activeTab === 'messages' && activeChatDoctor && (
+                    activeChatDoctor.id === incoming.senderId ||
+                    updated[convIdx].doctor?.id === activeChatDoctor.id ||
+                    updated[convIdx].doctor?.name === activeChatDoctor.name
+                  );
+                  if (isCurrentChatOpen && incoming.conversationId) {
+                    api.chat.markAsRead(incoming.conversationId, currentUser.id).catch(() => { });
+                  }
                   updated[convIdx] = {
                     ...updated[convIdx],
                     lastMessage: incoming.text || 'Sent an attachment',
                     timestamp: 'Just now',
-                    unread: incoming.senderId !== currentUser.id ? (updated[convIdx].unread || 0) + 1 : updated[convIdx].unread,
+                    unread: (incoming.senderId !== currentUser.id && !isCurrentChatOpen) ? (updated[convIdx].unread || 0) + 1 : 0,
                     messages: [...existingList, formattedMsg]
                   };
                 }
@@ -770,33 +781,86 @@ export function App() {
         };
         setConversations(prev => [existing, ...prev]);
       }
-    } else if (typeof existing.id === 'number') {
-      try {
-        const msgs = await api.chat.getMessages(existing.id);
-        setConversations(prev => prev.map(c => c.id === existing.id ? {
-          ...c,
-          messages: (msgs || []).map(m => ({
-            id: m.id,
-            sender: m.senderId === currentUser?.id ? 'user' : 'doctor',
-            senderId: m.senderId,
-            text: m.text,
-            attachmentUrl: m.attachmentUrl,
-            attachmentType: m.attachmentType,
-            time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'
-          }))
-        } : c));
-      } catch (e) { }
+    } else {
+      // Immediately reset unread to 0 for this conversation
+      setConversations(prev => prev.map(c => {
+        if (c.id === existing.id || (c.doctor && (c.doctor.id === doctor.id || c.doctor.name === doctor.name))) {
+          return { ...c, unread: 0 };
+        }
+        return c;
+      }));
+
+      const numId = typeof existing.id === 'number' ? existing.id : parseInt(String(existing.id).replace(/\D/g, ''), 10);
+      if (!isNaN(numId) && numId > 0) {
+        try {
+          const msgs = await api.chat.getMessages(numId);
+          setConversations(prev => prev.map(c => (c.id === existing.id || c.id === numId) ? {
+            ...c,
+            unread: 0,
+            messages: (msgs || []).map(m => ({
+              id: m.id,
+              sender: m.senderId === currentUser?.id ? 'user' : 'doctor',
+              senderId: m.senderId,
+              text: m.text,
+              attachmentUrl: m.attachmentUrl,
+              attachmentType: m.attachmentType,
+              time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'
+            }))
+          } : c));
+          api.chat.markAsRead(numId, currentUser?.id || 1).catch(() => { });
+        } catch (e) { }
+      }
     }
+
+    // Immediately mark all message notifications from this doctor as read
+    setNotifications(prev => prev.map(n => {
+      const isMsgNotif = (n.type === 'NEW_MESSAGE' || n.type === 'MESSAGE' || n.type === 'DIRECT_MESSAGE' || !n.type) &&
+        ((doctor.id && n.senderId === doctor.id) || (doctor.name && n.senderName === doctor.name));
+      if (isMsgNotif && !n.read) {
+        if (n.id) api.notifications.markAsRead(n.id).catch(() => {});
+        return { ...n, read: true };
+      }
+      return n;
+    }));
+
     setActiveTab('messages');
   };
 
   const handleSelectConversation = async (conv) => {
-    setActiveChatDoctor(conv.doctor);
-    if (conv?.id && typeof conv.id === 'number') {
+    if (!conv) return;
+    if (conv.doctor) setActiveChatDoctor(conv.doctor);
+
+    // 1. Immediately reset unread count to 0 in local state so badges vanish instantly
+    setConversations(prev => prev.map(c => {
+      const isMatch = (conv.id && c.id === conv.id) ||
+                      (conv.doctor?.id && c.doctor?.id === conv.doctor.id) ||
+                      (conv.doctor?.name && c.doctor?.name === conv.doctor.name);
+      if (isMatch) {
+        return { ...c, unread: 0 };
+      }
+      return c;
+    }));
+
+    // 2. Mark any related NEW_MESSAGE notifications as read immediately
+    setNotifications(prev => prev.map(n => {
+      const isMatch = (n.type === 'NEW_MESSAGE' || n.type === 'MESSAGE' || n.type === 'DIRECT_MESSAGE' || !n.type) &&
+                      ((conv.id && n.targetId === conv.id) ||
+                       (conv.doctor?.id && n.senderId === conv.doctor.id) ||
+                       (conv.doctor?.name && n.senderName === conv.doctor.name));
+      if (isMatch && !n.read) {
+        if (n.id) api.notifications.markAsRead(n.id).catch(() => {});
+        return { ...n, read: true };
+      }
+      return n;
+    }));
+
+    // 3. Mark as read on backend and load latest messages if available
+    const numId = typeof conv.id === 'number' ? conv.id : parseInt(String(conv.id).replace(/\D/g, ''), 10);
+    if (!isNaN(numId) && numId > 0) {
       try {
-        const msgs = await api.chat.getMessages(conv.id);
+        const msgs = await api.chat.getMessages(numId);
         setConversations(prev => prev.map(c => {
-          if (c.id === conv.id) {
+          if (c.id === conv.id || c.id === numId) {
             return {
               ...c,
               unread: 0,
@@ -813,7 +877,7 @@ export function App() {
           }
           return c;
         }));
-        api.chat.markAsRead(conv.id, currentUser?.id || 1).catch(() => { });
+        api.chat.markAsRead(numId, currentUser?.id || 1).catch(() => { });
       } catch (e) { }
     }
   };
@@ -900,7 +964,7 @@ export function App() {
     };
 
     // 1. Current user
-    if (currentUser && isDocMatch(currentUser.id, currentUser.name)) {
+    if (currentUser) {
       setCurrentUser(prev => {
         const next = { ...prev, ...updatedDoc };
         try { localStorage.setItem('doctor_vet_user', JSON.stringify(next)); } catch (e) { }
@@ -908,10 +972,18 @@ export function App() {
       });
     }
 
-    // 2. Selected Doctor modal
+    // 2. Selected Doctor modal & Viewed Profile
     setSelectedDoctor(prev => {
       if (!prev) return prev;
-      if (isDocMatch(prev.id, prev.name)) {
+      if (prev.id === currentUser?.id || isDocMatch(prev.id, prev.name)) {
+        return { ...prev, ...updatedDoc };
+      }
+      return prev;
+    });
+
+    setViewedProfileDoctor(prev => {
+      if (!prev) return updatedDoc;
+      if (prev.id === currentUser?.id || isDocMatch(prev.id, prev.name)) {
         return { ...prev, ...updatedDoc };
       }
       return prev;
@@ -1000,26 +1072,41 @@ export function App() {
     }));
   };
 
-  const handleOpenDoctorProfile = (doc) => {
-    if (!doc) {
-      setSelectedDoctor(currentUser);
-      return;
-    }
-    const isMe = currentUser && (
-      doc.id === currentUser.id ||
-      String(doc.id).replace('doc-', '') === String(currentUser.id).replace('doc-', '') ||
-      (doc.name && currentUser.name && doc.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
-    );
-    if (isMe) {
-      setSelectedDoctor(currentUser);
-      return;
-    }
+  const handleOpenDoctorProfile = (doc, openAsPage = false) => {
+    const target = doc || currentUser;
+    if (!target) return;
+
     const fresh = (doctors || []).find(d =>
-      d.id === doc.id ||
-      String(d.id).replace('doc-', '') === String(doc.id).replace('doc-', '') ||
-      (d.name && doc.name && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === doc.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+      d.id === target.id ||
+      String(d.id).replace('doc-', '') === String(target.id).replace('doc-', '') ||
+      (d.name && target.name && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === target.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
     );
-    setSelectedDoctor(fresh ? { ...doc, ...fresh, avatar: fresh.avatar || doc.avatar } : doc);
+
+    const merged = fresh
+      ? { ...target, ...fresh, avatar: (fresh.avatar && !fresh.avatar.includes('unsplash.com')) ? fresh.avatar : (target.avatar || fresh.avatar) }
+      : target;
+
+    setViewedProfileDoctor(merged);
+    if (openAsPage) {
+      setProfileReturnTab(activeTab);
+      setSelectedDoctor(null);
+      setActiveTab('profile');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      setSelectedDoctor(merged);
+    }
+  };
+
+  const handleTabNavigation = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'profile') setViewedProfileDoctor(currentUser);
+    if (tab === 'messages') {
+      const targetConv = conversations.find(c => activeChatDoctor && (c.doctor?.id === activeChatDoctor.id || c.doctor?.name === activeChatDoctor.name)) || conversations[0];
+      if (targetConv) {
+        handleSelectConversation(targetConv);
+      }
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   if (!currentUser || isLoginView || activeTab === 'login') {
@@ -1039,16 +1126,14 @@ export function App() {
       {/* 1. Left Sidebar Navigation */}
       <LeftSidebar
         activeTab={activeTab}
-        onTabSelect={(tab) => {
-          setActiveTab(tab);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
+        onTabSelect={handleTabNavigation}
         unreadMessagesCount={conversations.reduce((acc, c) => acc + (c.unread || 0), 0)}
         onOpenBenefitsModal={() => setActiveTab('benefits')}
         currentUser={currentUser}
         onOpenLogin={() => setIsLoginView(true)}
         onLogout={handleLogout}
         onOpenCreateProfile={() => setIsCreateProfileOpen(true)}
+        onOpenDoctorProfile={handleOpenDoctorProfile}
       />
 
       {/* 2. Main Content Layout */}
@@ -1063,10 +1148,7 @@ export function App() {
             }
           }}
           activeTab={activeTab}
-          onTabSelect={(tab) => {
-            setActiveTab(tab);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
+          onTabSelect={handleTabNavigation}
           currentUser={currentUser}
           onOpenLogin={() => setIsLoginView(true)}
           onLogout={handleLogout}
@@ -1081,6 +1163,7 @@ export function App() {
           onMarkNotificationRead={handleMarkNotificationRead}
           onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
           onOpenCreatePost={handleOpenCreatePost}
+          onOpenDirectChat={handleOpenDirectChat}
         />
 
         {/* Workspace Layout */}
@@ -1096,14 +1179,14 @@ export function App() {
             <MessagesView
               conversations={conversations}
               activeChatDoctor={activeChatDoctor}
-              onSelectConversation={(c) => setActiveChatDoctor(c.doctor)}
+              onSelectConversation={handleSelectConversation}
               onSendMessage={handleSendMessage}
               onOpenDoctorProfile={handleOpenDoctorProfile}
               currentUser={currentUser}
               doctors={doctors}
               connectedDoctors={myConnections}
               onOpenLogin={() => setIsLoginView(true)}
-              onNavigateTab={(tab) => setActiveTab(tab)}
+              onNavigateTab={handleTabNavigation}
               onOpenCreateProfile={() => setIsCreateProfileOpen(true)}
             />
           </div>
@@ -1126,6 +1209,71 @@ export function App() {
                   onBookmarkPost={handleBookmarkPost}
                   onReportPost={handleReportPost}
                   currentUser={currentUser}
+                  onOpenDoctorProfile={handleOpenDoctorProfile}
+                />
+              )}
+
+              {activeTab === 'profile' && (
+                <ProfileView
+                  doctor={viewedProfileDoctor || currentUser}
+                  doctors={doctors}
+                  currentUser={currentUser}
+                  cases={clinicalCases}
+                  posts={posts}
+                  onEditProfile={() => setIsCreateProfileOpen(true)}
+                  onSelectCase={(c) => setSelectedCase(c)}
+                  onUpdateAvatar={async (newAvatarUrl) => {
+                    const docId = currentUser?.id || 1;
+                    try {
+                      const updated = await api.doctors.update(docId, { avatar: newAvatarUrl });
+                      handleDoctorProfileUpdated(updated);
+                      alert('Profile photo updated successfully!');
+                    } catch (e) {
+                      const fallback = { ...(currentUser || {}), avatar: newAvatarUrl };
+                      handleDoctorProfileUpdated(fallback);
+                    }
+                  }}
+                  onUpdateCover={async (newCoverUrl) => {
+                    const docId = currentUser?.id || 1;
+                    try {
+                      const updated = await api.doctors.update(docId, { coverImage: newCoverUrl });
+                      handleDoctorProfileUpdated(updated);
+                      alert('Cover photo updated successfully!');
+                    } catch (e) {
+                      const fallback = { ...(currentUser || {}), coverImage: newCoverUrl };
+                      handleDoctorProfileUpdated(fallback);
+                    }
+                  }}
+                  onUpdatePhone={async (newPhone) => {
+                    const docId = currentUser?.id || 1;
+                    try {
+                      const updated = await api.doctors.update(docId, { phone: newPhone });
+                      handleDoctorProfileUpdated(updated);
+                      alert('Phone number updated successfully!');
+                    } catch (e) {
+                      const fallback = { ...(currentUser || {}), phone: newPhone };
+                      handleDoctorProfileUpdated(fallback);
+                    }
+                  }}
+                  onUpdateEmail={async (newEmail) => {
+                    const docId = currentUser?.id || 1;
+                    try {
+                      const updated = await api.doctors.update(docId, { email: newEmail });
+                      handleDoctorProfileUpdated(updated);
+                      alert('Email address updated successfully!');
+                    } catch (e) {
+                      const fallback = { ...(currentUser || {}), email: newEmail };
+                      handleDoctorProfileUpdated(fallback);
+                    }
+                  }}
+                  onOpenChat={handleOpenDirectChat}
+                  onToggleConnect={(docId) => handleDisconnect(docId)}
+                  isConnected={viewedProfileDoctor ? (!!connectedMap[viewedProfileDoctor.id] || !!connectedMap[`doc-${viewedProfileDoctor.id}`]) : false}
+                  isPending={viewedProfileDoctor ? sentRequests.some(r => r.receiverId === viewedProfileDoctor.id) : false}
+                  onSendRequest={handleSendRequest}
+                  onBackToFeed={() => setActiveTab(profileReturnTab || 'feed')}
+                  returnTab={profileReturnTab}
+                  onOpenCreateCase={handleOpenCreatePost}
                 />
               )}
 
@@ -1246,6 +1394,7 @@ export function App() {
             handleDoctorProfileUpdated(fallback);
           }
         }}
+        onViewFullPageProfile={(doc) => handleOpenDoctorProfile(doc, true)}
       />
 
       <CreateProfileModal

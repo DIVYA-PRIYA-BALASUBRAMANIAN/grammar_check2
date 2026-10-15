@@ -146,5 +146,17 @@ public class ChatService {
                 msgRepo.save(m);
             }
         }
+
+        // Also mark all NEW_MESSAGE notifications for this conversation as read
+        List<Notification> notifs = notificationRepo.findByRecipientIdOrderByCreatedAtDesc(doctorId);
+        for (Notification n : notifs) {
+            if ("NEW_MESSAGE".equalsIgnoreCase(n.getType()) && conversationId.equals(n.getTargetId()) && !n.isRead()) {
+                n.setRead(true);
+                notificationRepo.save(n);
+            }
+        }
+        try {
+            messagingTemplate.convertAndSend("/topic/user/" + doctorId + "/notifications", "NOTIFICATIONS_UPDATED");
+        } catch (Exception ignored) {}
     }
 }

@@ -63,11 +63,11 @@ export function RightSidebar({ doctors = [], onSelectDoctor, onViewAllDoctors, o
         </div>
       </div>
 
-      {/* The Doctor Vet Advantage Widget Card */}
+      {/* The Zenve Vet Advantage Widget Card */}
       <div className="rail-widget-card">
         <div className="rail-widget-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span className="rail-widget-title">The Doctor Vet Advantage</span>
+            <span className="rail-widget-title">The Zenve Vet Advantage</span>
             <Sparkles size={14} color="#d97706" />
           </div>
         </div>

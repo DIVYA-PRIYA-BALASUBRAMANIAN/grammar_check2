@@ -42,8 +42,15 @@ public class DoctorProfileController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<DoctorProfile> updateProfile(@PathVariable Long id, @RequestBody Map<String, Object> updates) {
-        return doctorService.updateProfile(id, updates)
+    public ResponseEntity<DoctorProfile> updateProfile(@PathVariable String id, @RequestBody Map<String, Object> updates) {
+        Long numericId = null;
+        try {
+            String digits = id.replaceAll("[^0-9]", "");
+            if (!digits.isBlank()) {
+                numericId = Long.parseLong(digits);
+            }
+        } catch (Exception ignored) {}
+        return doctorService.updateProfile(numericId, updates)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

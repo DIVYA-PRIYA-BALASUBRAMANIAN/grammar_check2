@@ -88,7 +88,7 @@ export function SearchView({ doctors: initialDoctors = [], onSelectDoctor, onOpe
         <div className="hero-banner-inner">
           <div className="hero-text-content">
             <span className="hero-tag-kicker">Unified Directory</span>
-            <h1 className="hero-headline">Explore the Doctor Vet Ecosystem</h1>
+            <h1 className="hero-headline">Explore the Zenve Vet Ecosystem</h1>
             <p className="hero-subtext">
               Search peer veterinarians, clinical cases, surgical video reels, and treatment protocols.
             </p>

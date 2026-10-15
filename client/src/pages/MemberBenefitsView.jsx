@@ -49,7 +49,7 @@ export function MemberBenefitsView({ onOpenCreateProfile }) {
       <div className="cases-hero-banner-light">
         <div className="hero-banner-inner">
           <div className="hero-text-content">
-            <span className="hero-tag-kicker">Doctor Vet Privilege</span>
+            <span className="hero-tag-kicker">Zenve Vet Privilege</span>
             <h1 className="hero-headline">Elevate Your Veterinary Practice.</h1>
             <p className="hero-subtext">
               Exclusive clinical privileges, accredited continuing education, and institutional discounts for verified veterinarians.

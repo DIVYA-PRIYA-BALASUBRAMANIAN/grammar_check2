@@ -309,19 +309,79 @@ export function MessagesView({
     });
   }, [connectedDoctors, doctors]);
 
-  // Filter connected people by search query
-  const filteredPeople = userConnections.filter(p => {
+  // Merge conversations and connected doctors, prioritizing unread chats first like Instagram
+  const allContacts = useMemo(() => {
+    const map = new Map();
+
+    // 1. Existing conversations first (with fresh doctor info)
+    (conversations || []).forEach(conv => {
+      if (conv.doctor) {
+        const fresh = (doctors || []).find(d =>
+          d.id === conv.doctor.id ||
+          String(d.id).replace('doc-', '') === String(conv.doctor.id).replace('doc-', '') ||
+          (d.name && conv.doctor.name && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === conv.doctor.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+        );
+        const resolvedDoctor = fresh ? { ...conv.doctor, ...fresh, avatar: fresh.avatar || conv.doctor.avatar } : conv.doctor;
+        const key = resolvedDoctor.id ? String(resolvedDoctor.id).replace('doc-', '') : resolvedDoctor.name;
+
+        map.set(key, {
+          doctor: resolvedDoctor,
+          conv: conv,
+          lastMessage: conv.lastMessage || (conv.messages && conv.messages.length > 0 ? conv.messages[conv.messages.length - 1].text : 'Direct chat consultation'),
+          timestamp: conv.timestamp || 'Active',
+          unread: conv.unread || 0
+        });
+      }
+    });
+
+    // 2. Add connected doctors who might not have had messages yet
+    (userConnections || []).forEach(doc => {
+      const key = doc.id ? String(doc.id).replace('doc-', '') : doc.name;
+      if (!map.has(key)) {
+        map.set(key, {
+          doctor: doc,
+          conv: null,
+          lastMessage: doc.specialty || 'Veterinary Practitioner',
+          timestamp: 'Connected',
+          unread: 0
+        });
+      }
+    });
+
+    const list = Array.from(map.values());
+    // Sort: unread chats at the very top, then active chats
+    return list.sort((a, b) => {
+      const unreadDiff = (b.unread || 0) - (a.unread || 0);
+      if (unreadDiff !== 0) return unreadDiff;
+      if (b.conv && !a.conv) return 1;
+      if (a.conv && !b.conv) return -1;
+      return 0;
+    });
+  }, [conversations, userConnections, doctors]);
+
+  // Filter contacts by search query
+  const filteredContacts = allContacts.filter(item => {
     if (!searchPersonQuery.trim()) return true;
     const q = searchPersonQuery.toLowerCase();
-    return (p.name && p.name.toLowerCase().includes(q)) ||
-      (p.specialty && p.specialty.toLowerCase().includes(q)) ||
-      (p.city && p.city.toLowerCase().includes(q));
+    const doc = item.doctor;
+    return (doc.name && doc.name.toLowerCase().includes(q)) ||
+      (doc.specialty && doc.specialty.toLowerCase().includes(q)) ||
+      (item.lastMessage && item.lastMessage.toLowerCase().includes(q));
   });
 
   // Selected conversation strictly belonging to this user
   const selectedConv = conversations.find(c =>
     activeChatDoctor && (c.doctor?.id === activeChatDoctor.id || c.doctor?.name === activeChatDoctor.name)
   ) || (conversations.length > 0 ? conversations[0] : null);
+
+  // Auto-mark conversation as read immediately when viewed (Instagram Direct Messages behavior)
+  useEffect(() => {
+    if (selectedConv && (selectedConv.unread > 0 || conversations.some(c => (c.id === selectedConv.id || (c.doctor?.id && c.doctor?.id === selectedConv.doctor?.id)) && c.unread > 0))) {
+      if (onSelectConversation) {
+        onSelectConversation(selectedConv);
+      }
+    }
+  }, [selectedConv?.id, selectedConv?.unread, onSelectConversation]);
 
   // Active doctor peer for consultation - dynamically resolved from live doctor catalog
   const rawDoctor = activeChatDoctor || selectedConv?.doctor || null;
@@ -410,8 +470,12 @@ export function MessagesView({
               alignItems: 'center',
               backgroundColor: '#FFFFFF'
             }}>
-              {/* Doctor Info */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              {/* Doctor Info (Clickable to open profile) */}
+              <div
+                onClick={() => onOpenDoctorProfile && onOpenDoctorProfile(currentDoctor, true)}
+                style={{ display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer' }}
+                title={`View ${currentDoctor.name}'s Profile`}
+              >
                 <div style={{ position: 'relative', width: '46px', height: '46px' }}>
                   <Avatar
                     src={currentDoctor.avatar}
@@ -437,8 +501,12 @@ export function MessagesView({
                       margin: 0,
                       fontSize: '16.5px',
                       fontWeight: 700,
-                      color: '#111827'
-                    }}>
+                      color: '#111827',
+                      transition: 'color 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = '#003822'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = '#111827'; }}
+                    >
                       {currentDoctor.name}
                     </h3>
                     <span style={{
@@ -462,31 +530,34 @@ export function MessagesView({
 
               {/* Header Action: Profile Button */}
               <button
-                onClick={() => onOpenDoctorProfile && onOpenDoctorProfile(currentDoctor)}
+                type="button"
+                onClick={() => onOpenDoctorProfile && onOpenDoctorProfile(currentDoctor, true)}
                 style={{
                   backgroundColor: '#FFFFFF',
-                  color: '#374151',
-                  border: '1px solid #E5E7EB',
+                  color: '#003822',
+                  border: '1.5px solid #003822',
                   borderRadius: '9999px',
-                  padding: '7px 18px',
+                  padding: '7px 20px',
                   fontSize: '13px',
-                  fontWeight: 600,
+                  fontWeight: 700,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  transition: 'all 0.15s ease'
+                  transition: 'all 0.15s ease',
+                  boxShadow: '0 1px 3px rgba(0, 56, 34, 0.08)'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#F9FAFB';
-                  e.currentTarget.style.borderColor = '#D1D5DB';
+                  e.currentTarget.style.backgroundColor = '#F0FDF4';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = '#FFFFFF';
-                  e.currentTarget.style.borderColor = '#E5E7EB';
+                  e.currentTarget.style.transform = 'translateY(0)';
                 }}
+                title={`View ${currentDoctor.name}'s Profile`}
               >
-                <User size={15} color="#4B5563" />
+                <User size={15} color="#003822" />
                 <span>Profile</span>
               </button>
             </div>
@@ -522,86 +593,106 @@ export function MessagesView({
               </div>
 
               {/* Message Stream */}
-              {chatMessages.map((msg) => {
+              {chatMessages.map((msg, idx) => {
                 const isMe = msg.sender === 'user' || msg.sender === 'me' || msg.senderId === (currentUser?.id || 1);
+                const isLastMsg = idx === chatMessages.length - 1;
 
                 return (
-                  <div
-                    key={msg.id}
-                    style={{
-                      display: 'flex',
-                      justifyContent: isMe ? 'flex-end' : 'flex-start',
-                      alignItems: 'flex-start',
-                      gap: '10px',
-                      maxWidth: '100%'
-                    }}
-                  >
-                    {/* Doctor Avatar on the left for received messages */}
-                    {!isMe && (
-                      <div style={{ position: 'relative', flexShrink: 0, marginTop: '2px' }}>
-                        <Avatar
-                          src={currentDoctor.avatar}
-                          name={currentDoctor.name}
-                          size={34}
-                          fontSize={13}
-                        />
-                        <span style={{
-                          position: 'absolute',
-                          bottom: 0,
-                          right: 0,
-                          width: '9px',
-                          height: '9px',
-                          borderRadius: '50%',
-                          backgroundColor: '#10B981',
-                          border: '1.5px solid #FFFFFF'
-                        }} />
-                      </div>
-                    )}
-
-                    {/* Message Bubble */}
-                    <div style={{
-                      maxWidth: isMe ? '68%' : '72%',
-                      backgroundColor: isMe ? '#0D4B2D' : '#F8FAF9',
-                      color: isMe ? '#FFFFFF' : '#1F2937',
-                      borderRadius: isMe ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
-                      padding: '13px 20px',
-                      border: isMe ? 'none' : '1px solid #ECEFEF',
-                      boxShadow: isMe ? '0 2px 8px rgba(13, 75, 45, 0.12)' : '0 1px 3px rgba(0,0,0,0.02)'
-                    }}>
-                      {/* Attached Image if any */}
-                      {msg.attachmentUrl && (
-                        <div style={{ borderRadius: '12px', overflow: 'hidden', marginBottom: '8px' }}>
-                          <img
-                            src={msg.attachmentUrl}
-                            alt="Clinical Radiograph / Photo"
-                            style={{ width: '100%', maxHeight: '220px', objectFit: 'cover', display: 'block' }}
+                  <div key={msg.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: isMe ? 'flex-end' : 'flex-start',
+                        alignItems: 'flex-start',
+                        gap: '10px',
+                        maxWidth: '100%'
+                      }}
+                    >
+                      {/* Doctor Avatar on the left for received messages */}
+                      {!isMe && (
+                        <div style={{ position: 'relative', flexShrink: 0, marginTop: '2px' }}>
+                          <Avatar
+                            src={currentDoctor.avatar}
+                            name={currentDoctor.name}
+                            size={34}
+                            fontSize={13}
                           />
+                          <span style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            right: 0,
+                            width: '9px',
+                            height: '9px',
+                            borderRadius: '50%',
+                            backgroundColor: '#10B981',
+                            border: '1.5px solid #FFFFFF'
+                          }} />
                         </div>
                       )}
 
-                      <p style={{
-                        margin: 0,
-                        fontSize: '13.5px',
-                        lineHeight: 1.5,
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word'
+                      {/* Message Bubble */}
+                      <div style={{
+                        maxWidth: isMe ? '68%' : '72%',
+                        backgroundColor: isMe ? '#0D4B2D' : '#F8FAF9',
+                        color: isMe ? '#FFFFFF' : '#1F2937',
+                        borderRadius: isMe ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
+                        padding: '13px 20px',
+                        border: isMe ? 'none' : '1px solid #ECEFEF',
+                        boxShadow: isMe ? '0 2px 8px rgba(13, 75, 45, 0.12)' : '0 1px 3px rgba(0,0,0,0.02)'
                       }}>
-                        {msg.text}
-                      </p>
+                        {/* Attached Image if any */}
+                        {msg.attachmentUrl && (
+                          <div style={{ borderRadius: '12px', overflow: 'hidden', marginBottom: '8px' }}>
+                            <img
+                              src={msg.attachmentUrl}
+                              alt="Clinical Radiograph / Photo"
+                              style={{ width: '100%', maxHeight: '220px', objectFit: 'cover', display: 'block' }}
+                            />
+                          </div>
+                        )}
 
+                        <p style={{
+                          margin: 0,
+                          fontSize: '13.5px',
+                          lineHeight: 1.5,
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word'
+                        }}>
+                          {msg.text}
+                        </p>
+
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'flex-end',
+                          gap: '4px',
+                          marginTop: '5px',
+                          fontSize: '10.5px',
+                          color: isMe ? 'rgba(255, 255, 255, 0.75)' : '#9CA3AF'
+                        }}>
+                          <span>{msg.time || 'Just now'}</span>
+                          {isMe && <CheckCheck size={13} color="#A7F3D0" />}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Instagram-style Seen Receipt beneath the last sent message */}
+                    {isLastMsg && isMe && (
                       <div style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'flex-end',
                         gap: '4px',
-                        marginTop: '5px',
-                        fontSize: '10.5px',
-                        color: isMe ? 'rgba(255, 255, 255, 0.75)' : '#9CA3AF'
+                        fontSize: '11px',
+                        color: '#059669',
+                        fontWeight: 600,
+                        marginTop: '4px',
+                        paddingRight: '6px'
                       }}>
-                        <span>{msg.time || '10:45 AM'}</span>
-                        {isMe && <CheckCheck size={13} color="#A7F3D0" />}
+                        <CheckCheck size={13} color="#059669" />
+                        <span>Seen</span>
                       </div>
-                    </div>
+                    )}
                   </div>
                 );
               })}
@@ -853,7 +944,7 @@ export function MessagesView({
         padding: '22px 20px',
         boxSizing: 'border-box'
       }}>
-        {/* Header: Connected People + online pill */}
+        {/* Header: Direct Messages + count badge */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -861,14 +952,14 @@ export function MessagesView({
           marginBottom: '16px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Users size={20} color="#0D4B2D" strokeWidth={2.2} />
+            <MessageSquare size={19} color="#0D4B2D" strokeWidth={2.2} />
             <h3 style={{
               margin: 0,
               fontSize: '16px',
               fontWeight: 700,
               color: '#111827'
             }}>
-              Connected People
+              Direct Messages
             </h3>
           </div>
 
@@ -880,7 +971,7 @@ export function MessagesView({
             borderRadius: '9999px',
             padding: '4px 12px'
           }}>
-            {filteredPeople.length} connected
+            {filteredContacts.length} chats
           </span>
         </div>
 
@@ -897,7 +988,7 @@ export function MessagesView({
           <Search size={14} color="#9CA3AF" />
           <input
             type="text"
-            placeholder="Search people..."
+            placeholder="Search chats or doctors..."
             value={searchPersonQuery}
             onChange={(e) => setSearchPersonQuery(e.target.value)}
             style={{
@@ -912,7 +1003,7 @@ export function MessagesView({
           />
         </div>
 
-        {/* Connected Doctors List */}
+        {/* Direct Messages & Contacts List */}
         <div style={{
           flex: 1,
           overflowY: 'auto',
@@ -920,24 +1011,25 @@ export function MessagesView({
           flexDirection: 'column',
           gap: '6px'
         }}>
-          {filteredPeople.length > 0 ? (
-            filteredPeople.map((person) => {
+          {filteredContacts.length > 0 ? (
+            filteredContacts.map(({ doctor: person, conv: existing, lastMessage, timestamp, unread }) => {
               const isSelected = currentDoctor?.id === person.id || currentDoctor?.name === person.name;
+              const isUnread = unread > 0 && !isSelected;
 
               return (
                 <div
-                  key={person.id}
+                  key={person.id || person.name}
                   onClick={() => {
                     if (onSelectConversation) {
-                      const existing = conversations.find(c => c.doctor?.id === person.id || c.doctor?.name === person.name);
                       if (existing) {
-                        onSelectConversation({ ...existing, doctor: person });
+                        onSelectConversation({ ...existing, doctor: person, unread: 0 });
                       } else {
                         onSelectConversation({
-                          id: `chat-${person.id}`,
+                          id: `chat-${person.id || Date.now()}`,
                           doctor: person,
                           lastMessage: 'Started new direct consultation.',
                           timestamp: 'Just now',
+                          unread: 0,
                           messages: []
                         });
                       }
@@ -950,15 +1042,15 @@ export function MessagesView({
                     padding: '10px 12px',
                     borderRadius: '14px',
                     cursor: 'pointer',
-                    backgroundColor: isSelected ? '#EDF8F2' : 'transparent',
-                    border: isSelected ? '1px solid #A4DFBE' : '1px solid transparent',
+                    backgroundColor: isSelected ? '#EDF8F2' : (isUnread ? '#F0FDF4' : 'transparent'),
+                    border: isSelected ? '1px solid #A4DFBE' : (isUnread ? '1px solid #BBF7D0' : '1px solid transparent'),
                     transition: 'all 0.15s ease'
                   }}
                   onMouseEnter={(e) => {
-                    if (!isSelected) e.currentTarget.style.backgroundColor = '#F9FAFB';
+                    if (!isSelected) e.currentTarget.style.backgroundColor = isUnread ? '#DCFCE7' : '#F9FAFB';
                   }}
                   onMouseLeave={(e) => {
-                    if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                    if (!isSelected) e.currentTarget.style.backgroundColor = isUnread ? '#F0FDF4' : 'transparent';
                   }}
                 >
                   {/* Avatar and Info */}
@@ -983,49 +1075,66 @@ export function MessagesView({
                     </div>
 
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <h4 style={{
-                        margin: 0,
-                        fontSize: '13px',
-                        fontWeight: 700,
-                        color: '#111827',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {person.name}
-                      </h4>
-                      <p style={{
-                        margin: '1px 0',
-                        fontSize: '11px',
-                        color: '#6B7280',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {person.specialty || 'Veterinary Practitioner'}
-                      </p>
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        fontSize: '10.5px',
-                        color: '#059669',
-                        fontWeight: 500
-                      }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h4 style={{
+                          margin: 0,
+                          fontSize: '13px',
+                          fontWeight: isUnread ? 800 : 700,
+                          color: isUnread ? '#065F46' : '#111827',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {person.name}
+                        </h4>
                         <span style={{
-                          width: '5px',
-                          height: '5px',
-                          borderRadius: '50%',
-                          backgroundColor: '#10B981',
-                          display: 'inline-block'
-                        }} />
-                        <span>Online · Active Now</span>
+                          fontSize: '10.5px',
+                          color: isUnread ? '#059669' : '#9CA3AF',
+                          fontWeight: isUnread ? 700 : 400,
+                          flexShrink: 0,
+                          marginLeft: '4px'
+                        }}>
+                          {timestamp}
+                        </span>
                       </div>
+
+                      <p style={{
+                        margin: '1px 0 0 0',
+                        fontSize: '11px',
+                        color: isUnread ? '#065F46' : '#6B7280',
+                        fontWeight: isUnread ? 700 : 400,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {lastMessage}
+                      </p>
                     </div>
                   </div>
 
-                  {/* Chevron Right */}
-                  <ChevronRight size={15} color="#9CA3AF" style={{ flexShrink: 0, marginLeft: '6px' }} />
+                  {/* Unread Badge / Instagram Dot */}
+                  {isUnread ? (
+                    <span style={{
+                      backgroundColor: '#059669',
+                      color: '#FFFFFF',
+                      fontSize: '10.5px',
+                      fontWeight: 700,
+                      borderRadius: '9999px',
+                      minWidth: '18px',
+                      height: '18px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '0 5px',
+                      boxShadow: '0 2px 6px rgba(5, 150, 105, 0.35)',
+                      flexShrink: 0,
+                      marginLeft: '8px'
+                    }}>
+                      {unread}
+                    </span>
+                  ) : (
+                    <ChevronRight size={15} color="#9CA3AF" style={{ flexShrink: 0, marginLeft: '6px' }} />
+                  )}
                 </div>
               );
             })
@@ -1036,7 +1145,7 @@ export function MessagesView({
               color: '#6B7280'
             }}>
               <p style={{ margin: '0 0 10px 0', fontSize: '12.5px' }}>
-                {searchPersonQuery ? `No colleagues matching "${searchPersonQuery}"` : 'No connected colleagues yet.'}
+                {searchPersonQuery ? `No chats matching "${searchPersonQuery}"` : 'No messages or connected colleagues yet.'}
               </p>
               {onNavigateTab && !searchPersonQuery && (
                 <button

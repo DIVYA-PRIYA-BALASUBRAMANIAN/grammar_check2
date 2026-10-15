@@ -104,10 +104,13 @@ export const api = {
       return fetchJson(`/doctors${qs ? '?' + qs : ''}`);
     },
     getById: (id) => fetchJson(`/doctors/${id}`),
-    update: (id, data) => fetchJson(`/doctors/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data)
-    }),
+    update: (id, data) => {
+      const cleanId = id ? (String(id).replace(/^[^\d]+/g, '') || id) : '1';
+      return fetchJson(`/doctors/${cleanId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      });
+    },
     create: (data) => fetchJson('/doctors', {
       method: 'POST',
       body: JSON.stringify(data)

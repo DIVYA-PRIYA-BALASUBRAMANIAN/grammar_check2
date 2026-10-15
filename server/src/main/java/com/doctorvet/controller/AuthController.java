@@ -27,7 +27,7 @@ public class AuthController {
     }
 
     public record RegisterRequest(String name, String email, String password,
-            String vciNumber, String specialty, String city, String state) {
+            String vciNumber, String specialty, String city, String state, String phone) {
     }
 
     public record AuthResponse(
@@ -36,9 +36,17 @@ public class AuthController {
             String name,
             String email,
             String specialty,
+            String qualification,
+            String clinic,
             String city,
             String state,
             String avatar,
+            String coverImage,
+            String bio,
+            String headline,
+            String phone,
+            String licenseNumber,
+            Integer experienceYears,
             boolean verified,
             int connectionsCount,
             int casesCount) {
@@ -48,14 +56,17 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req) {
         if (req.identifier() == null || req.identifier().isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Email or doctor name is required"));
+            return ResponseEntity.badRequest().body(Map.of("message", "Email, phone number, or doctor name is required"));
         }
 
-        String search = req.identifier().trim().toLowerCase();
+        String rawSearch = req.identifier().trim();
+        String search = rawSearch.toLowerCase();
+        String cleanPhone = rawSearch.replaceAll("[^0-9]", "");
 
-        // 1. Try to find doctor in DB by email or name
+        // 1. Try to find doctor in DB by email, phone, or name
         Optional<DoctorProfile> docOpt = doctorRepo.findAll().stream()
                 .filter(d -> (d.getEmail() != null && d.getEmail().toLowerCase().equals(search))
+                        || (d.getPhone() != null && !cleanPhone.isBlank() && d.getPhone().replaceAll("[^0-9]", "").contains(cleanPhone))
                         || d.getName().toLowerCase().contains(search)
                         || search.contains(d.getName().toLowerCase()))
                 .findFirst();
@@ -87,18 +98,7 @@ public class AuthController {
         // Generate signed token
         String token = tokenService.generateToken(profile.getId(), profile.getName(), profile.getEmail());
 
-        return ResponseEntity.ok(new AuthResponse(
-                token,
-                profile.getId(),
-                profile.getName(),
-                profile.getEmail() != null ? profile.getEmail() : "",
-                profile.getSpecialty() != null ? profile.getSpecialty() : "Veterinary Medicine",
-                profile.getCity() != null ? profile.getCity() : "Bengaluru",
-                profile.getState() != null ? profile.getState() : "Karnataka",
-                profile.getAvatar() != null ? profile.getAvatar() : "",
-                profile.isVerified(),
-                profile.getConnectionsCount(),
-                profile.getCasesCount()));
+        return ResponseEntity.ok(toAuthResponse(token, profile));
     }
 
     @PostMapping("/register")
@@ -126,22 +126,12 @@ public class AuthController {
                 "Registered veterinary practitioner under VCI: "
                         + (req.vciNumber() != null ? req.vciNumber() : "VCI-REG-NEW"));
         newDoctor.setEmail(req.email() != null ? req.email() : null);
+        newDoctor.setPhone(req.phone() != null ? req.phone() : null);
         DoctorProfile saved = doctorRepo.save(newDoctor);
 
         String token = tokenService.generateToken(saved.getId(), saved.getName(), saved.getEmail());
 
-        return ResponseEntity.ok(new AuthResponse(
-                token,
-                saved.getId(),
-                saved.getName(),
-                saved.getEmail() != null ? saved.getEmail() : "",
-                saved.getSpecialty(),
-                saved.getCity(),
-                saved.getState(),
-                saved.getAvatar(),
-                saved.isVerified(),
-                saved.getConnectionsCount(),
-                saved.getCasesCount()));
+        return ResponseEntity.ok(toAuthResponse(token, saved));
     }
 
     @GetMapping("/me")
@@ -165,18 +155,30 @@ public class AuthController {
         }
 
         DoctorProfile profile = profileOpt.get();
-        return ResponseEntity.ok(new AuthResponse(
+        return ResponseEntity.ok(toAuthResponse(token, profile));
+    }
+
+    private AuthResponse toAuthResponse(String token, DoctorProfile p) {
+        return new AuthResponse(
                 token,
-                profile.getId(),
-                profile.getName(),
-                profile.getEmail() != null ? profile.getEmail() : "",
-                profile.getSpecialty(),
-                profile.getCity() != null ? profile.getCity() : "Bengaluru",
-                profile.getState() != null ? profile.getState() : "Karnataka",
-                profile.getAvatar() != null ? profile.getAvatar() : "",
-                profile.isVerified(),
-                profile.getConnectionsCount(),
-                profile.getCasesCount()));
+                p.getId(),
+                p.getName(),
+                p.getEmail() != null ? p.getEmail() : "",
+                p.getSpecialty() != null ? p.getSpecialty() : "Veterinary Medicine",
+                p.getQualification() != null ? p.getQualification() : "BVSc & AH (Verified VCI)",
+                p.getClinic() != null ? p.getClinic() : "Clinical Practice",
+                p.getCity() != null ? p.getCity() : "Bengaluru",
+                p.getState() != null ? p.getState() : "Karnataka",
+                p.getAvatar() != null ? p.getAvatar() : "",
+                p.getCoverImage() != null ? p.getCoverImage() : "",
+                p.getBio() != null ? p.getBio() : "",
+                p.getHeadline() != null ? p.getHeadline() : "",
+                p.getPhone() != null ? p.getPhone() : "",
+                p.getLicenseNumber() != null ? p.getLicenseNumber() : "",
+                p.getExperienceYears(),
+                p.isVerified(),
+                p.getConnectionsCount(),
+                p.getCasesCount());
     }
 
     @PostMapping("/logout")

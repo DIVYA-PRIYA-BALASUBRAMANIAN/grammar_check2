@@ -17,7 +17,8 @@ import {
   ShieldCheck,
   Share2,
   Camera,
-  UserPen
+  UserPen,
+  ExternalLink
 } from 'lucide-react';
 import { Avatar } from './Avatar';
 import { api } from '../services/api';
@@ -37,7 +38,8 @@ export function DoctorModal({
   currentUser,
   onEditProfile,
   onUpdateAvatar,
-  onUpdateCover
+  onUpdateCover,
+  onViewFullPageProfile
 }) {
   const [activeTab, setActiveTab] = useState('about'); // 'about' | 'cases' | 'posts' | 'contact'
   const modalPhotoInputRef = React.useRef(null);
@@ -102,24 +104,71 @@ export function DoctorModal({
 
   const resolvedDoctor = React.useMemo(() => {
     if (!doctor) return null;
-    if (isOwnProfile && currentUser) {
-      return { ...doctor, ...currentUser };
-    }
+
+    const targetId = doctor.id || (isOwnProfile && currentUser?.id);
+    const targetName = doctor.name || (isOwnProfile && currentUser?.name);
+
     const fresh = (doctors || []).find(d => 
-      d.id === doctor.id || 
-      String(d.id).replace('doc-', '') === String(doctor.id).replace('doc-', '') || 
-      (d.name && doctor.name && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === doctor.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+      (targetId && (d.id === targetId || String(d.id).replace('doc-', '') === String(targetId).replace('doc-', ''))) ||
+      (d.name && targetName && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === targetName.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
     );
-    return fresh ? { ...doctor, ...fresh, avatar: fresh.avatar || doctor.avatar } : doctor;
+
+    const base = {
+      ...(fresh || {}),
+      ...doctor,
+      ...(isOwnProfile && currentUser ? currentUser : {})
+    };
+
+    if (fresh) {
+      if (fresh.bio && (!base.bio || base.bio.startsWith('Dedicated veterinary'))) base.bio = fresh.bio;
+      if (fresh.qualification) base.qualification = fresh.qualification;
+      if (fresh.clinic) base.clinic = fresh.clinic;
+      if (fresh.city) base.city = fresh.city;
+      if (fresh.state) base.state = fresh.state;
+      if (fresh.phone) base.phone = fresh.phone;
+      if (fresh.email) base.email = fresh.email;
+      if (fresh.experienceYears) base.experienceYears = fresh.experienceYears;
+      if (fresh.connectionsCount) base.connectionsCount = fresh.connectionsCount;
+      if (fresh.casesCount) base.casesCount = fresh.casesCount;
+      if (fresh.coverImage && (!base.coverImage || base.coverImage.includes('unsplash.com'))) base.coverImage = fresh.coverImage;
+      if (fresh.avatar && (!base.avatar || base.avatar.includes('unsplash.com'))) base.avatar = fresh.avatar;
+    }
+
+    return base;
   }, [doctor, doctors, isOwnProfile, currentUser]);
 
   const activeDoc = resolvedDoctor || doctor;
+  const displayPhone = activeDoc.phone || (isOwnProfile && currentUser?.phone) || '+91 98401 23456';
+  const displayEmail = activeDoc.email || (isOwnProfile && currentUser?.email) || (activeDoc.name ? `${activeDoc.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@zenvevet.com` : 'doctor@zenvevet.com');
 
-  const doctorCases = cases.filter(c => c.authorName === activeDoc.name || c.authorName?.includes(activeDoc.name.replace('Dr. ', '')));
-  const doctorPosts = posts.filter(p => p.authorName === activeDoc.name || p.authorName?.includes(activeDoc.name.replace('Dr. ', '')));
+  const doctorCases = cases.filter(c => {
+    if (!c) return false;
+    if (activeDoc.id && (c.authorId === activeDoc.id || String(c.authorId).replace('doc-', '') === String(activeDoc.id).replace('doc-', ''))) return true;
+    if (c.authorName && activeDoc.name) {
+      return c.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === activeDoc.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim();
+    }
+    return false;
+  });
+
+  const doctorPosts = posts.filter(p => {
+    if (!p) return false;
+    if (activeDoc.id && (p.authorId === activeDoc.id || String(p.authorId).replace('doc-', '') === String(activeDoc.id).replace('doc-', ''))) return true;
+    if (p.authorName && activeDoc.name) {
+      return p.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === activeDoc.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim();
+    }
+    return false;
+  });
+
+  const displayAvatar = (activeDoc.avatar && !activeDoc.avatar.includes('unsplash.com'))
+    ? activeDoc.avatar
+    : ((isOwnProfile && currentUser?.avatar && !currentUser.avatar.includes('unsplash.com')) ? currentUser.avatar : (doctor.avatar || ''));
+
+  const displayCover = (activeDoc.coverImage && !activeDoc.coverImage.includes('unsplash.com'))
+    ? activeDoc.coverImage
+    : ((isOwnProfile && currentUser?.coverImage && !currentUser.coverImage.includes('unsplash.com')) ? currentUser.coverImage : (doctor.coverImage || ''));
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 60 }}>
+    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 1000 }}>
       <div
         className="modal-content"
         onClick={(e) => e.stopPropagation()}
@@ -127,12 +176,10 @@ export function DoctorModal({
       >
         {/* Cover Image Banner */}
         <div style={{
-          height: '130px',
-          background: (isOwnProfile && currentUser?.coverImage)
-            ? `url(${currentUser.coverImage}) center/cover no-repeat`
-            : (activeDoc.coverImage
-              ? `url(${activeDoc.coverImage}) center/cover no-repeat`
-              : 'linear-gradient(135deg, #003822 0%, #05633C 50%, #0D472B 100%)'),
+          height: '140px',
+          background: displayCover
+            ? `url(${displayCover}) center/cover no-repeat`
+            : 'linear-gradient(135deg, #003822 0%, #05633C 50%, #0D472B 100%)',
           position: 'relative',
           padding: '14px 18px',
           display: 'flex',
@@ -175,13 +222,42 @@ export function DoctorModal({
             </>
           )}
 
-          <button
-            className="btn-close-modal"
-            onClick={onClose}
-            style={{ color: '#FFFFFF', backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: '50%', width: '32px', height: '32px' }}
-          >
-            <X size={18} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {onViewFullPageProfile && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onViewFullPageProfile(activeDoc);
+                }}
+                style={{
+                  color: '#FFFFFF',
+                  backgroundColor: 'rgba(0,0,0,0.45)',
+                  borderRadius: '20px',
+                  border: '1px solid rgba(255,255,255,0.3)',
+                  padding: '5px 12px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  backdropFilter: 'blur(4px)'
+                }}
+                title="Open in full page profile view"
+              >
+                <ExternalLink size={12} />
+                <span>Full Page</span>
+              </button>
+            )}
+            <button
+              className="btn-close-modal"
+              onClick={onClose}
+              style={{ color: '#FFFFFF', backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: '50%', width: '32px', height: '32px' }}
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Doctor Header Info Card */}
@@ -189,7 +265,7 @@ export function DoctorModal({
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '-48px', marginBottom: '14px' }}>
             <div style={{ position: 'relative' }}>
               <Avatar
-                src={(isOwnProfile && currentUser?.avatar) ? currentUser.avatar : (activeDoc.avatar || doctor.avatar)}
+                src={displayAvatar}
                 name={activeDoc.name || doctor.name}
                 size={96}
                 fontSize={38}
@@ -378,6 +454,51 @@ export function DoctorModal({
               <span>{activeDoc.clinic || 'Specialty Pet Care'} · {activeDoc.city}, {activeDoc.state}</span>
             </p>
 
+            {/* Quick Contact Badges */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+              <a
+                href={`tel:${displayPhone.replace(/\s+/g, '')}`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: '#065F46',
+                  backgroundColor: '#ECFDF5',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  textDecoration: 'none',
+                  border: '1px solid #A7F3D0'
+                }}
+                title="Call doctor"
+              >
+                <Phone size={12} color="#059669" />
+                <span>{displayPhone}</span>
+              </a>
+
+              <a
+                href={`mailto:${displayEmail}`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: '#1E40AF',
+                  backgroundColor: '#EFF6FF',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  textDecoration: 'none',
+                  border: '1px solid #BFDBFE'
+                }}
+                title="Send email"
+              >
+                <Mail size={12} color="#2563EB" />
+                <span>{displayEmail}</span>
+              </a>
+            </div>
+
             {/* Stats Bar */}
             <div style={{ display: 'flex', gap: '16px', marginTop: '12px', padding: '10px 14px', backgroundColor: '#F8F9FA', borderRadius: '8px' }}>
               <div>
@@ -515,11 +636,11 @@ export function DoctorModal({
             <div style={{ paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#374151' }}>
                 <Phone size={16} color="#059669" />
-                <span>Clinic Desk: {activeDoc.phone || '+91 80 2558 4920'}</span>
+                <span>Clinic Desk: <a href={`tel:${displayPhone.replace(/\s+/g, '')}`} style={{ color: '#111827', textDecoration: 'none', fontWeight: 600 }}>{displayPhone}</a></span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#374151' }}>
                 <Mail size={16} color="#059669" />
-                <span>Professional Email: {activeDoc.email || `${activeDoc.name.toLowerCase().replace(/[^a-z]/g, '')}@doctorvet.com`}</span>
+                <span>Professional Email: <a href={`mailto:${displayEmail}`} style={{ color: '#111827', textDecoration: 'none', fontWeight: 600 }}>{displayEmail}</a></span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#374151' }}>
                 <MapPin size={16} color="#059669" />

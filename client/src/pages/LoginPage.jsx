@@ -18,7 +18,8 @@ import {
   ArrowLeft,
   Sparkles,
   Award,
-  Activity
+  Activity,
+  Phone
 } from 'lucide-react';
 import zenveLogo from '../assets/zenve_logo.png';
 import loginBgVet from '../assets/login_bg_vet.png';
@@ -33,6 +34,7 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
     password: '',
     name: '',
     vciNumber: '',
+    phone: '',
     specialty: 'Small Animal Medicine',
     state: 'Karnataka',
     city: 'Bengaluru',
@@ -53,6 +55,7 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
           name: formData.name,
           email: formData.identifier,
           password: formData.password,
+          phone: formData.phone,
           vciNumber: formData.vciNumber,
           specialty: formData.specialty,
           city: formData.city,
@@ -157,7 +160,7 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
               </div>
               <div className="auth-header-text">
                 <h2 className="auth-header-title">
-                  {isRegister ? 'Create Doctor Account' : 'Welcome to Doctor Vet'}
+                  {isRegister ? 'Create Doctor Account' : 'Welcome to Zenve Vet'}
                 </h2>
                 <p className="auth-header-sub">
                   {isRegister
@@ -260,7 +263,7 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
                     </div>
                   </div>
 
-                  {/* Row 3: Official Email & Password */}
+                  {/* Row 3: Official Email & Phone Number */}
                   <div className="auth-two-col-grid">
                     <div className="auth-field-group">
                       <label className="auth-field-label">Official Email Address *</label>
@@ -278,40 +281,55 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
                     </div>
 
                     <div className="auth-field-group">
-                      <label className="auth-field-label">Create Password *</label>
+                      <label className="auth-field-label">Phone / Mobile Number</label>
                       <div className="auth-input-container">
-                        <Lock size={15} className="auth-input-lead-icon" />
+                        <Phone size={15} className="auth-input-lead-icon" />
                         <input
-                          type={showPassword ? 'text' : 'password'}
-                          required
-                          placeholder="Choose password"
-                          value={formData.password}
-                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                          type="tel"
+                          placeholder="+91 98401 23456"
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                           className="auth-text-input"
                         />
-                        <button
-                          type="button"
-                          className="auth-eye-btn"
-                          onClick={() => setShowPassword(!showPassword)}
-                          title={showPassword ? 'Hide password' : 'Show password'}
-                        >
-                          {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                        </button>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Row 4: Password */}
+                  <div className="auth-field-group">
+                    <label className="auth-field-label">Create Password *</label>
+                    <div className="auth-input-container">
+                      <Lock size={15} className="auth-input-lead-icon" />
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        placeholder="Choose password"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        className="auth-text-input"
+                      />
+                      <button
+                        type="button"
+                        className="auth-eye-btn"
+                        onClick={() => setShowPassword(!showPassword)}
+                        title={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
                     </div>
                   </div>
                 </>
               ) : (
                 <>
-                  {/* Email Address */}
+                  {/* Email / Phone / Doctor Name */}
                   <div className="auth-field-group">
-                    <label className="auth-field-label">Registered Email ID *</label>
+                    <label className="auth-field-label">Email ID, Phone Number, or Doctor Name *</label>
                     <div className="auth-input-container">
-                      <Mail size={16} className="auth-input-lead-icon" />
+                      <User size={16} className="auth-input-lead-icon" />
                       <input
-                        type="email"
+                        type="text"
                         required
-                        placeholder="doctor@clinic.com"
+                        placeholder="e.g. doctor@clinic.com or +91 98401 23456"
                         value={formData.identifier}
                         onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
                         className="auth-text-input"
@@ -378,7 +396,7 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
                     ? 'Authenticating...'
                     : isRegister
                       ? 'Create Account & Verify Credentials'
-                      : 'Sign In to Doctor Vet'}
+                      : 'Sign In to Zenve Vet'}
                 </span>
                 <ArrowRight size={17} strokeWidth={2.4} />
               </button>
