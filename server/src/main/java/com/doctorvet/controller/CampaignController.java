@@ -1,6 +1,5 @@
 package com.doctorvet.controller;
 
-import com.doctorvet.model.Advertiser;
 import com.doctorvet.model.Campaign;
 import com.doctorvet.security.TokenService;
 import com.doctorvet.service.AdvertiserService;

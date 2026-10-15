@@ -207,7 +207,7 @@ public class CampaignService {
             }
         }
 
-        List<Long> campaignIds = campaigns.stream().map(Campaign::getId).toList();
+        List<Long> campaignIds = campaigns.stream().map(c -> c.getId()).toList();
         List<CampaignEvent> events = eventRepo.findByCampaignIdInAndEventDateBetween(campaignIds, fromDate, toDate);
 
         long totalViews = events.stream().filter(e -> "VIEW".equalsIgnoreCase(e.getEventType())).count();
@@ -215,8 +215,8 @@ public class CampaignService {
 
         // If no events in table yet, fallback to campaign all-time counters for continuity
         if (totalViews == 0 && totalClicks == 0) {
-            totalViews = campaigns.stream().mapToLong(Campaign::getViewsCount).sum();
-            totalClicks = campaigns.stream().mapToLong(Campaign::getClicksCount).sum();
+            totalViews = campaigns.stream().mapToLong(c -> c.getViewsCount()).sum();
+            totalClicks = campaigns.stream().mapToLong(c -> c.getClicksCount()).sum();
         }
 
         String ctr = totalViews > 0 ? String.format(Locale.US, "%.2f%%", ((double) totalClicks / totalViews) * 100.0) : "0.00%";
@@ -235,7 +235,7 @@ public class CampaignService {
         }
 
         // Per-campaign performance
-        Map<Long, List<CampaignEvent>> eventsByCampaign = events.stream().collect(Collectors.groupingBy(CampaignEvent::getCampaignId));
+        Map<Long, List<CampaignEvent>> eventsByCampaign = events.stream().collect(Collectors.groupingBy(e -> e.getCampaignId()));
         List<CampaignPerformanceItem> perfList = new ArrayList<>();
 
         for (Campaign c : campaigns) {

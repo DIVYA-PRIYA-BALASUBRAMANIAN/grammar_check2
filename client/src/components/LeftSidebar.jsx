@@ -14,14 +14,10 @@ import {
   PawPrint,
   Lightbulb,
   GraduationCap,
-  LogIn,
-  LogOut,
-  CheckCircle2,
   User
 } from 'lucide-react';
 import zenveLogo from '../assets/zenve_logo.png';
 import sidebarDoctorBg from '../assets/sidebar_vet_doctor.jpg';
-import { Avatar } from './Avatar';
 
 export function LeftSidebar({
   activeTab,
@@ -45,11 +41,6 @@ export function LeftSidebar({
     { id: 'advertise', label: 'Advertise', icon: Megaphone },
     { id: 'profile', label: 'My Profile', icon: User }
   ];
-
-  const displayUser = currentUser || {
-    name: 'Doctor Portal',
-    isVerified: false
-  };
 
   return (
     <aside className="left-sidebar">
@@ -152,44 +143,6 @@ export function LeftSidebar({
             </div>
             <ExternalLink size={14} className="discover-external-icon" />
           </a>
-        </div>
-
-        {/* User Session Bar or Profile Card */}
-        <div className="sidebar-user-card">
-          <div
-            className="sidebar-user-info-area"
-            onClick={currentUser ? onOpenCreateProfile : onOpenLogin}
-            title={currentUser ? "Edit Doctor Profile" : "Sign In"}
-          >
-            <Avatar
-              src={displayUser.avatar}
-              name={displayUser.name}
-              size={38}
-            />
-            <div className="sidebar-user-text">
-              <div className="sidebar-user-name">
-                {displayUser.name}
-              </div>
-              <div className="sidebar-user-status">
-                {currentUser ? (
-                  <>
-                    <CheckCircle2 size={12} strokeWidth={2.6} />
-                    <span>Verified</span>
-                  </>
-                ) : (
-                  <span style={{ fontSize: '11px', color: '#a7f3d0' }}>Sign In</span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <button
-            onClick={currentUser ? onLogout : onOpenLogin}
-            title={currentUser ? "Log Out" : "Sign In"}
-            className="sidebar-user-action-btn"
-          >
-            {currentUser ? <LogOut size={16} /> : <LogIn size={16} />}
-          </button>
         </div>
 
         {/* Bottom Promo Card */}
