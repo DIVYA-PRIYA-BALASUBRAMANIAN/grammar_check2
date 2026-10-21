@@ -23,9 +23,9 @@ public class DoctorProfileService {
             String q = search.toLowerCase();
             return repository.findAll().stream()
                     .filter(d -> (d.getName() != null && d.getName().toLowerCase().contains(q)) ||
-                                 (d.getSpecialty() != null && d.getSpecialty().toLowerCase().contains(q)) ||
-                                 (d.getCity() != null && d.getCity().toLowerCase().contains(q)) ||
-                                 (d.getClinic() != null && d.getClinic().toLowerCase().contains(q)))
+                            (d.getSpecialty() != null && d.getSpecialty().toLowerCase().contains(q)) ||
+                            (d.getCity() != null && d.getCity().toLowerCase().contains(q)) ||
+                            (d.getClinic() != null && d.getClinic().toLowerCase().contains(q)))
                     .toList();
         }
         if (specialty != null && !specialty.equals("All specialties")) {
@@ -45,18 +45,21 @@ public class DoctorProfileService {
     }
 
     public Optional<DoctorProfile> findByEmail(String email) {
-        if (email == null || email.isBlank()) return Optional.empty();
+        if (email == null || email.isBlank())
+            return Optional.empty();
         return repository.findByEmailIgnoreCase(email.trim());
     }
 
     public Optional<DoctorProfile> findByEmailOrName(String identifier) {
-        if (identifier == null || identifier.isBlank()) return Optional.empty();
+        if (identifier == null || identifier.isBlank())
+            return Optional.empty();
         String clean = identifier.trim().toLowerCase();
         Optional<DoctorProfile> byEmail = repository.findByEmailIgnoreCase(clean);
-        if (byEmail.isPresent()) return byEmail;
+        if (byEmail.isPresent())
+            return byEmail;
         return repository.findAll().stream()
                 .filter(d -> (d.getEmail() != null && d.getEmail().equalsIgnoreCase(clean)) ||
-                             (d.getName() != null && d.getName().toLowerCase().contains(clean)))
+                        (d.getName() != null && d.getName().toLowerCase().contains(clean)))
                 .findFirst();
     }
 
@@ -89,32 +92,53 @@ public class DoctorProfileService {
         if (doc == null) {
             doc = new DoctorProfile();
             doc.setName(updates.containsKey("name") ? updates.get("name").toString() : "Doctor");
-            doc.setSpecialty(updates.containsKey("specialty") ? updates.get("specialty").toString() : "Veterinary Surgery");
+            doc.setSpecialty(
+                    updates.containsKey("specialty") ? updates.get("specialty").toString() : "Veterinary Surgery");
         }
 
         final DoctorProfile d = doc;
-        if (updates.containsKey("name")) d.setName(updates.get("name").toString());
-        if (updates.containsKey("specialty")) d.setSpecialty(updates.get("specialty").toString());
-        if (updates.containsKey("qualification")) d.setQualification(updates.get("qualification").toString());
-        if (updates.containsKey("clinic")) d.setClinic(updates.get("clinic").toString());
-        if (updates.containsKey("city")) d.setCity(updates.get("city").toString());
-        if (updates.containsKey("state")) d.setState(updates.get("state").toString());
-        if (updates.containsKey("avatar")) d.setAvatar(updates.get("avatar").toString());
-        if (updates.containsKey("bio")) d.setBio(updates.get("bio").toString());
-        if (updates.containsKey("headline")) d.setHeadline(updates.get("headline").toString());
-        if (updates.containsKey("coverImage")) d.setCoverImage(updates.get("coverImage").toString());
-        if (updates.containsKey("phone")) d.setPhone(updates.get("phone").toString());
-        if (updates.containsKey("email")) d.setEmail(updates.get("email").toString());
-        if (updates.containsKey("licenseNumber")) d.setLicenseNumber(updates.get("licenseNumber").toString());
+        if (updates.containsKey("name"))
+            d.setName(updates.get("name").toString());
+        if (updates.containsKey("specialty"))
+            d.setSpecialty(updates.get("specialty").toString());
+        if (updates.containsKey("qualification"))
+            d.setQualification(updates.get("qualification").toString());
+        if (updates.containsKey("clinic"))
+            d.setClinic(updates.get("clinic").toString());
+        if (updates.containsKey("city"))
+            d.setCity(updates.get("city").toString());
+        if (updates.containsKey("state"))
+            d.setState(updates.get("state").toString());
+        if (updates.containsKey("avatar"))
+            d.setAvatar(updates.get("avatar").toString());
+        if (updates.containsKey("bio"))
+            d.setBio(updates.get("bio").toString());
+        if (updates.containsKey("headline"))
+            d.setHeadline(updates.get("headline").toString());
+        if (updates.containsKey("coverImage"))
+            d.setCoverImage(updates.get("coverImage").toString());
+        if (updates.containsKey("phone"))
+            d.setPhone(updates.get("phone").toString());
+        if (updates.containsKey("email"))
+            d.setEmail(updates.get("email").toString());
+        if (updates.containsKey("licenseNumber"))
+            d.setLicenseNumber(updates.get("licenseNumber").toString());
         if (updates.containsKey("experienceYears")) {
             try {
                 d.setExperienceYears(Integer.parseInt(updates.get("experienceYears").toString()));
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
         if (updates.containsKey("active")) {
             try {
                 d.setActive(Boolean.parseBoolean(updates.get("active").toString()));
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
+        }
+        if (updates.containsKey("passwordHash") && updates.get("passwordHash") != null) {
+            d.setPassword(updates.get("passwordHash").toString().trim());
+        } else if (updates.containsKey("password") && updates.get("password") != null) {
+            d.setPassword(updates.get("password").toString().trim());
         }
         return Optional.of(repository.save(d));
     }
