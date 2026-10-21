@@ -7,7 +7,8 @@ import {
   MessageSquare, 
   Video, 
   Plus, 
-  PawPrint 
+  PawPrint,
+  Trash2 
 } from 'lucide-react';
 import heroVetImg from '../assets/hero_vet_dog.jpg';
 import { SPECIALTIES, STATES_INDIA } from '../data/mockData';
@@ -21,7 +22,8 @@ export function ShortVideosView({
   currentUser,
   onOpenStory, 
   onOpenCreateVideo, 
-  onSelectVideo 
+  onSelectVideo,
+  onDeleteVideo 
 }) {
   const [activeTab, setActiveTab] = useState('for_you');
   const [selectedSpecialty, setSelectedSpecialty] = useState('All specialties');
@@ -184,79 +186,120 @@ export function ShortVideosView({
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(225px, 1fr))', gap: '16px' }}>
-          {videos.map((vid) => (
-          <div 
-            key={vid.id}
-            onClick={() => onSelectVideo(vid)}
-            style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.92)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
-              borderRadius: '16px',
-              overflow: 'hidden',
-              border: '1px solid rgba(229, 231, 235, 0.9)',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 4px 18px rgba(0, 45, 25, 0.04)',
-              transition: 'transform 0.2s ease, box-shadow 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-3px)';
-              e.currentTarget.style.boxShadow = '0 10px 24px rgba(0, 45, 25, 0.08)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 18px rgba(0, 45, 25, 0.04)';
-            }}
-          >
-            {/* Video Cover Area with Glassy Badges */}
-            <div style={{ position: 'relative', height: '230px', backgroundColor: '#07180F', overflow: 'hidden' }}>
-              {vid.videoUrl ? (
-                <video 
-                  src={`${vid.videoUrl}#t=0.001`} 
-                  preload="metadata"
-                  muted 
-                  playsInline
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', backgroundColor: '#000' }}
-                  onMouseEnter={(e) => {
-                    try { e.currentTarget.play(); } catch (_) {}
-                  }}
-                  onMouseLeave={(e) => {
-                    try { 
-                      e.currentTarget.pause(); 
-                      e.currentTarget.currentTime = 0; 
-                    } catch (_) {}
-                  }}
-                />
-              ) : (vid.thumbnail && !vid.thumbnail.includes('543a7dc6') && !vid.thumbnail.includes('bcb16239')) ? (
-                <img 
-                  src={vid.thumbnail} 
-                  alt={vid.title} 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                />
-              ) : (
-                <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #062b1b 0%, #021a10 100%)', color: '#34D399' }}>
-                  <Video size={40} />
-                  <span style={{ fontSize: '11px', marginTop: '6px', fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>Clinical Reel</span>
+          {videos.map((vid) => {
+          const isOwnVideo = currentUser && (
+            vid.doctorId === currentUser.id ||
+            String(vid.doctorId).replace('doc-', '') === String(currentUser.id).replace('doc-', '') ||
+            (vid.doctorName && currentUser.name && vid.doctorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+          );
+          const canDelete = isOwnVideo || !vid.doctorId;
+
+          return (
+            <div 
+              key={vid.id}
+              onClick={() => onSelectVideo(vid)}
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.92)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                border: '1px solid rgba(229, 231, 235, 0.9)',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '0 4px 18px rgba(0, 45, 25, 0.04)',
+                transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-3px)';
+                e.currentTarget.style.boxShadow = '0 10px 24px rgba(0, 45, 25, 0.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 18px rgba(0, 45, 25, 0.04)';
+              }}
+            >
+              {/* Video Cover Area with Glassy Badges */}
+              <div style={{ position: 'relative', height: '230px', backgroundColor: '#07180F', overflow: 'hidden' }}>
+                {vid.videoUrl ? (
+                  <video 
+                    src={`${vid.videoUrl}#t=0.001`} 
+                    preload="metadata"
+                    muted 
+                    playsInline
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', backgroundColor: '#000' }}
+                    onMouseEnter={(e) => {
+                      try { e.currentTarget.play(); } catch (_) {}
+                    }}
+                    onMouseLeave={(e) => {
+                      try { 
+                        e.currentTarget.pause(); 
+                        e.currentTarget.currentTime = 0; 
+                      } catch (_) {}
+                    }}
+                  />
+                ) : (vid.thumbnail && !vid.thumbnail.includes('543a7dc6') && !vid.thumbnail.includes('bcb16239')) ? (
+                  <img 
+                    src={vid.thumbnail} 
+                    alt={vid.title} 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                  />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #062b1b 0%, #021a10 100%)', color: '#34D399' }}>
+                    <Video size={40} />
+                    <span style={{ fontSize: '11px', marginTop: '6px', fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>Clinical Reel</span>
+                  </div>
+                )}
+                
+                {/* Glassy Delete Button */}
+                {canDelete && onDeleteVideo && (
+                  <button
+                    type="button"
+                    title="Delete video"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteVideo(vid.id);
+                    }}
+                    style={{
+                      position: 'absolute',
+                      top: 10,
+                      left: 10,
+                      background: 'rgba(220, 38, 38, 0.85)',
+                      backdropFilter: 'blur(4px)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '4px 8px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      zIndex: 2
+                    }}
+                  >
+                    <Trash2 size={12} />
+                    <span>Delete</span>
+                  </button>
+                )}
+
+                {/* Glassy Duration Badge */}
+                <div style={{
+                  position: 'absolute',
+                  top: 10,
+                  right: 10,
+                  background: 'rgba(0, 40, 25, 0.75)',
+                  backdropFilter: 'blur(4px)',
+                  color: '#ffffff',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  padding: '3px 8px',
+                  borderRadius: '6px'
+                }}>
+                  {vid.duration}
                 </div>
-              )}
-              
-              {/* Glassy Duration Badge */}
-              <div style={{
-                position: 'absolute',
-                top: 10,
-                right: 10,
-                background: 'rgba(0, 40, 25, 0.75)',
-                backdropFilter: 'blur(4px)',
-                color: '#ffffff',
-                fontSize: '11px',
-                fontWeight: 700,
-                padding: '3px 8px',
-                borderRadius: '6px'
-              }}>
-                {vid.duration}
-              </div>
 
               {/* Centered Glassy Play Button */}
               <div style={{
@@ -325,7 +368,8 @@ export function ShortVideosView({
               );
             })()}
           </div>
-        ))}
+        );
+      })}
         </div>
       )}
     </div>

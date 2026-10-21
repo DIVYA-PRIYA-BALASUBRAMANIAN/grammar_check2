@@ -23,10 +23,12 @@ import { StoryModal } from './components/StoryModal';
 import { VideoPlayerModal } from './components/VideoPlayerModal';
 import { ClinicalCaseModal } from './components/ClinicalCaseModal';
 import { CreatePostModal } from './components/CreatePostModal';
+import { CommunityView } from './components/CommunityView';
 
 // API Service
 import { api } from './services/api';
-import { createStompClient } from './services/websocket';
+// Dynamic Communities backed by Spring Boot API
+
 
 export function App() {
   const [activeTab, setActiveTab] = useState('feed');
@@ -67,6 +69,10 @@ export function App() {
   const [sentRequests, setSentRequests] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [liveCampaigns, setLiveCampaigns] = useState([]);
+
+  // Dynamic Communities State (Spring Boot API)
+  const [communities, setCommunities] = useState([]);
+  const [selectedCommunityId, setSelectedCommunityId] = useState(null);
 
   // Active Modals
   const [selectedDoctor, setSelectedDoctor] = useState(null);
@@ -227,6 +233,22 @@ export function App() {
         }
       } catch (e) {
         console.log('Using local live ads');
+      }
+
+      try {
+        // Load dynamic communities from Spring Boot API
+        const liveCommunities = await api.communities.getAll(currentUser?.id);
+        if (Array.isArray(liveCommunities)) {
+          setCommunities(liveCommunities);
+          setSelectedCommunityId(prev => {
+            if (prev && liveCommunities.some(c => c.id === prev || String(c.id) === String(prev))) {
+              return prev;
+            }
+            return liveCommunities.length > 0 ? liveCommunities[0].id : null;
+          });
+        }
+      } catch (e) {
+        console.log('Error loading dynamic communities:', e);
       }
 
       // Private Endpoints: ONLY requested when user is authenticated AND token exists
@@ -499,6 +521,19 @@ export function App() {
           setDoctors(prev => {
             if (liveDocs.length !== prev.length || liveDocs.some((d, idx) => !prev[idx] || prev[idx].id !== d.id)) {
               return liveDocs;
+            }
+            return prev;
+          });
+        }
+      } catch (e) { }
+
+      // 3. Poll dynamic communities in real time
+      try {
+        const liveComms = await api.communities.getAll(currentUser?.id);
+        if (Array.isArray(liveComms)) {
+          setCommunities(prev => {
+            if (JSON.stringify(prev) !== JSON.stringify(liveComms)) {
+              return liveComms;
             }
             return prev;
           });
@@ -854,6 +889,371 @@ export function App() {
       setPosts(prev => [savedPost, ...prev]);
     } catch (e) {
       setPosts(prev => [{ ...postPayload, id: `post-${Date.now()}`, comments: [] }, ...prev]);
+    }
+  };
+
+  // Dynamic Community Handlers (Backed by Spring Boot API)
+  const handleSelectCommunity = (commId) => {
+    setSelectedCommunityId(commId);
+  };
+
+  const handleCreateCommunity = async (commData) => {
+    try {
+      const created = await api.communities.create({
+        name: commData.name,
+        category: commData.category,
+        description: commData.description,
+        privacy: commData.privacy || 'Public Group',
+        coverGradient: commData.coverGradient || 'linear-gradient(135deg, #064e3b 0%, #0d9488 100%)',
+        coverImage: commData.coverImage || null
+      }, currentUser?.id);
+      if (created) {
+        setCommunities(prev => [created, ...prev.filter(c => c.id !== created.id)]);
+        setSelectedCommunityId(created.id);
+      }
+    } catch (e) {
+      console.error('Failed to create community:', e);
+      alert('Failed to create community: ' + (e.message || 'Please try again'));
+    }
+  };
+
+  const handleDeleteCommunity = async (commId) => {
+    const docId = currentUser?.id ? String(currentUser.id).replace(/^doc-/i, '') : 1;
+    try {
+      await api.communities.delete(commId, docId);
+      const cleanTargetId = String(commId).replace(/^comm-/i, '');
+      setCommunities(prev => {
+        const remaining = prev.filter(c => {
+          const cCleanId = String(c.id).replace(/^comm-/i, '');
+          return cCleanId !== cleanTargetId;
+        });
+        setSelectedCommunityId(remaining.length > 0 ? remaining[0].id : null);
+        return remaining;
+      });
+      alert('Community deleted successfully.');
+    } catch (e) {
+      console.error('Failed to delete community:', e);
+      alert('Failed to delete community: ' + (e.message || 'Please try again'));
+    }
+  };
+
+  const handleUpdateCommunityCover = async (commId, newCoverUrl) => {
+    const cleanTargetId = String(commId).replace(/^comm-/i, '');
+    
+    // 1. Immediate optimistic UI update so banner changes with zero delay
+    setCommunities(prev => prev.map(c => {
+      const cCleanId = String(c.id).replace(/^comm-/i, '');
+      if (cCleanId === cleanTargetId) {
+        return { ...c, coverImage: newCoverUrl };
+      }
+      return c;
+    }));
+
+    // 2. Persist to Spring Boot backend
+    try {
+      const updated = await api.communities.updateCover(commId, newCoverUrl, currentUser?.id);
+      if (updated) {
+        setCommunities(prev => prev.map(c => {
+          const cCleanId = String(c.id).replace(/^comm-/i, '');
+          if (cCleanId === cleanTargetId) {
+            return {
+              ...c,
+              ...updated,
+              coverImage: newCoverUrl
+            };
+          }
+          return c;
+        }));
+      }
+    } catch (e) {
+      console.warn('Backend cover update notification:', e);
+    }
+  };
+
+  const handleJoinCommunity = async (commId) => {
+    if (!currentUser) {
+      setIsLoginView(true);
+      return;
+    }
+    try {
+      const updated = await api.communities.join(commId, currentUser.id);
+      if (updated) {
+        setCommunities(prev => prev.map(c => (c.id === updated.id || String(c.id) === String(updated.id)) ? updated : c));
+      }
+    } catch (e) {
+      console.error('Failed to join community:', e);
+    }
+  };
+
+  const handleLeaveCommunity = async (commId) => {
+    if (!currentUser) return;
+    try {
+      const updated = await api.communities.leave(commId, currentUser.id);
+      if (updated) {
+        setCommunities(prev => prev.map(c => (c.id === updated.id || String(c.id) === String(updated.id)) ? updated : c));
+      }
+    } catch (e) {
+      console.error('Failed to leave community:', e);
+    }
+  };
+
+  const handleInviteDoctorToCommunity = async (commId, doctor) => {
+    try {
+      const updated = await api.communities.invite(commId, doctor.id, currentUser?.id);
+      if (updated) {
+        setCommunities(prev => prev.map(c => (c.id === updated.id || String(c.id) === String(updated.id)) ? updated : c));
+        alert(`Invited ${doctor.name} to the community!`);
+      }
+    } catch (e) {
+      console.error('Failed to invite doctor:', e);
+    }
+  };
+
+  const handleAddCommunityPost = async (commId, postData) => {
+    if (!currentUser) {
+      setIsLoginView(true);
+      return;
+    }
+    try {
+      const updated = await api.communities.addPost(commId, {
+        content: postData.content,
+        imageUrl: postData.imageUrl || null,
+        tag: postData.tag || 'Clinical Discussion',
+        authorId: currentUser.id
+      }, currentUser.id);
+      if (updated) {
+        setCommunities(prev => prev.map(c => (c.id === updated.id || String(c.id) === String(updated.id)) ? updated : c));
+      }
+    } catch (e) {
+      console.error('Failed to add post to community:', e);
+    }
+  };
+
+  const handleAddCommunityComment = async (commId, postId, commentText) => {
+    if (!currentUser) {
+      setIsLoginView(true);
+      return;
+    }
+    try {
+      const updated = await api.communities.addComment(commId, postId, commentText, currentUser.id);
+      if (updated) {
+        setCommunities(prev => prev.map(c => (c.id === updated.id || String(c.id) === String(updated.id)) ? updated : c));
+      }
+    } catch (e) {
+      console.error('Failed to add comment to community post:', e);
+    }
+  };
+
+  const handleToggleCommunityPostLike = async (commId, postId) => {
+    if (!currentUser) return;
+    try {
+      const updated = await api.communities.toggleLike(commId, postId, currentUser.id);
+      if (updated) {
+        setCommunities(prev => prev.map(c => (c.id === updated.id || String(c.id) === String(updated.id)) ? updated : c));
+      }
+    } catch (e) {
+      console.error('Failed to toggle like on community post:', e);
+    }
+  };
+
+  const handleAddCommunityCase = async (commId, caseData) => {
+    if (!currentUser) {
+      setIsLoginView(true);
+      return;
+    }
+    try {
+      const updated = await api.communities.addCase(commId, caseData, currentUser.id);
+      if (updated) {
+        setCommunities(prev => prev.map(c => (c.id === updated.id || String(c.id) === String(updated.id)) ? updated : c));
+      }
+    } catch (e) {
+      console.error('Failed to share case in community:', e);
+    }
+  };
+
+  const handleAddCommunityReel = async (commId, reelData) => {
+    if (!currentUser) {
+      setIsLoginView(true);
+      return;
+    }
+    try {
+      const updated = await api.communities.addReel(commId, reelData, currentUser.id);
+      if (updated) {
+        setCommunities(prev => prev.map(c => (c.id === updated.id || String(c.id) === String(updated.id)) ? updated : c));
+      }
+    } catch (e) {
+      console.error('Failed to share reel in community:', e);
+    }
+  };
+
+  const handleDeleteCommunityPost = async (commId, postId) => {
+    if (!window.confirm('Are you sure you want to delete this discussion post?')) return;
+    try {
+      const updated = await api.communities.deletePost(commId, postId, currentUser?.id);
+      if (updated) {
+        setCommunities(prev => prev.map(c => (c.id === updated.id || String(c.id) === String(updated.id)) ? updated : c));
+      }
+    } catch (e) {
+      console.error('Failed to delete community post:', e);
+      setCommunities(prev => prev.map(c => {
+        if (c.id === commId || String(c.id) === String(commId)) {
+          return {
+            ...c,
+            posts: (c.posts || []).filter(p => p.id !== postId && String(p.id) !== String(postId))
+          };
+        }
+        return c;
+      }));
+    }
+  };
+
+  const handleDeleteCommunityCase = async (commId, caseId) => {
+    if (!window.confirm('Are you sure you want to delete this clinical case from the community?')) return;
+    try {
+      const updated = await api.communities.deleteCase(commId, caseId, currentUser?.id);
+      if (updated) {
+        setCommunities(prev => prev.map(c => (c.id === updated.id || String(c.id) === String(updated.id)) ? updated : c));
+      }
+    } catch (e) {
+      console.error('Failed to delete community case:', e);
+      setCommunities(prev => prev.map(c => {
+        if (c.id === commId || String(c.id) === String(commId)) {
+          return {
+            ...c,
+            cases: (c.cases || []).filter(item => item.id !== caseId && String(item.id) !== String(caseId))
+          };
+        }
+        return c;
+      }));
+    }
+  };
+
+  const handleDeleteCommunityReel = async (commId, reelId) => {
+    if (!window.confirm('Are you sure you want to delete this reel video from the community?')) return;
+    try {
+      const updated = await api.communities.deleteReel(commId, reelId, currentUser?.id);
+      if (updated) {
+        setCommunities(prev => prev.map(c => (c.id === updated.id || String(c.id) === String(updated.id)) ? updated : c));
+      }
+    } catch (e) {
+      console.error('Failed to delete community reel:', e);
+      setCommunities(prev => prev.map(c => {
+        if (c.id === commId || String(c.id) === String(commId)) {
+          return {
+            ...c,
+            reels: (c.reels || []).filter(r => r.id !== reelId && String(r.id) !== String(reelId))
+          };
+        }
+        return c;
+      }));
+    }
+  };
+
+  const handleDeleteClinicalCase = async (caseId) => {
+    if (!window.confirm('Are you sure you want to delete this clinical case?')) return;
+    try {
+      await api.cases.delete(caseId);
+    } catch (e) {
+      console.error('Failed to delete case:', e);
+    }
+    setClinicalCases(prev => prev.filter(c => c.id !== caseId && String(c.id) !== String(caseId)));
+  };
+
+  const handleDeleteVideo = async (videoId) => {
+    if (!window.confirm('Are you sure you want to delete this short video/reel?')) return;
+    try {
+      await api.videos.delete(videoId);
+    } catch (e) {
+      console.error('Failed to delete video:', e);
+    }
+    setVideos(prev => prev.filter(v => v.id !== videoId && String(v.id) !== String(videoId)));
+  };
+
+  const handleSendCommunityMessage = async (commId, text) => {
+    if (!currentUser) {
+      setIsLoginView(true);
+      return;
+    }
+    try {
+      const updated = await api.communities.sendMessage(commId, text, currentUser.id);
+      if (updated) {
+        setCommunities(prev => prev.map(c => (c.id === updated.id || String(c.id) === String(updated.id)) ? updated : c));
+      }
+    } catch (e) {
+      console.error('Failed to send message in community:', e);
+    }
+  };
+
+  const handleJoinCommunityByCode = async (code) => {
+    if (!currentUser) {
+      setIsLoginView(true);
+      return null;
+    }
+    const updated = await api.communities.joinByCode(code, currentUser.id);
+    if (updated) {
+      setCommunities(prev => {
+        const exists = prev.some(c => c.id === updated.id || String(c.id) === String(updated.id));
+        if (exists) {
+          return prev.map(c => (c.id === updated.id || String(c.id) === String(updated.id)) ? updated : c);
+        }
+        return [updated, ...prev];
+      });
+      setSelectedCommunityId(updated.id);
+      return updated;
+    }
+    return null;
+  };
+
+  const handleAcceptCommunityInvite = async (communityOrInviteId) => {
+    if (!currentUser) return;
+    try {
+      let updated = null;
+      try {
+        updated = await api.communities.acceptCommunityInvite(communityOrInviteId, currentUser.id);
+      } catch (err) {
+        updated = await api.communities.acceptInvite(communityOrInviteId, currentUser.id);
+      }
+      if (updated) {
+        setCommunities(prev => {
+          const exists = prev.some(c => c.id === updated.id || String(c.id) === String(updated.id));
+          if (exists) {
+            return prev.map(c => (c.id === updated.id || String(c.id) === String(updated.id)) ? updated : c);
+          }
+          return [updated, ...prev];
+        });
+        setSelectedCommunityId(updated.id);
+      }
+      try {
+        const [freshNotifs, freshComms] = await Promise.all([
+          api.notifications.getNotifications(currentUser.id),
+          api.communities.getAll(currentUser.id)
+        ]);
+        if (Array.isArray(freshNotifs)) setNotifications(freshNotifs);
+        if (Array.isArray(freshComms)) setCommunities(freshComms);
+      } catch (e) {}
+    } catch (e) {
+      console.error('Failed to accept community invite:', e);
+    }
+  };
+
+  const handleDeclineCommunityInvite = async (communityOrInviteId) => {
+    if (!currentUser) return;
+    try {
+      try {
+        await api.communities.rejectCommunityInvite(communityOrInviteId, currentUser.id);
+      } catch (err) {
+        await api.communities.rejectInvite(communityOrInviteId, currentUser.id);
+      }
+      try {
+        const [freshNotifs, freshComms] = await Promise.all([
+          api.notifications.getNotifications(currentUser.id),
+          api.communities.getAll(currentUser.id)
+        ]);
+        if (Array.isArray(freshNotifs)) setNotifications(freshNotifs);
+        if (Array.isArray(freshComms)) setCommunities(freshComms);
+      } catch (e) {}
+    } catch (e) {
+      console.error('Failed to decline community invite:', e);
     }
   };
 
@@ -1295,6 +1695,8 @@ export function App() {
           onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
           onOpenCreatePost={handleOpenCreatePost}
           onOpenDirectChat={handleOpenDirectChat}
+          onAcceptCommunityInvite={handleAcceptCommunityInvite}
+          onDeclineCommunityInvite={handleDeclineCommunityInvite}
         />
 
         {/* Workspace Layout */}
@@ -1323,9 +1725,9 @@ export function App() {
             />
           </div>
         ) : (
-          <div className="workspace-two-column-layout">
+          <div className={`workspace-two-column-layout ${activeTab === 'communities' ? 'communities-workspace-layout' : ''}`}>
             {/* Main Feed Column */}
-            <main className={`feed-main-column ${activeTab === 'advertise' ? 'full-width-column' : ''}`}>
+            <main className={`feed-main-column ${activeTab === 'advertise' || activeTab === 'communities' ? 'full-width-column' : ''}`}>
               {activeTab === 'feed' && (
                 <FeedView
                   posts={posts}
@@ -1441,6 +1843,7 @@ export function App() {
                   onOpenCreateCase={handleOpenCreatePost}
                   onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
                   onSelectCase={(c) => setSelectedCase(c)}
+                  onDeleteCase={handleDeleteClinicalCase}
                 />
               )}
 
@@ -1454,6 +1857,7 @@ export function App() {
                   onOpenCreateVideo={handleOpenCreatePost}
                   onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
                   onSelectVideo={(v) => setSelectedVideo(v)}
+                  onDeleteVideo={handleDeleteVideo}
                 />
               )}
 
@@ -1465,6 +1869,37 @@ export function App() {
                   onSelectCase={(c) => setSelectedCase(c)}
                   onSelectVideo={(v) => setSelectedVideo(v)}
                   onOpenChat={handleOpenDirectChat}
+                />
+              )}
+
+              {activeTab === 'communities' && (
+                <CommunityView
+                  communities={communities}
+                  activeCommunityId={selectedCommunityId}
+                  onSelectCommunity={handleSelectCommunity}
+                  onCreateCommunity={handleCreateCommunity}
+                  onJoinCommunity={handleJoinCommunity}
+                  onLeaveCommunity={handleLeaveCommunity}
+                  onInviteDoctor={handleInviteDoctorToCommunity}
+                  onAddPost={handleAddCommunityPost}
+                  onAddComment={handleAddCommunityComment}
+                  onTogglePostLike={handleToggleCommunityPostLike}
+                  onAddCase={handleAddCommunityCase}
+                  onAddReel={handleAddCommunityReel}
+                  onSendMessage={handleSendCommunityMessage}
+                  onJoinWithCode={handleJoinCommunityByCode}
+                  currentUser={currentUser}
+                  doctors={doctors}
+                  connectedDoctors={Object.keys(connectedMap).map(k => ({ id: isNaN(k) ? k : Number(k) }))}
+                  onOpenDoctorProfile={handleOpenDoctorProfile}
+                  onOpenDirectChat={handleOpenDirectChat}
+                  onAcceptInvite={handleAcceptCommunityInvite}
+                  onRejectInvite={handleDeclineCommunityInvite}
+                  onDeleteCommunity={handleDeleteCommunity}
+                  onDeletePost={handleDeleteCommunityPost}
+                  onDeleteCase={handleDeleteCommunityCase}
+                  onDeleteReel={handleDeleteCommunityReel}
+                  onUpdateCover={handleUpdateCommunityCover}
                 />
               )}
 
@@ -1486,8 +1921,8 @@ export function App() {
               )}
             </main>
 
-            {/* Right Rail Widgets (People to Know & Network Advantage) - Hidden on full-width Advertise Dashboard */}
-            {activeTab !== 'advertise' && (
+            {/* Right Rail Widgets - Hidden on full-width Advertise Dashboard & Community Page */}
+            {activeTab !== 'advertise' && activeTab !== 'communities' && (
               <RightSidebar
                 doctors={doctors}
                 currentUser={currentUser}
@@ -1496,6 +1931,14 @@ export function App() {
                 onViewAllDoctors={() => setActiveTab('network')}
                 onSendRequest={handleSendRequest}
                 connectedDoctors={Object.keys(connectedMap).map(k => ({ id: isNaN(k) ? k : Number(k) }))}
+                communities={communities}
+                onOpenCommunity={(id) => {
+                  if (id) setSelectedCommunityId(id);
+                  setActiveTab('communities');
+                }}
+                onOpenCreateCommunity={() => {
+                  setActiveTab('communities');
+                }}
               />
             )}
           </div>

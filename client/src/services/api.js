@@ -251,6 +251,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(video)
     }),
+    delete: (id) => {
+      const cleanId = String(id).replace(/^vid-/i, '');
+      return fetchJson(`/videos/${cleanId}`, { method: 'DELETE' });
+    },
     getComments: (id) => fetchJson(`/videos/${id}/comments`).catch(() => []),
     addComment: (id, comment) => fetchJson(`/videos/${id}/comments`, {
       method: 'POST',
@@ -268,7 +272,185 @@ export const api = {
     create: (caseData) => fetchJson('/cases', {
       method: 'POST',
       body: JSON.stringify(caseData)
-    })
+    }),
+    delete: (id) => {
+      const cleanId = String(id).replace(/^case-/i, '');
+      return fetchJson(`/cases/${cleanId}`, { method: 'DELETE' });
+    }
+  },
+
+  // Communities (Facebook-style Dynamic Groups)
+  communities: {
+    getAll: (currentDoctorId) => {
+      const qs = currentDoctorId ? `?currentDoctorId=${currentDoctorId}` : '';
+      return fetchJson(`/communities${qs}`);
+    },
+    getById: (id, currentDoctorId) => {
+      const cleanId = String(id).replace(/^comm-/i, '');
+      const qs = currentDoctorId ? `?currentDoctorId=${currentDoctorId}` : '';
+      return fetchJson(`/communities/${cleanId}${qs}`);
+    },
+    create: (data, creatorId) => {
+      const qs = creatorId ? `?creatorId=${creatorId}` : '';
+      return fetchJson(`/communities${qs}`, {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+    },
+    delete: (id, doctorId) => {
+      const cleanId = String(id).replace(/^comm-/i, '');
+      const qs = doctorId ? `?doctorId=${doctorId}` : '';
+      return fetchJson(`/communities/${cleanId}${qs}`, {
+        method: 'DELETE'
+      });
+    },
+    updateCover: (id, coverImage, doctorId) => {
+      const cleanId = String(id).replace(/^comm-/i, '');
+      const qs = doctorId ? `?doctorId=${doctorId}` : '';
+      return fetchJson(`/communities/${cleanId}/cover${qs}`, {
+        method: 'PUT',
+        body: JSON.stringify({ coverImage })
+      });
+    },
+    join: (id, doctorId) => {
+      const cleanId = String(id).replace(/^comm-/i, '');
+      const qs = doctorId ? `?doctorId=${doctorId}` : '';
+      return fetchJson(`/communities/${cleanId}/join${qs}`, {
+        method: 'POST'
+      });
+    },
+    leave: (id, doctorId) => {
+      const cleanId = String(id).replace(/^comm-/i, '');
+      const qs = doctorId ? `?doctorId=${doctorId}` : '';
+      return fetchJson(`/communities/${cleanId}/leave${qs}`, {
+        method: 'POST'
+      });
+    },
+    invite: (id, targetDoctorId, currentDoctorId) => {
+      const cleanId = String(id).replace(/^comm-/i, '');
+      const qs = `?doctorId=${targetDoctorId}${currentDoctorId ? `&currentDoctorId=${currentDoctorId}` : ''}`;
+      return fetchJson(`/communities/${cleanId}/invite${qs}`, {
+        method: 'POST'
+      });
+    },
+    addPost: (id, postData, doctorId) => {
+      const cleanId = String(id).replace(/^comm-/i, '');
+      const qs = doctorId ? `?doctorId=${doctorId}` : '';
+      return fetchJson(`/communities/${cleanId}/posts${qs}`, {
+        method: 'POST',
+        body: JSON.stringify(postData)
+      });
+    },
+    deletePost: (id, postId, doctorId) => {
+      const cleanId = String(id).replace(/^comm-/i, '');
+      const cleanPostId = String(postId).replace(/^cp-/i, '');
+      const qs = doctorId ? `?doctorId=${doctorId}` : '';
+      return fetchJson(`/communities/${cleanId}/posts/${cleanPostId}${qs}`, {
+        method: 'DELETE'
+      });
+    },
+    toggleLike: (id, postId, doctorId) => {
+      const cleanId = String(id).replace(/^comm-/i, '');
+      const cleanPostId = String(postId).replace(/^cp-/i, '');
+      const qs = doctorId ? `?doctorId=${doctorId}` : '';
+      return fetchJson(`/communities/${cleanId}/posts/${cleanPostId}/like${qs}`, {
+        method: 'POST'
+      });
+    },
+    addComment: (id, postId, text, authorId) => {
+      const cleanId = String(id).replace(/^comm-/i, '');
+      const cleanPostId = String(postId).replace(/^cp-/i, '');
+      const qs = authorId ? `?authorId=${authorId}` : '';
+      return fetchJson(`/communities/${cleanId}/posts/${cleanPostId}/comments${qs}`, {
+        method: 'POST',
+        body: JSON.stringify({ text })
+      });
+    },
+    addCase: (id, caseData, authorId) => {
+      const cleanId = String(id).replace(/^comm-/i, '');
+      const qs = authorId ? `?authorId=${authorId}` : '';
+      return fetchJson(`/communities/${cleanId}/cases${qs}`, {
+        method: 'POST',
+        body: JSON.stringify(caseData)
+      });
+    },
+    deleteCase: (id, caseId, doctorId) => {
+      const cleanId = String(id).replace(/^comm-/i, '');
+      const cleanCaseId = String(caseId).replace(/^cc-/i, '');
+      const qs = doctorId ? `?doctorId=${doctorId}` : '';
+      return fetchJson(`/communities/${cleanId}/cases/${cleanCaseId}${qs}`, {
+        method: 'DELETE'
+      });
+    },
+    addReel: (id, reelData, authorId) => {
+      const cleanId = String(id).replace(/^comm-/i, '');
+      const qs = authorId ? `?authorId=${authorId}` : '';
+      return fetchJson(`/communities/${cleanId}/reels${qs}`, {
+        method: 'POST',
+        body: JSON.stringify(reelData)
+      });
+    },
+    deleteReel: (id, reelId, doctorId) => {
+      const cleanId = String(id).replace(/^comm-/i, '');
+      const cleanReelId = String(reelId).replace(/^cr-/i, '');
+      const qs = doctorId ? `?doctorId=${doctorId}` : '';
+      return fetchJson(`/communities/${cleanId}/reels/${cleanReelId}${qs}`, {
+        method: 'DELETE'
+      });
+    },
+    sendMessage: (id, text, senderId) => {
+      const cleanId = String(id).replace(/^comm-/i, '');
+      const qs = senderId ? `?senderId=${senderId}` : '';
+      return fetchJson(`/communities/${cleanId}/messages${qs}`, {
+        method: 'POST',
+        body: JSON.stringify({ text })
+      });
+    },
+    joinByCode: (code, doctorId) => {
+      const qs = doctorId ? `?doctorId=${doctorId}` : '';
+      return fetchJson(`/communities/join-by-code${qs}`, {
+        method: 'POST',
+        body: JSON.stringify({ code })
+      });
+    },
+    acceptInvite: (inviteId, doctorId) => {
+      const qs = doctorId ? `?doctorId=${doctorId}` : '';
+      return fetchJson(`/communities/invites/${inviteId}/accept${qs}`, {
+        method: 'POST'
+      });
+    },
+    rejectInvite: (inviteId, doctorId) => {
+      const qs = doctorId ? `?doctorId=${doctorId}` : '';
+      return fetchJson(`/communities/invites/${inviteId}/reject${qs}`, {
+        method: 'POST'
+      });
+    },
+    acceptCommunityInvite: (communityId, doctorId) => {
+      const cleanId = String(communityId).replace(/^comm-/i, '');
+      const qs = doctorId ? `?doctorId=${doctorId}` : '';
+      return fetchJson(`/communities/${cleanId}/accept-invite${qs}`, {
+        method: 'POST'
+      });
+    },
+    rejectCommunityInvite: (communityId, doctorId) => {
+      const cleanId = String(communityId).replace(/^comm-/i, '');
+      const qs = doctorId ? `?doctorId=${doctorId}` : '';
+      return fetchJson(`/communities/${cleanId}/reject-invite${qs}`, {
+        method: 'POST'
+      });
+    },
+    getPendingInvites: (doctorId) => {
+      const qs = doctorId ? `?doctorId=${doctorId}` : '';
+      return fetchJson(`/communities/invites/pending${qs}`);
+    },
+    updateCover: (id, coverImage, doctorId) => {
+      const cleanId = String(id).replace(/^comm-/i, '');
+      const qs = doctorId ? `?doctorId=${doctorId}` : '';
+      return fetchJson(`/communities/${cleanId}/cover${qs}`, {
+        method: 'PUT',
+        body: JSON.stringify({ coverImage })
+      });
+    }
   },
 
   // Media File Upload

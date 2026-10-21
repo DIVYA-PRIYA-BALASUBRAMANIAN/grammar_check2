@@ -2,9 +2,11 @@ package com.doctorvet.controller;
 
 import com.doctorvet.model.ShortVideo;
 import com.doctorvet.service.ShortVideoService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/videos")
@@ -35,5 +37,14 @@ public class ShortVideoController {
     @PostMapping("/{id}/comments")
     public com.doctorvet.model.Comment addVideoComment(@PathVariable Long id, @RequestBody FeedController.AddCommentDto dto) {
         return videoService.addVideoComment(id, dto.authorId(), dto.authorName(), dto.authorAvatar(), dto.authorSpecialty(), dto.content());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteVideo(@PathVariable Long id) {
+        boolean deleted = videoService.deleteVideo(id);
+        if (deleted) {
+            return ResponseEntity.ok(Map.of("message", "Video deleted successfully", "id", id));
+        }
+        return ResponseEntity.notFound().build();
     }
 }

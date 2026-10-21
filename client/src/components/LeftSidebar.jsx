@@ -14,6 +14,7 @@ import {
   PawPrint,
   Lightbulb,
   GraduationCap,
+  Globe,
   User
 } from 'lucide-react';
 import zenveLogo from '../assets/zenve_logo.png';
@@ -33,6 +34,7 @@ export function LeftSidebar({
   const navItems = [
     { id: 'feed', label: 'Home', icon: Home },
     { id: 'network', label: 'Vet Network', icon: Users },
+    { id: 'communities', label: 'Communities', icon: Globe },
     { id: 'cases', label: 'Clinical Cases', icon: FolderPlus },
     { id: 'videos', label: 'Short Videos', icon: Video },
     { id: 'messages', label: 'Messages', icon: MessageSquare, hasBadge: true },

@@ -44,5 +44,17 @@ public class ShortVideoService {
         Comment comment = new Comment(100000L + videoId, authorId, authorName, authorAvatar, authorSpecialty, content);
         return commentRepo.save(comment);
     }
+
+    @Transactional
+    public boolean deleteVideo(Long id) {
+        if (videoRepo.existsById(id)) {
+            // Also clean up any comments on this video
+            List<Comment> comments = commentRepo.findByPostIdOrderByCreatedAtAsc(100000L + id);
+            commentRepo.deleteAll(comments);
+            videoRepo.deleteById(id);
+            return true;
+        }
+        return false;
+    }
 }
 

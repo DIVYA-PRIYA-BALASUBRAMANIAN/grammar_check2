@@ -11,7 +11,6 @@ import {
   Shield,
   Users,
   Check,
-  BadgeCheck,
   Headphones,
   FileText,
   Heart,
@@ -33,7 +32,6 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
     identifier: '',
     password: '',
     name: '',
-    vciNumber: '',
     phone: '',
     specialty: 'Small Animal Medicine',
     state: 'Karnataka',
@@ -56,7 +54,6 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
           email: formData.identifier,
           password: formData.password,
           phone: formData.phone,
-          vciNumber: formData.vciNumber,
           specialty: formData.specialty,
           city: formData.city,
           state: formData.state
@@ -201,36 +198,19 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
             <form onSubmit={handleSubmit} className="auth-form-fields">
               {isRegister ? (
                 <>
-                  {/* Row 1: Full Name & VCI Registration Number */}
-                  <div className="auth-two-col-grid">
-                    <div className="auth-field-group">
-                      <label className="auth-field-label">Full Name & Title *</label>
-                      <div className="auth-input-container">
-                        <User size={15} className="auth-input-lead-icon" />
-                        <input
-                          type="text"
-                          required
-                          placeholder="Dr. Arjun Mehta, BVSc"
-                          value={formData.name}
-                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          className="auth-text-input"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="auth-field-group">
-                      <label className="auth-field-label">VCI Registration Number *</label>
-                      <div className="auth-input-container">
-                        <BadgeCheck size={15} className="auth-input-lead-icon" />
-                        <input
-                          type="text"
-                          required
-                          placeholder="VCI-MH-2024-XXXX"
-                          value={formData.vciNumber}
-                          onChange={(e) => setFormData({ ...formData, vciNumber: e.target.value })}
-                          className="auth-text-input"
-                        />
-                      </div>
+                  {/* Full Name */}
+                  <div className="auth-field-group">
+                    <label className="auth-field-label">Full Name & Title *</label>
+                    <div className="auth-input-container">
+                      <User size={15} className="auth-input-lead-icon" />
+                      <input
+                        type="text"
+                        required
+                        placeholder="Dr. Arjun Mehta, BVSc"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        className="auth-text-input"
+                      />
                     </div>
                   </div>
 
@@ -297,7 +277,7 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
 
                   {/* Row 4: Password */}
                   <div className="auth-field-group">
-                    <label className="auth-field-label">Create Password *</label>
+                    <label className="auth-field-label">Create Password</label>
                     <div className="auth-input-container">
                       <Lock size={15} className="auth-input-lead-icon" />
                       <input
@@ -329,7 +309,7 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
                       <input
                         type="text"
                         required
-                        placeholder="e.g. doctor@clinic.com or +91 98401 23456"
+                        placeholder="e.g. doctor@gmail.com"
                         value={formData.identifier}
                         onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
                         className="auth-text-input"
@@ -340,7 +320,7 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
                   {/* Password */}
                   <div className="auth-field-group">
                     <div className="auth-label-split">
-                      <label className="auth-field-label">Password *</label>
+                      <label className="auth-field-label">Password</label>
                       <button
                         type="button"
                         onClick={() => alert('Password reset verification link has been dispatched to your registered email.')}
