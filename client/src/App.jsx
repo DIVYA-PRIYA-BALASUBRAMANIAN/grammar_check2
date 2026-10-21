@@ -271,7 +271,7 @@ export function App() {
               const fullConvs = await Promise.all(convList.map(async (c) => {
                 let msgs = [];
                 try {
-                  msgs = await api.chat.getMessages(c.id);
+                  msgs = await api.chat.getMessages(c.id, docId);
                 } catch (e) { }
                 const otherDocId = c.doctor1Id === docId ? c.doctor2Id : c.doctor1Id;
                 const otherDocName = c.doctor1Id === docId ? c.doctor2Name : c.doctor1Name;
@@ -289,15 +289,29 @@ export function App() {
                   lastMessage: c.lastMessage,
                   timestamp: 'Active',
                   unread: c.doctor1Id === docId ? c.unreadCountDoctor1 : c.unreadCountDoctor2,
-                  messages: (msgs || []).map(m => ({
-                    id: m.id,
-                    sender: m.senderId === docId ? 'user' : 'doctor',
-                    senderId: m.senderId,
-                    text: m.text,
-                    attachmentUrl: m.attachmentUrl,
-                    attachmentType: m.attachmentType,
-                    time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Active'
-                  }))
+                  messages: (() => {
+                    const seen = new Set();
+                    return (msgs || []).filter(m => {
+                      const k = String(m.id);
+                      if (seen.has(k)) return false;
+                      seen.add(k);
+                      return true;
+                    }).map(m => ({
+                      id: m.id,
+                      sender: m.senderId === docId ? 'user' : 'doctor',
+                      senderId: m.senderId,
+                      receiverId: m.receiverId,
+                      text: m.text || m.message,
+                      attachmentUrl: m.attachmentUrl,
+                      attachmentType: m.attachmentType,
+                      status: m.status || (m.isRead ? 'SEEN' : 'SENT'),
+                      isRead: m.isRead || false,
+                      createdAt: m.createdAt,
+                      deliveredAt: m.deliveredAt,
+                      readAt: m.readAt,
+                      time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Active'
+                    }));
+                  })()
                 };
               }));
               setConversations(fullConvs);
@@ -352,11 +366,49 @@ export function App() {
           }).catch(() => { });
         });
 
-        // Subscribe to live incoming direct chat messages
+        // Subscribe to live incoming direct chat messages and real-time read receipts
         stomp.subscribe(`/topic/user/${currentUser.id}/messages`, (frame) => {
           try {
             const incoming = JSON.parse(frame.body);
+            if (!incoming) return;
+
+            // Handle real-time Seen / Delivered status update event
+            if (incoming.type === 'MESSAGE_STATUS_UPDATE') {
+              setConversations(prev => prev.map(c => {
+                const isMatch = (c.id != null && incoming.conversationId != null && String(c.id).replace(/\D/g, '') === String(incoming.conversationId).replace(/\D/g, ''));
+                if (isMatch) {
+                  const targetIds = incoming.messageIds || (incoming.messageId ? [incoming.messageId] : []);
+                  return {
+                    ...c,
+                    unread: (incoming.status === 'SEEN' && incoming.readerId === currentUser.id) ? 0 : c.unread,
+                    messages: (c.messages || []).map(m => {
+                      if (targetIds.includes(m.id)) {
+                        return {
+                          ...m,
+                          status: incoming.status,
+                          isRead: incoming.status === 'SEEN' ? true : m.isRead,
+                          readAt: incoming.readAt || (incoming.status === 'SEEN' ? (m.readAt || new Date().toISOString()) : m.readAt),
+                          deliveredAt: incoming.deliveredAt || (incoming.status === 'DELIVERED' || incoming.status === 'SEEN' ? (m.deliveredAt || new Date().toISOString()) : m.deliveredAt)
+                        };
+                      }
+                      return m;
+                    })
+                  };
+                }
+                return c;
+              }));
+              return;
+            }
+
+            // Handle new incoming message
             const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const isWindowVisible = typeof document !== 'undefined' ? (!document.hidden && document.hasFocus()) : true;
+
+            // Auto-acknowledge delivery if received by currentUser
+            if (incoming.receiverId === currentUser.id && incoming.conversationId) {
+              api.chat.markDelivered(incoming.conversationId, currentUser.id).catch(() => { });
+            }
+
             setConversations(prev => {
               const convIdx = prev.findIndex(c =>
                 (c.id != null && incoming.conversationId != null && String(c.id).replace(/\D/g, '') === String(incoming.conversationId).replace(/\D/g, '')) ||
@@ -364,37 +416,77 @@ export function App() {
                   (c.doctor.id != null && (String(c.doctor.id).replace(/\D/g, '') === String(incoming.senderId).replace(/\D/g, '') || String(c.doctor.id).replace(/\D/g, '') === String(incoming.receiverId).replace(/\D/g, '')))
                 ))
               );
+
+              const isCurrentChatOpen = activeTab === 'messages' && activeChatDoctor && (
+                activeChatDoctor.id === incoming.senderId ||
+                String(activeChatDoctor.id).replace(/\D/g, '') === String(incoming.senderId).replace(/\D/g, '') ||
+                (convIdx >= 0 && (
+                  prev[convIdx].doctor?.id === activeChatDoctor.id ||
+                  prev[convIdx].doctor?.name === activeChatDoctor.name
+                ))
+              );
+              const isChatOpenAndVisible = isCurrentChatOpen && isWindowVisible;
+
+              if (isChatOpenAndVisible && incoming.conversationId && incoming.receiverId === currentUser.id) {
+                api.chat.markAsRead(incoming.conversationId, currentUser.id).catch(() => { });
+              }
+
               const formattedMsg = {
                 id: incoming.id || Date.now(),
                 sender: incoming.senderId === currentUser.id ? 'user' : 'doctor',
                 senderId: incoming.senderId,
-                text: incoming.text,
+                receiverId: incoming.receiverId,
+                text: incoming.text || incoming.message,
                 attachmentUrl: incoming.attachmentUrl,
                 attachmentType: incoming.attachmentType,
+                status: isChatOpenAndVisible ? 'SEEN' : (incoming.receiverId === currentUser.id ? 'DELIVERED' : (incoming.status || 'SENT')),
+                isRead: isChatOpenAndVisible ? true : (incoming.isRead || false),
+                createdAt: incoming.createdAt,
+                deliveredAt: incoming.deliveredAt || (incoming.receiverId === currentUser.id ? new Date().toISOString() : null),
+                readAt: isChatOpenAndVisible ? new Date().toISOString() : incoming.readAt,
                 time: incoming.createdAt ? new Date(incoming.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : nowTime
               };
 
               if (convIdx >= 0) {
                 const updated = [...prev];
                 const existingList = updated[convIdx].messages || [];
-                if (!existingList.some(m => m.id === incoming.id)) {
-                  const isCurrentChatOpen = activeTab === 'messages' && activeChatDoctor && (
-                    activeChatDoctor.id === incoming.senderId ||
-                    updated[convIdx].doctor?.id === activeChatDoctor.id ||
-                    updated[convIdx].doctor?.name === activeChatDoctor.name
-                  );
-                  if (isCurrentChatOpen && incoming.conversationId) {
-                    api.chat.markAsRead(incoming.conversationId, currentUser.id).catch(() => { });
-                  }
-                  updated[convIdx] = {
-                    ...updated[convIdx],
-                    id: incoming.conversationId || updated[convIdx].id,
-                    lastMessage: incoming.text || 'Sent an attachment',
-                    timestamp: formattedMsg.time,
-                    unread: (incoming.senderId !== currentUser.id && !isCurrentChatOpen) ? (updated[convIdx].unread || 0) + 1 : 0,
-                    messages: [...existingList, formattedMsg]
-                  };
+
+                // Check if this incoming message replaces an optimistic message from currentUser
+                const optIdx = existingList.findIndex(m =>
+                  String(m.id) === String(incoming.id) ||
+                  (incoming.senderId === currentUser.id && (
+                    (m.tempId && m.text === formattedMsg.text) ||
+                    (typeof m.id === 'string' && m.id.startsWith('temp-') && m.text === formattedMsg.text)
+                  ))
+                );
+
+                let updatedMessages;
+                if (optIdx >= 0) {
+                  updatedMessages = [...existingList];
+                  updatedMessages[optIdx] = formattedMsg;
+                } else if (!existingList.some(m => String(m.id) === String(incoming.id))) {
+                  updatedMessages = [...existingList, formattedMsg];
+                } else {
+                  updatedMessages = existingList;
                 }
+
+                // Strictly deduplicate by ID to guarantee unique React keys
+                const seenIds = new Set();
+                const deduplicatedMessages = updatedMessages.filter(m => {
+                  const k = String(m.id);
+                  if (seenIds.has(k)) return false;
+                  seenIds.add(k);
+                  return true;
+                });
+
+                updated[convIdx] = {
+                  ...updated[convIdx],
+                  id: incoming.conversationId || updated[convIdx].id,
+                  lastMessage: formattedMsg.text || 'Sent an attachment',
+                  timestamp: formattedMsg.time,
+                  unread: (incoming.senderId !== currentUser.id && !isChatOpenAndVisible) ? (updated[convIdx].unread || 0) + 1 : 0,
+                  messages: deduplicatedMessages
+                };
                 return updated;
               } else {
                 // If brand new conversation started from peer, fetch conversations
@@ -411,7 +503,7 @@ export function App() {
                       },
                       lastMessage: c.lastMessage,
                       timestamp: 'Just now',
-                      unread: 1,
+                      unread: isChatOpenAndVisible ? 0 : 1,
                       messages: [formattedMsg]
                     })));
                   }
@@ -448,7 +540,7 @@ export function App() {
         const numId = typeof convId === 'number' ? convId : parseInt(String(convId || '').replace(/\D/g, ''), 10);
         if (!isNaN(numId) && numId > 0) {
           try {
-            const msgs = await api.chat.getMessages(numId);
+            const msgs = await api.chat.getMessages(numId, currentUser.id);
             if (msgs && Array.isArray(msgs)) {
               setConversations(prev => prev.map(c => {
                 const isMatch = (c.id === convId || c.id === numId) ||
@@ -461,27 +553,44 @@ export function App() {
                   });
 
                   let hasNew = false;
+                  let hasStatusChange = false;
                   const formatted = msgs.map(m => {
-                    if (!existingMsgMap.has(m.id)) hasNew = true;
+                    const em = existingMsgMap.get(m.id);
+                    if (!em) hasNew = true;
+                    else if (em.status !== m.status || em.isRead !== m.isRead) hasStatusChange = true;
                     return {
                       id: m.id,
                       sender: m.senderId === currentUser.id ? 'user' : 'doctor',
                       senderId: m.senderId,
-                      text: m.text,
+                      receiverId: m.receiverId,
+                      text: m.text || m.message,
                       attachmentUrl: m.attachmentUrl,
                       attachmentType: m.attachmentType,
+                      status: m.status || (m.isRead ? 'SEEN' : 'SENT'),
+                      isRead: m.isRead || false,
+                      createdAt: m.createdAt,
+                      deliveredAt: m.deliveredAt,
+                      readAt: m.readAt,
                       time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                     };
                   });
 
-                  if (hasNew || (c.messages || []).length < formatted.length) {
-                    const last = formatted[formatted.length - 1];
+                  const seenMsgIds = new Set();
+                  const deduplicatedFormatted = formatted.filter(m => {
+                    const k = String(m.id);
+                    if (seenMsgIds.has(k)) return false;
+                    seenMsgIds.add(k);
+                    return true;
+                  });
+
+                  if (hasNew || hasStatusChange || (c.messages || []).length !== deduplicatedFormatted.length) {
+                    const last = deduplicatedFormatted[deduplicatedFormatted.length - 1];
                     return {
                       ...c,
                       id: numId,
                       lastMessage: last ? last.text : c.lastMessage,
                       timestamp: last ? last.time : c.timestamp,
-                      messages: formatted
+                      messages: deduplicatedFormatted
                     };
                   }
                 }
@@ -922,7 +1031,7 @@ export function App() {
       const numId = typeof existing.id === 'number' ? existing.id : parseInt(String(existing.id).replace(/\D/g, ''), 10);
       if (!isNaN(numId) && numId > 0) {
         try {
-          const msgs = await api.chat.getMessages(numId);
+          const msgs = await api.chat.getMessages(numId, currentUser?.id || 1);
           setConversations(prev => prev.map(c => (c.id === existing.id || c.id === numId) ? {
             ...c,
             unread: 0,
@@ -930,9 +1039,15 @@ export function App() {
               id: m.id,
               sender: m.senderId === currentUser?.id ? 'user' : 'doctor',
               senderId: m.senderId,
-              text: m.text,
+              receiverId: m.receiverId,
+              text: m.text || m.message,
               attachmentUrl: m.attachmentUrl,
               attachmentType: m.attachmentType,
+              status: m.senderId !== currentUser?.id ? 'SEEN' : (m.status || (m.isRead ? 'SEEN' : 'SENT')),
+              isRead: m.senderId !== currentUser?.id ? true : (m.isRead || false),
+              createdAt: m.createdAt,
+              deliveredAt: m.deliveredAt,
+              readAt: m.readAt || (m.senderId !== currentUser?.id ? new Date().toISOString() : null),
               time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'
             }))
           } : c));
@@ -965,7 +1080,16 @@ export function App() {
                       (conv.doctor?.id && c.doctor?.id === conv.doctor.id) ||
                       (conv.doctor?.name && c.doctor?.name === conv.doctor.name);
       if (isMatch) {
-        return { ...c, unread: 0 };
+        return {
+          ...c,
+          unread: 0,
+          messages: (c.messages || []).map(m => {
+            if (m.senderId !== currentUser?.id) {
+              return { ...m, status: 'SEEN', isRead: true, readAt: m.readAt || new Date().toISOString() };
+            }
+            return m;
+          })
+        };
       }
       return c;
     }));
@@ -987,21 +1111,35 @@ export function App() {
     const numId = typeof conv.id === 'number' ? conv.id : parseInt(String(conv.id).replace(/\D/g, ''), 10);
     if (!isNaN(numId) && numId > 0) {
       try {
-        const msgs = await api.chat.getMessages(numId);
+        const msgs = await api.chat.getMessages(numId, currentUser?.id || 1);
         setConversations(prev => prev.map(c => {
           if (c.id === conv.id || c.id === numId) {
             return {
               ...c,
               unread: 0,
-              messages: (msgs || []).map(m => ({
-                id: m.id,
-                sender: m.senderId === currentUser?.id ? 'user' : 'doctor',
-                senderId: m.senderId,
-                text: m.text,
-                attachmentUrl: m.attachmentUrl,
-                attachmentType: m.attachmentType,
-                time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'
-              }))
+              messages: (() => {
+                const seen = new Set();
+                return (msgs || []).filter(m => {
+                  const k = String(m.id);
+                  if (seen.has(k)) return false;
+                  seen.add(k);
+                  return true;
+                }).map(m => ({
+                  id: m.id,
+                  sender: m.senderId === currentUser?.id ? 'user' : 'doctor',
+                  senderId: m.senderId,
+                  receiverId: m.receiverId,
+                  text: m.text || m.message,
+                  attachmentUrl: m.attachmentUrl,
+                  attachmentType: m.attachmentType,
+                  status: m.senderId !== currentUser?.id ? 'SEEN' : (m.status || (m.isRead ? 'SEEN' : 'SENT')),
+                  isRead: m.senderId !== currentUser?.id ? true : (m.isRead || false),
+                  createdAt: m.createdAt,
+                  deliveredAt: m.deliveredAt,
+                  readAt: m.readAt || (m.senderId !== currentUser?.id ? new Date().toISOString() : null),
+                  time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'
+                }));
+              })()
             };
           }
           return c;
@@ -1022,13 +1160,21 @@ export function App() {
 
     const now = new Date();
     const timeFormatted = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const optimisticMsg = {
-      id: Date.now(),
+      id: tempId,
+      tempId: tempId,
       sender: 'user',
       senderId: currentUser?.id,
+      receiverId: receiverId,
       text,
       attachmentUrl,
       attachmentType,
+      status: 'SENT',
+      isRead: false,
+      createdAt: now.toISOString(),
+      deliveredAt: null,
+      readAt: null,
       time: timeFormatted
     };
 
@@ -1046,7 +1192,7 @@ export function App() {
     }));
 
     try {
-      await api.chat.sendMessage({
+      const saved = await api.chat.sendMessage({
         conversationId: typeof targetConvId === 'number' ? targetConvId : (typeof conversationId === 'number' ? conversationId : 1),
         senderId: currentUser?.id,
         receiverId: receiverId,
@@ -1054,6 +1200,49 @@ export function App() {
         attachmentUrl,
         attachmentType
       });
+
+      if (saved && saved.id) {
+        setConversations(prev => prev.map(conv => {
+          if (conv.id === targetConvId || conv.id === conversationId || (conv.doctor?.id === receiverId)) {
+            const existing = conv.messages || [];
+            const alreadyHasSaved = existing.some(m => String(m.id) === String(saved.id));
+            let updatedMessages;
+            if (alreadyHasSaved) {
+              // STOMP already added saved.id, remove the temp message to avoid duplicate keys
+              updatedMessages = existing.filter(m => m.id !== tempId);
+            } else {
+              updatedMessages = existing.map(m => {
+                if (m.id === tempId) {
+                  return {
+                    ...m,
+                    id: saved.id,
+                    status: saved.status || 'SENT',
+                    createdAt: saved.createdAt || m.createdAt,
+                    deliveredAt: saved.deliveredAt,
+                    readAt: saved.readAt
+                  };
+                }
+                return m;
+              });
+            }
+
+            const seenIds = new Set();
+            const deduplicated = updatedMessages.filter(m => {
+              const k = String(m.id);
+              if (seenIds.has(k)) return false;
+              seenIds.add(k);
+              return true;
+            });
+
+            return {
+              ...conv,
+              id: targetConvId,
+              messages: deduplicated
+            };
+          }
+          return conv;
+        }));
+      }
     } catch (e) {
       console.warn('Real-time chat persistence fallback:', e);
     }
@@ -1320,6 +1509,27 @@ export function App() {
               onNavigateTab={handleTabNavigation}
               onOpenCreateProfile={() => setIsCreateProfileOpen(true)}
               onSendRequest={handleSendRequest}
+              onMarkAsRead={(convId) => {
+                const num = typeof convId === 'number' ? convId : parseInt(String(convId || '').replace(/\D/g, ''), 10);
+                if (!isNaN(num) && num > 0) {
+                  api.chat.markAsRead(num, currentUser?.id).catch(() => {});
+                  setConversations(prev => prev.map(c => {
+                    if (c.id === convId || c.id === num) {
+                      return {
+                        ...c,
+                        unread: 0,
+                        messages: (c.messages || []).map(m => {
+                          if (m.senderId !== currentUser?.id) {
+                            return { ...m, status: 'SEEN', isRead: true, readAt: m.readAt || new Date().toISOString() };
+                          }
+                          return m;
+                        })
+                      };
+                    }
+                    return c;
+                  }));
+                }
+              }}
             />
           </div>
         ) : (

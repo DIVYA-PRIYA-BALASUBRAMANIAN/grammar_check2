@@ -4,6 +4,7 @@ import {
   Search,
   Send,
   Paperclip,
+  Check,
   CheckCheck,
   ChevronRight,
   User,
@@ -32,7 +33,8 @@ export function MessagesView({
   onOpenLogin,
   onNavigateTab,
   onOpenCreateProfile,
-  onSendRequest
+  onSendRequest,
+  onMarkAsRead
 }) {
   const [messageText, setMessageText] = useState('');
   const [attachmentUrl, setAttachmentUrl] = useState('');
@@ -393,14 +395,48 @@ export function MessagesView({
     )
   ) || (conversations.length > 0 ? conversations[0] : null);
 
-  // Auto-mark conversation as read immediately when viewed (Instagram Direct Messages behavior)
+  // Track browser window focus and document visibility
+  const [isWindowActive, setIsWindowActive] = useState(() =>
+    typeof document !== 'undefined' ? (!document.hidden && document.hasFocus()) : true
+  );
+
   useEffect(() => {
-    if (selectedConv && (selectedConv.unread > 0 || conversations.some(c => (c.id === selectedConv.id || (c.doctor?.id && c.doctor?.id === selectedConv.doctor?.id)) && c.unread > 0))) {
-      if (onSelectConversation) {
+    const updateActiveState = () => {
+      setIsWindowActive(!document.hidden && document.hasFocus());
+    };
+    const handleVisibility = () => updateActiveState();
+    const handleFocus = () => updateActiveState();
+    const handleBlur = () => setIsWindowActive(false);
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
+
+  // Mark conversation as read only when active conversation is visible and focused
+  useEffect(() => {
+    if (!isWindowActive || !selectedConv) return;
+
+    // Check if there are any unread messages sent by peer to currentUser
+    const hasUnreadReceived = (selectedConv.messages || []).some(m =>
+      (m.senderId !== currentUser?.id && m.sender !== 'user' && m.sender !== 'me') &&
+      (!m.isRead || m.status !== 'SEEN')
+    );
+
+    if (selectedConv.unread > 0 || hasUnreadReceived) {
+      if (onMarkAsRead && selectedConv.id) {
+        onMarkAsRead(selectedConv.id);
+      } else if (onSelectConversation) {
         onSelectConversation(selectedConv);
       }
     }
-  }, [selectedConv?.id, selectedConv?.unread, onSelectConversation]);
+  }, [selectedConv?.id, selectedConv?.unread, selectedConv?.messages, isWindowActive, onMarkAsRead, onSelectConversation, currentUser?.id]);
 
   // Active doctor peer for consultation - dynamically resolved from live doctor catalog
   const rawDoctor = activeChatDoctor || selectedConv?.doctor || null;
@@ -414,8 +450,21 @@ export function MessagesView({
     return fresh ? { ...rawDoctor, ...fresh, avatar: fresh.avatar || rawDoctor.avatar } : rawDoctor;
   }, [rawDoctor, doctors]);
 
-  // Active chat message stream (strictly from user's selected conversation)
-  const chatMessages = selectedConv?.messages || [];
+  // Active chat message stream (strictly from user's selected conversation, deduplicated by message ID)
+  const chatMessages = useMemo(() => {
+    const list = selectedConv?.messages || [];
+    const seen = new Set();
+    const result = [];
+    for (const msg of list) {
+      if (!msg) continue;
+      const key = msg.id != null ? String(msg.id) : (msg.tempId || `${msg.senderId}-${msg.createdAt}-${msg.text}`);
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(msg);
+      }
+    }
+    return result;
+  }, [selectedConv?.messages]);
 
   // Check if current doctor is connected to allow messaging
   const isPeerConnected = useMemo(() => {
@@ -636,10 +685,23 @@ export function MessagesView({
               {/* Message Stream */}
               {chatMessages.map((msg, idx) => {
                 const isMe = msg.sender === 'user' || msg.sender === 'me' || msg.senderId === (currentUser?.id || 1);
-                const isLastMsg = idx === chatMessages.length - 1;
+                // Determine if this is the last message sent by me in this conversation
+                const isLastSentByMe = isMe && (chatMessages.slice(idx + 1).every(m => m.sender !== 'user' && m.sender !== 'me' && m.senderId !== (currentUser?.id || 1)));
+
+                const isSeen = msg.status === 'SEEN' || msg.isRead === true;
+                const isDelivered = !isSeen && msg.status === 'DELIVERED';
+
+                let statusTooltip = 'Sent successfully';
+                if (isSeen) {
+                  statusTooltip = `Seen${msg.readAt ? ` at ${formatTime(msg.readAt)}` : ''}`;
+                } else if (isDelivered) {
+                  statusTooltip = `Delivered${msg.deliveredAt ? ` at ${formatTime(msg.deliveredAt)}` : ''} · Unseen`;
+                } else {
+                  statusTooltip = 'Sent · Unseen';
+                }
 
                 return (
-                  <div key={msg.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                  <div key={`chat-msg-${msg.id || msg.tempId || idx}`} style={{ display: 'flex', flexDirection: 'column' }}>
                     <div
                       style={{
                         display: 'flex',
@@ -712,26 +774,65 @@ export function MessagesView({
                           color: isMe ? 'rgba(255, 255, 255, 0.75)' : '#9CA3AF'
                         }}>
                           <span>{formatTime(msg.time)}</span>
-                          {isMe && <CheckCheck size={13} color="#A7F3D0" />}
+                          {isMe && (
+                            <span
+                              title={statusTooltip}
+                              style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '2px' }}
+                            >
+                              {isSeen ? (
+                                <CheckCheck
+                                  size={14}
+                                  color="#38BDF8"
+                                  strokeWidth={2.5}
+                                  style={{ filter: 'drop-shadow(0 0 1px rgba(56, 189, 248, 0.5))' }}
+                                />
+                              ) : isDelivered ? (
+                                <CheckCheck
+                                  size={13}
+                                  color="rgba(255, 255, 255, 0.85)"
+                                  strokeWidth={2}
+                                />
+                              ) : (
+                                <Check
+                                  size={13}
+                                  color="rgba(255, 255, 255, 0.65)"
+                                  strokeWidth={2}
+                                />
+                              )}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
 
-                    {/* Instagram-style Seen Receipt beneath the last sent message */}
-                    {isLastMsg && isMe && (
+                    {/* Instagram/WhatsApp-style Seen / Delivered status beneath the last sent message */}
+                    {isLastSentByMe && (
                       <div style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'flex-end',
                         gap: '4px',
                         fontSize: '11px',
-                        color: '#059669',
                         fontWeight: 600,
                         marginTop: '4px',
                         paddingRight: '6px'
                       }}>
-                        <CheckCheck size={13} color="#059669" />
-                        <span>Seen</span>
+                        {isSeen ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#0284C7' }}>
+                            <CheckCheck size={13} color="#0284C7" strokeWidth={2.4} />
+                            <span>Seen{msg.readAt ? ` · ${formatTime(msg.readAt)}` : ''}</span>
+                          </div>
+                        ) : isDelivered ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#64748B' }}>
+                            <CheckCheck size={13} color="#64748B" strokeWidth={2} />
+                            <span>Delivered · Unseen</span>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#94A3B8' }}>
+                            <Check size={13} color="#94A3B8" strokeWidth={2} />
+                            <span>Sent · Unseen</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1113,13 +1214,13 @@ export function MessagesView({
           gap: '6px'
         }}>
           {filteredContacts.length > 0 ? (
-            filteredContacts.map(({ doctor: person, conv: existing, lastMessage, timestamp, unread }) => {
+            filteredContacts.map(({ doctor: person, conv: existing, lastMessage, timestamp, unread }, idx) => {
               const isSelected = currentDoctor?.id === person.id || currentDoctor?.name === person.name;
               const isUnread = unread > 0 && !isSelected;
 
               return (
                 <div
-                  key={person.id || person.name}
+                  key={`contact-item-${person.id || person.name || idx}`}
                   onClick={() => {
                     if (onSelectConversation) {
                       if (existing) {
@@ -1206,9 +1307,26 @@ export function MessagesView({
                         fontWeight: isUnread ? 700 : 400,
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
+                        whiteSpace: 'nowrap',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
                       }}>
-                        {lastMessage}
+                        {existing?.messages && existing.messages.length > 0 && (
+                          (() => {
+                            const lastM = existing.messages[existing.messages.length - 1];
+                            const isMeMsg = lastM.sender === 'user' || lastM.sender === 'me' || lastM.senderId === (currentUser?.id || 1);
+                            if (!isMeMsg) return null;
+                            const isSeenM = lastM.status === 'SEEN' || lastM.isRead;
+                            const isDelivM = lastM.status === 'DELIVERED';
+                            if (isSeenM) return <CheckCheck size={12} color="#0284C7" strokeWidth={2.4} style={{ flexShrink: 0 }} />;
+                            if (isDelivM) return <CheckCheck size={12} color="#64748B" strokeWidth={2} style={{ flexShrink: 0 }} />;
+                            return <Check size={12} color="#94A3B8" strokeWidth={2} style={{ flexShrink: 0 }} />;
+                          })()
+                        )}
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {lastMessage}
+                        </span>
                       </p>
                     </div>
                   </div>

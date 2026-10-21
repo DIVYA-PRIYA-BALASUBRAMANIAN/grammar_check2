@@ -224,7 +224,10 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ doctor1Id, doctor2Id, initialMessage })
       }),
-    getMessages: (conversationId) => fetchJson(`/chat/conversations/${conversationId}/messages`),
+    getMessages: (conversationId, doctorId) => {
+      const qs = doctorId ? `?doctorId=${doctorId}` : '';
+      return fetchJson(`/chat/conversations/${conversationId}/messages${qs}`);
+    },
     sendMessage: (msg) =>
       fetchJson('/chat/messages', {
         method: 'POST',
@@ -232,6 +235,18 @@ export const api = {
       }),
     markAsRead: (conversationId, doctorId = 1) =>
       fetchJson(`/chat/conversations/${conversationId}/read?doctorId=${doctorId}`, {
+        method: 'PUT'
+      }),
+    markMessageAsRead: (messageId, doctorId = 1) =>
+      fetchJson(`/chat/messages/${messageId}/read?doctorId=${doctorId}`, {
+        method: 'PUT'
+      }),
+    markDelivered: (conversationId, doctorId = 1) =>
+      fetchJson(`/chat/conversations/${conversationId}/delivered?doctorId=${doctorId}`, {
+        method: 'PUT'
+      }),
+    markMessageDelivered: (messageId, doctorId = 1) =>
+      fetchJson(`/chat/messages/${messageId}/delivered?doctorId=${doctorId}`, {
         method: 'PUT'
       })
   },

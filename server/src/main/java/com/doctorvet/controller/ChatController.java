@@ -3,6 +3,7 @@ package com.doctorvet.controller;
 import com.doctorvet.model.Conversation;
 import com.doctorvet.model.Message;
 import com.doctorvet.service.ChatService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,36 +20,6 @@ public class ChatController {
         this.chatService = chatService;
     }
 
-    public record MessageViewDto(
-            Long id,
-            String sender,
-            Long senderId,
-            Long receiverId,
-            String text,
-            String time,
-            String attachmentUrl,
-            String attachmentType
-    ) {}
-
-    public record PeerDoctorDto(
-            Long id,
-            String name,
-            String specialty,
-            String city,
-            String avatar,
-            boolean isOnline,
-            String onlineStatus
-    ) {}
-
-    public record ConversationViewDto(
-            Long id,
-            PeerDoctorDto doctor,
-            String lastMessage,
-            String timestamp,
-            int unread,
-            List<MessageViewDto> messages
-    ) {}
-
     @GetMapping("/conversations")
     public List<Conversation> getConversations(@RequestParam Long doctorId) {
         return chatService.getConversations(doctorId);
@@ -62,19 +33,28 @@ public class ChatController {
     }
 
     @GetMapping("/conversations/{id}/messages")
-    public List<Message> getMessages(@PathVariable Long id) {
-        return chatService.getMessages(id);
+    public List<Message> getMessages(@PathVariable Long id, @RequestParam(required = false) Long doctorId, HttpServletRequest request) {
+        Long authenticatedDoctorId = (Long) request.getAttribute("authenticatedDoctorId");
+        Long effectiveDoctorId = doctorId != null ? doctorId : authenticatedDoctorId;
+        return chatService.getMessages(id, effectiveDoctorId);
     }
 
-    public record SendMessageDto(Long conversationId, Long senderId, Long receiverId, String text, String attachmentUrl, String attachmentType) {}
+    public record SendMessageDto(Long conversationId, Long senderId, Long receiverId, String text, String attachmentUrl, String attachmentType, String message) {
+        public String effectiveText() {
+            return text != null && !text.isBlank() ? text : message;
+        }
+    }
 
     @PostMapping("/messages")
-    public ResponseEntity<Message> sendMessage(@RequestBody SendMessageDto dto) {
+    public ResponseEntity<Message> sendMessage(@RequestBody SendMessageDto dto, HttpServletRequest request) {
+        Long authenticatedDoctorId = (Long) request.getAttribute("authenticatedDoctorId");
+        Long effectiveSenderId = authenticatedDoctorId != null ? authenticatedDoctorId : dto.senderId();
+
         Message saved = chatService.sendMessage(
                 dto.conversationId(),
-                dto.senderId(),
+                effectiveSenderId,
                 dto.receiverId(),
-                dto.text(),
+                dto.effectiveText(),
                 dto.attachmentUrl(),
                 dto.attachmentType()
         );
@@ -82,16 +62,50 @@ public class ChatController {
     }
 
     @PutMapping("/messages/{id}/read")
-    public ResponseEntity<?> markMessageAsRead(@PathVariable Long id) {
-        if (chatService.markMessageAsRead(id)) {
-            return ResponseEntity.ok(Map.of("message", "Marked as read"));
+    public ResponseEntity<?> markMessageAsRead(@PathVariable Long id, @RequestParam(required = false) Long doctorId, HttpServletRequest request) {
+        Long authenticatedDoctorId = (Long) request.getAttribute("authenticatedDoctorId");
+        Long effectiveDoctorId = doctorId != null ? doctorId : authenticatedDoctorId;
+
+        if (chatService.markMessageAsRead(id, effectiveDoctorId)) {
+            return ResponseEntity.ok(Map.of("message", "Marked as read", "status", "SEEN"));
         }
-        return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(Map.of("message", "Marked as read"));
+    }
+
+    @PutMapping("/messages/{id}/delivered")
+    public ResponseEntity<?> markMessageAsDelivered(@PathVariable Long id, @RequestParam(required = false) Long doctorId, HttpServletRequest request) {
+        Long authenticatedDoctorId = (Long) request.getAttribute("authenticatedDoctorId");
+        Long effectiveDoctorId = doctorId != null ? doctorId : authenticatedDoctorId;
+
+        if (chatService.markMessageAsDelivered(id, effectiveDoctorId)) {
+            return ResponseEntity.ok(Map.of("message", "Marked as delivered", "status", "DELIVERED"));
+        }
+        return ResponseEntity.ok(Map.of("message", "Marked as delivered"));
     }
 
     @PutMapping("/conversations/{id}/read")
-    public ResponseEntity<?> markConversationAsRead(@PathVariable Long id, @RequestParam Long doctorId) {
-        chatService.markConversationAsRead(id, doctorId);
-        return ResponseEntity.ok(Map.of("message", "Conversation marked as read"));
+    public ResponseEntity<?> markConversationAsRead(@PathVariable Long id, @RequestParam(required = false) Long doctorId, HttpServletRequest request) {
+        Long authenticatedDoctorId = (Long) request.getAttribute("authenticatedDoctorId");
+        Long effectiveDoctorId = doctorId != null ? doctorId : authenticatedDoctorId;
+
+        if (effectiveDoctorId == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Doctor ID required"));
+        }
+
+        chatService.markConversationAsRead(id, effectiveDoctorId);
+        return ResponseEntity.ok(Map.of("message", "Conversation marked as read", "status", "SEEN"));
+    }
+
+    @PutMapping("/conversations/{id}/delivered")
+    public ResponseEntity<?> markConversationAsDelivered(@PathVariable Long id, @RequestParam(required = false) Long doctorId, HttpServletRequest request) {
+        Long authenticatedDoctorId = (Long) request.getAttribute("authenticatedDoctorId");
+        Long effectiveDoctorId = doctorId != null ? doctorId : authenticatedDoctorId;
+
+        if (effectiveDoctorId == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Doctor ID required"));
+        }
+
+        chatService.markConversationAsDelivered(id, effectiveDoctorId);
+        return ResponseEntity.ok(Map.of("message", "Conversation marked as delivered", "status", "DELIVERED"));
     }
 }

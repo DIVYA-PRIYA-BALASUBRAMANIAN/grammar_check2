@@ -13,8 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class ChatService {
@@ -67,6 +66,7 @@ public class ChatService {
 
         if (initialMessage != null && !initialMessage.isBlank()) {
             Message msg = new Message(saved.getId(), doctor1Id, doctor2Id, initialMessage, null, null);
+            msg.setStatus("SENT");
             msgRepo.save(msg);
         }
 
@@ -74,16 +74,49 @@ public class ChatService {
     }
 
     public List<Message> getMessages(Long conversationId) {
-        return msgRepo.findByConversationIdOrderByCreatedAtAsc(conversationId);
+        return getMessages(conversationId, null);
+    }
+
+    @Transactional
+    public List<Message> getMessages(Long conversationId, Long requestingDoctorId) {
+        List<Message> messages = msgRepo.findByConversationIdOrderByCreatedAtAsc(conversationId);
+
+        // If a recipient doctor is fetching their messages, synchronize any "SENT" messages to "DELIVERED"
+        if (requestingDoctorId != null && !messages.isEmpty()) {
+            List<Long> newlyDeliveredIds = new ArrayList<>();
+            LocalDateTime now = LocalDateTime.now();
+            Long senderId = null;
+
+            for (Message m : messages) {
+                if (requestingDoctorId.equals(m.getReceiverId()) && "SENT".equalsIgnoreCase(m.getStatus())) {
+                    m.setStatus("DELIVERED");
+                    m.setDeliveredAt(now);
+                    msgRepo.save(m);
+                    newlyDeliveredIds.add(m.getId());
+                    if (senderId == null) {
+                        senderId = m.getSenderId();
+                    }
+                }
+            }
+
+            if (!newlyDeliveredIds.isEmpty()) {
+                broadcastStatusUpdate(conversationId, senderId, requestingDoctorId, newlyDeliveredIds, "DELIVERED", null, now);
+            }
+        }
+
+        return messages;
     }
 
     @Transactional
     public Message sendMessage(Long conversationId, Long senderId, Long receiverId, String text, String attachmentUrl, String attachmentType) {
         Message msg = new Message(conversationId, senderId, receiverId, text, attachmentUrl, attachmentType);
+        msg.setStatus("SENT");
+        msg.setCreatedAt(LocalDateTime.now());
         Message saved = msgRepo.save(msg);
 
         convRepo.findById(conversationId).ifPresent(conv -> {
-            conv.setLastMessage(text != null && !text.isBlank() ? text : "Sent an attachment");
+            String preview = text != null && !text.isBlank() ? (text.length() > 500 ? text.substring(0, 497) + "..." : text) : "Sent an attachment";
+            conv.setLastMessage(preview);
             conv.setLastMessageSenderId(senderId);
             conv.setUpdatedAt(LocalDateTime.now());
             if (conv.getDoctor1Id().equals(receiverId)) {
@@ -99,13 +132,15 @@ public class ChatService {
             String senderName = sender != null ? sender.getName() : "Dr. You";
             String senderAvatar = sender != null ? sender.getAvatar() : null;
 
+            String notifText = senderName + ": " + (text != null && text.length() > 40 ? text.substring(0, 40) + "..." : (text != null && !text.isBlank() ? text : "Sent an attachment"));
+
             notificationRepo.save(new Notification(
                     receiverId,
                     senderId,
                     senderName,
                     senderAvatar,
                     "NEW_MESSAGE",
-                    senderName + ": " + (text != null && text.length() > 40 ? text.substring(0, 40) + "..." : text),
+                    notifText,
                     conversationId
             ));
 
@@ -121,30 +156,108 @@ public class ChatService {
     }
 
     @Transactional
-    public boolean markMessageAsRead(Long messageId) {
+    public boolean markMessageAsRead(Long messageId, Long readerDoctorId) {
         return msgRepo.findById(messageId).map(m -> {
+            // Only recipient can mark message as read
+            if (readerDoctorId != null && !readerDoctorId.equals(m.getReceiverId())) {
+                return false;
+            }
+            LocalDateTime now = LocalDateTime.now();
             m.setRead(true);
+            m.setStatus("SEEN");
+            m.setReadAt(now);
+            if (m.getDeliveredAt() == null) {
+                m.setDeliveredAt(now);
+            }
             msgRepo.save(m);
+
+            broadcastStatusUpdate(m.getConversationId(), m.getSenderId(), readerDoctorId, List.of(m.getId()), "SEEN", now, m.getDeliveredAt());
             return true;
         }).orElse(false);
     }
 
     @Transactional
-    public void markConversationAsRead(Long conversationId, Long doctorId) {
-        convRepo.findById(conversationId).ifPresent(conv -> {
-            if (conv.getDoctor1Id().equals(doctorId)) {
-                conv.setUnreadCountDoctor1(0);
-            } else {
-                conv.setUnreadCountDoctor2(0);
+    public boolean markMessageAsDelivered(Long messageId, Long receiverDoctorId) {
+        return msgRepo.findById(messageId).map(m -> {
+            if (receiverDoctorId != null && !receiverDoctorId.equals(m.getReceiverId())) {
+                return false;
             }
-            convRepo.save(conv);
-        });
+            // Do not downgrade if already SEEN
+            if ("SEEN".equalsIgnoreCase(m.getStatus())) {
+                return true;
+            }
+            LocalDateTime now = LocalDateTime.now();
+            m.setStatus("DELIVERED");
+            if (m.getDeliveredAt() == null) {
+                m.setDeliveredAt(now);
+            }
+            msgRepo.save(m);
+
+            broadcastStatusUpdate(m.getConversationId(), m.getSenderId(), receiverDoctorId, List.of(m.getId()), "DELIVERED", null, now);
+            return true;
+        }).orElse(false);
+    }
+
+    @Transactional
+    public void markConversationAsDelivered(Long conversationId, Long receiverDoctorId) {
+        if (conversationId == null || receiverDoctorId == null) return;
 
         List<Message> messages = msgRepo.findByConversationIdOrderByCreatedAtAsc(conversationId);
+        List<Long> deliveredIds = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+        Long senderId = null;
+
         for (Message m : messages) {
-            if (m.getReceiverId() != null && m.getReceiverId().equals(doctorId) && !m.isRead()) {
-                m.setRead(true);
+            if (receiverDoctorId.equals(m.getReceiverId()) && "SENT".equalsIgnoreCase(m.getStatus())) {
+                m.setStatus("DELIVERED");
+                m.setDeliveredAt(now);
                 msgRepo.save(m);
+                deliveredIds.add(m.getId());
+                if (senderId == null) senderId = m.getSenderId();
+            }
+        }
+
+        if (!deliveredIds.isEmpty()) {
+            broadcastStatusUpdate(conversationId, senderId, receiverDoctorId, deliveredIds, "DELIVERED", null, now);
+        }
+    }
+
+    @Transactional
+    public void markConversationAsRead(Long conversationId, Long doctorId) {
+        if (conversationId == null || doctorId == null) return;
+
+        Optional<Conversation> convOpt = convRepo.findById(conversationId);
+        if (convOpt.isEmpty()) return;
+
+        Conversation conv = convOpt.get();
+        // Participant check
+        if (!doctorId.equals(conv.getDoctor1Id()) && !doctorId.equals(conv.getDoctor2Id())) {
+            return;
+        }
+
+        if (conv.getDoctor1Id().equals(doctorId)) {
+            conv.setUnreadCountDoctor1(0);
+        } else {
+            conv.setUnreadCountDoctor2(0);
+        }
+        convRepo.save(conv);
+
+        List<Message> messages = msgRepo.findByConversationIdOrderByCreatedAtAsc(conversationId);
+        List<Long> seenIds = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+        Long otherDoctorId = conv.getDoctor1Id().equals(doctorId) ? conv.getDoctor2Id() : conv.getDoctor1Id();
+
+        for (Message m : messages) {
+            // Mark only messages received by the current user as seen; do not mark their own sent messages as seen
+            if (doctorId.equals(m.getReceiverId()) && (!m.isRead() || !"SEEN".equalsIgnoreCase(m.getStatus()))) {
+                m.setRead(true);
+                m.setStatus("SEEN");
+                m.setReadAt(now);
+                if (m.getDeliveredAt() == null) {
+                    m.setDeliveredAt(now);
+                }
+                msgRepo.save(m);
+                seenIds.add(m.getId());
             }
         }
 
@@ -156,8 +269,37 @@ public class ChatService {
                 notificationRepo.save(n);
             }
         }
+
         try {
             messagingTemplate.convertAndSend("/topic/user/" + doctorId + "/notifications", "NOTIFICATIONS_UPDATED");
+        } catch (Exception ignored) {}
+
+        if (!seenIds.isEmpty()) {
+            broadcastStatusUpdate(conversationId, otherDoctorId, doctorId, seenIds, "SEEN", now, null);
+        }
+    }
+
+    private void broadcastStatusUpdate(Long conversationId, Long senderId, Long receiverOrReaderId,
+                                       List<Long> messageIds, String status, LocalDateTime readAt, LocalDateTime deliveredAt) {
+        Map<String, Object> event = new HashMap<>();
+        event.put("type", "MESSAGE_STATUS_UPDATE");
+        event.put("status", status);
+        event.put("conversationId", conversationId);
+        event.put("messageIds", messageIds);
+        if (readAt != null) event.put("readAt", readAt.toString());
+        if (deliveredAt != null) event.put("deliveredAt", deliveredAt.toString());
+        event.put("readerId", receiverOrReaderId);
+        event.put("receiverId", receiverOrReaderId);
+        event.put("timestamp", LocalDateTime.now().toString());
+
+        try {
+            messagingTemplate.convertAndSend("/topic/messages/" + conversationId, (Object) event);
+            if (senderId != null) {
+                messagingTemplate.convertAndSend("/topic/user/" + senderId + "/messages", (Object) event);
+            }
+            if (receiverOrReaderId != null) {
+                messagingTemplate.convertAndSend("/topic/user/" + receiverOrReaderId + "/messages", (Object) event);
+            }
         } catch (Exception ignored) {}
     }
 }

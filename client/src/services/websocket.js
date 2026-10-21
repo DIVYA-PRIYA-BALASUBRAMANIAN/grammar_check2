@@ -3,17 +3,18 @@ if (typeof window !== 'undefined' && typeof window.global === 'undefined') {
 }
 
 import { Client } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
 
 export function createStompClient(onConnectCallback) {
+  const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = typeof window !== 'undefined' && window.location.hostname ? `${window.location.hostname}:8080` : 'localhost:8080';
+  const brokerURL = `${protocol}//${host}/ws-chat`;
+
   const client = new Client({
-    webSocketFactory: () => new SockJS('http://localhost:8080/ws-chat'),
+    brokerURL: brokerURL,
     reconnectDelay: 5000,
     heartbeatIncoming: 4000,
     heartbeatOutgoing: 4000,
-    debug: (str) => {
-      // console.log('[STOMP]', str);
-    },
+    debug: () => {},
     onConnect: (frame) => {
       if (onConnectCallback) onConnectCallback(client);
     },

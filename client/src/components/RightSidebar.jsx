@@ -65,7 +65,7 @@ export function RightSidebar({
               const isDocActive = !!doc.active || (currentUser && (doc.id === currentUser.id || String(doc.id).replace('doc-', '') === String(currentUser.id).replace('doc-', '')));
 
               return (
-                <div key={doc.id} className="people-card-row">
+                <div key={`sidebar-doc-${doc.id}`} className="people-card-row">
                   <div 
                     className="people-meta-left"
                     style={{ cursor: 'pointer', flex: 1, minWidth: 0 }}

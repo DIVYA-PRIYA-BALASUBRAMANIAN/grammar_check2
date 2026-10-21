@@ -354,7 +354,7 @@ export function VetNetworkView({
 
             return (
               <div
-                key={doc.id}
+                key={`vet-doc-${doc.id}`}
                 className="doctor-card"
                 style={{
                   backgroundColor: '#FFFFFF',
