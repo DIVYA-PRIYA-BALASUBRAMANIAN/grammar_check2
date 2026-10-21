@@ -30,10 +30,11 @@ public class Post {
     private Integer commentsCount = 0;
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    public Post() {}
+    public Post() {
+    }
 
     public Post(String authorName, String authorSpecialty, String authorCity, String authorAvatar,
-                String postType, String badgeLabel, String content, String imageUrl, String species, int likes) {
+            String postType, String badgeLabel, String content, String imageUrl, String species, int likes) {
         this.authorName = authorName;
         this.authorSpecialty = authorSpecialty;
         this.authorCity = authorCity;
@@ -47,48 +48,123 @@ public class Post {
         this.createdAt = LocalDateTime.now();
     }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getId() {
+        return id;
+    }
 
-    public Long getAuthorId() { return authorId; }
-    public void setAuthorId(Long authorId) { this.authorId = authorId; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public String getAuthorName() { return authorName; }
-    public void setAuthorName(String authorName) { this.authorName = authorName; }
+    public Long getAuthorId() {
+        return authorId;
+    }
 
-    public String getAuthorSpecialty() { return authorSpecialty; }
-    public void setAuthorSpecialty(String authorSpecialty) { this.authorSpecialty = authorSpecialty; }
+    public void setAuthorId(Long authorId) {
+        this.authorId = authorId;
+    }
 
-    public String getAuthorCity() { return authorCity; }
-    public void setAuthorCity(String authorCity) { this.authorCity = authorCity; }
+    public String getAuthorName() {
+        return authorName;
+    }
 
-    public String getAuthorAvatar() { return authorAvatar; }
-    public void setAuthorAvatar(String authorAvatar) { this.authorAvatar = authorAvatar; }
+    public void setAuthorName(String authorName) {
+        this.authorName = authorName;
+    }
 
-    public String getPostType() { return postType; }
-    public void setPostType(String postType) { this.postType = postType; }
+    public String getAuthorSpecialty() {
+        return authorSpecialty;
+    }
 
-    public String getBadgeLabel() { return badgeLabel; }
-    public void setBadgeLabel(String badgeLabel) { this.badgeLabel = badgeLabel; }
+    public void setAuthorSpecialty(String authorSpecialty) {
+        this.authorSpecialty = authorSpecialty;
+    }
 
-    public String getContent() { return content; }
-    public void setContent(String content) { this.content = content; }
+    public String getAuthorCity() {
+        return authorCity;
+    }
 
-    public String getImageUrl() { return imageUrl; }
-    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    public void setAuthorCity(String authorCity) {
+        this.authorCity = authorCity;
+    }
 
-    public String getVideoUrl() { return videoUrl; }
-    public void setVideoUrl(String videoUrl) { this.videoUrl = videoUrl; }
+    public String getAuthorAvatar() {
+        return authorAvatar;
+    }
 
-    public String getSpecies() { return species; }
-    public void setSpecies(String species) { this.species = species; }
+    public void setAuthorAvatar(String authorAvatar) {
+        this.authorAvatar = authorAvatar;
+    }
 
-    public int getLikes() { return likes != null ? likes : 0; }
-    public void setLikes(Integer likes) { this.likes = likes != null ? likes : 0; }
+    public String getPostType() {
+        return postType;
+    }
 
-    public int getCommentsCount() { return commentsCount != null ? commentsCount : 0; }
-    public void setCommentsCount(Integer commentsCount) { this.commentsCount = commentsCount != null ? commentsCount : 0; }
+    public void setPostType(String postType) {
+        this.postType = postType;
+    }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public String getBadgeLabel() {
+        return badgeLabel;
+    }
+
+    public void setBadgeLabel(String badgeLabel) {
+        this.badgeLabel = badgeLabel;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
+    public String getVideoUrl() {
+        return videoUrl;
+    }
+
+    public void setVideoUrl(String videoUrl) {
+        this.videoUrl = videoUrl;
+    }
+
+    public String getSpecies() {
+        return species;
+    }
+
+    public void setSpecies(String species) {
+        this.species = species;
+    }
+
+    public int getLikes() {
+        return likes != null ? likes : 0;
+    }
+
+    public void setLikes(Integer likes) {
+        this.likes = likes != null ? likes : 0;
+    }
+
+    public int getCommentsCount() {
+        return commentsCount != null ? commentsCount : 0;
+    }
+
+    public void setCommentsCount(Integer commentsCount) {
+        this.commentsCount = commentsCount != null ? commentsCount : 0;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
 }

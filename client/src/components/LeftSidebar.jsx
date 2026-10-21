@@ -15,7 +15,8 @@ import {
   Lightbulb,
   GraduationCap,
   Globe,
-  User
+  User,
+  FileText
 } from 'lucide-react';
 import zenveLogo from '../assets/zenve_logo.png';
 import sidebarDoctorBg from '../assets/sidebar_vet_doctor.jpg';
@@ -29,7 +30,8 @@ export function LeftSidebar({
   onOpenLogin,
   onLogout,
   onOpenCreateProfile,
-  onOpenDoctorProfile
+  onOpenDoctorProfile,
+  onOpenTerms
 }) {
   const navItems = [
     { id: 'feed', label: 'Home', icon: Home },
@@ -142,6 +144,23 @@ export function LeftSidebar({
             <div className="nav-item-content">
               <GraduationCap size={19} strokeWidth={1.85} />
               <span>Expert Mentorship</span>
+            </div>
+            <ExternalLink size={14} className="discover-external-icon" />
+          </a>
+
+          <a
+            href="#terms"
+            className="discover-nav-link"
+            onClick={(e) => {
+              e.preventDefault();
+              if (onOpenTerms) onOpenTerms();
+              else onTabSelect('terms');
+            }}
+            title="View Zenve Pets Healthcare Pvt. Ltd. Terms & Conditions"
+          >
+            <div className="nav-item-content">
+              <FileText size={19} strokeWidth={1.85} />
+              <span>Terms & Policies</span>
             </div>
             <ExternalLink size={14} className="discover-external-icon" />
           </a>

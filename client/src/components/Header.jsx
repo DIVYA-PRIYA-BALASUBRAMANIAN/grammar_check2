@@ -20,7 +20,8 @@ import {
   Sparkles,
   ExternalLink,
   Globe,
-  UserPen
+  UserPen,
+  FileText
 } from 'lucide-react';
 import { Avatar } from './Avatar';
 
@@ -46,7 +47,8 @@ export function Header({
   onOpenCreatePost,
   onOpenDirectChat,
   onAcceptCommunityInvite,
-  onDeclineCommunityInvite
+  onDeclineCommunityInvite,
+  onOpenTerms
 }) {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -572,6 +574,35 @@ export function Header({
                   >
                     <UserPen size={15} color="#059669" />
                     <span>Edit Profile</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      if (onOpenTerms) onOpenTerms();
+                      else if (onTabSelect) onTabSelect('terms');
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 10px',
+                      width: '100%',
+                      background: 'none',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '12.5px',
+                      color: '#1F2937',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textAlign: 'left'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F3F4F6'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    title="View Zenve Pets Healthcare Pvt. Ltd. Terms & Conditions"
+                  >
+                    <FileText size={15} color="#059669" />
+                    <span>Terms & Conditions</span>
                   </button>
 
                   <button

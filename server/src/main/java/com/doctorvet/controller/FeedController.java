@@ -44,9 +44,9 @@ public class FeedController {
     }
 
     @PostMapping("/posts/{id}/like")
-    public ResponseEntity<?> toggleLikePost(@PathVariable Long id, 
-                                            @RequestParam(required = false, defaultValue = "1") Long doctorId,
-                                            @RequestParam(required = false, defaultValue = "Dr. You") String doctorName) {
+    public ResponseEntity<?> toggleLikePost(@PathVariable Long id,
+            @RequestParam(required = false, defaultValue = "1") Long doctorId,
+            @RequestParam(required = false, defaultValue = "Dr. You") String doctorName) {
         return feedService.toggleLike(id, doctorId, doctorName)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -57,11 +57,15 @@ public class FeedController {
         return feedService.getCommentsForPost(id);
     }
 
-    public record AddCommentDto(Long authorId, String authorName, String authorAvatar, String authorSpecialty, String content) {}
+    public record AddCommentDto(Long authorId, String authorName, String authorAvatar, String authorSpecialty,
+            String content) {
+    }
 
     @PostMapping("/posts/{id}/comments")
     public ResponseEntity<?> addComment(@PathVariable Long id, @RequestBody AddCommentDto dto) {
-        return feedService.addComment(id, dto.authorId(), dto.authorName(), dto.authorAvatar(), dto.authorSpecialty(), dto.content())
+        return feedService
+                .addComment(id, dto.authorId(), dto.authorName(), dto.authorAvatar(), dto.authorSpecialty(),
+                        dto.content())
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -82,6 +86,7 @@ public class FeedController {
         Long reporterId = Long.valueOf(body.getOrDefault("reporterId", 1).toString());
         String reason = body.getOrDefault("reason", "Inappropriate content").toString();
         feedService.reportPost(id, reporterId, reason);
-        return ResponseEntity.ok(Map.of("message", "Post reported to moderators. Thank you for keeping the community safe."));
+        return ResponseEntity
+                .ok(Map.of("message", "Post reported to moderators. Thank you for keeping the community safe."));
     }
 }

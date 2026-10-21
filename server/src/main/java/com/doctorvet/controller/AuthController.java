@@ -53,11 +53,11 @@ public class AuthController {
             boolean active) {
     }
 
-
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req) {
         if (req.identifier() == null || req.identifier().isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Email, phone number, or doctor name is required"));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Email, phone number, or doctor name is required"));
         }
 
         String rawSearch = req.identifier().trim();
@@ -67,7 +67,8 @@ public class AuthController {
         // 1. Try to find doctor in DB by email, phone, or name
         Optional<DoctorProfile> docOpt = doctorRepo.findAll().stream()
                 .filter(d -> (d.getEmail() != null && d.getEmail().toLowerCase().equals(search))
-                        || (d.getPhone() != null && !cleanPhone.isBlank() && d.getPhone().replaceAll("[^0-9]", "").contains(cleanPhone))
+                        || (d.getPhone() != null && !cleanPhone.isBlank()
+                                && d.getPhone().replaceAll("[^0-9]", "").contains(cleanPhone))
                         || d.getName().toLowerCase().contains(search)
                         || search.contains(d.getName().toLowerCase()))
                 .findFirst();

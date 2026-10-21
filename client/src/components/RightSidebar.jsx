@@ -12,7 +12,8 @@ export function RightSidebar({
   connectedDoctors = [],
   communities = [],
   onOpenCommunity,
-  onOpenCreateCommunity
+  onOpenCreateCommunity,
+  onOpenTerms
 }) {
   const [connectedMap, setConnectedMap] = useState({});
 
@@ -249,6 +250,41 @@ export function RightSidebar({
           <ArrowRight size={13} />
         </button>
       </div>
+
+      {/* Corporate Legal & Terms Footer */}
+      <footer className="rail-footer-card">
+        <div className="rail-footer-links-row">
+          <button
+            type="button"
+            className="rail-footer-link-btn"
+            onClick={onOpenTerms}
+            title="View Official Terms and Conditions"
+          >
+            Terms & Conditions
+          </button>
+          <span className="rail-footer-sep">·</span>
+          <button
+            type="button"
+            className="rail-footer-link-btn"
+            onClick={onOpenTerms}
+            title="View Data Protection & Privacy Policies"
+          >
+            Privacy
+          </button>
+          <span className="rail-footer-sep">·</span>
+          <button
+            type="button"
+            className="rail-footer-link-btn"
+            onClick={onOpenTerms}
+            title="View Clinical Advertising & Practice Guidelines"
+          >
+            Ethics Guidelines
+          </button>
+        </div>
+        <p className="rail-footer-corp-line">
+          © {new Date().getFullYear()} Zenve Pets Healthcare Pvt. Ltd. All rights reserved.
+        </p>
+      </footer>
     </aside>
   );
 }
