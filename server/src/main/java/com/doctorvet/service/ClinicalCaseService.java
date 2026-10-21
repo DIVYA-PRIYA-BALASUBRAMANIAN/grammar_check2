@@ -39,4 +39,14 @@ public class ClinicalCaseService {
         }
         return caseRepo.save(clinicalCase);
     }
+
+    @Transactional
+    public boolean deleteCase(Long id) {
+        if (caseRepo.existsById(id)) {
+            caseRepo.deleteById(id);
+            return true;
+        }
+        return false;
+    }
 }
+

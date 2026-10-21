@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   Sparkles,
   ExternalLink,
+  Globe,
   UserPen
 } from 'lucide-react';
 import { Avatar } from './Avatar';
@@ -43,7 +44,9 @@ export function Header({
   onMarkNotificationRead,
   onMarkAllNotificationsRead,
   onOpenCreatePost,
-  onOpenDirectChat
+  onOpenDirectChat,
+  onAcceptCommunityInvite,
+  onDeclineCommunityInvite
 }) {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -69,6 +72,7 @@ export function Header({
   const navItems = [
     { id: 'feed', label: 'Home', icon: Home },
     { id: 'network', label: 'My Network', icon: Users, badge: pendingRequestsCount },
+    { id: 'communities', label: 'Communities', icon: Globe },
     { id: 'cases', label: 'Clinical Cases', icon: FolderHeart },
     { id: 'videos', label: 'Reels', icon: Video },
     { id: 'messages', label: 'Messages', icon: MessageSquare, badge: unreadMessagesCount },
@@ -399,6 +403,53 @@ export function Header({
                               }}
                             >
                               Ignore
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Interactive Community Invite Accept/Decline Buttons */}
+                        {n.type === 'COMMUNITY_INVITE' && onAcceptCommunityInvite && (
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onAcceptCommunityInvite(n.targetId || n.id);
+                                setIsNotificationsOpen(false);
+                              }}
+                              style={{
+                                backgroundColor: '#003822',
+                                color: '#FFFFFF',
+                                border: 'none',
+                                borderRadius: '6px',
+                                padding: '4px 12px',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <Check size={12} />
+                              <span>Join Group</span>
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeclineCommunityInvite && onDeclineCommunityInvite(n.targetId || n.id);
+                              }}
+                              style={{
+                                backgroundColor: '#F3F4F6',
+                                color: '#4B5563',
+                                border: '1px solid #E5E7EB',
+                                borderRadius: '6px',
+                                padding: '4px 10px',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Decline
                             </button>
                           </div>
                         )}

@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/cases")
@@ -33,5 +34,14 @@ public class ClinicalCaseController {
     @PostMapping
     public ClinicalCase createCase(@RequestBody ClinicalCase clinicalCase) {
         return caseService.createCase(clinicalCase);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteCase(@PathVariable Long id) {
+        boolean deleted = caseService.deleteCase(id);
+        if (deleted) {
+            return ResponseEntity.ok(Map.of("message", "Case deleted successfully", "id", id));
+        }
+        return ResponseEntity.notFound().build();
     }
 }

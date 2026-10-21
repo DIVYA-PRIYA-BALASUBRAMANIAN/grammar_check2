@@ -9,7 +9,8 @@ import {
   CheckCircle2,
   MoreHorizontal,
   PawPrint,
-  Stethoscope
+  Stethoscope,
+  Trash2
 } from 'lucide-react';
 import heroVetImg from '../assets/hero_vet_dog.jpg';
 
@@ -22,7 +23,8 @@ export function ClinicalCasesView({
   currentUser,
   onOpenStory,
   onOpenCreateCase,
-  onSelectCase
+  onSelectCase,
+  onDeleteCase
 }) {
   const [likedMap, setLikedMap] = useState({});
 
@@ -172,7 +174,8 @@ export function ClinicalCasesView({
               images,
               likes: c.views || 1,
               comments: 0,
-              fullCase: c
+              fullCase: c,
+              isOwnCase: isOwnCase || !c.authorId
             };
           }).map((post) => {
             const currentLikes = likedMap[post.id] !== undefined ? likedMap[post.id] : post.likes;
@@ -200,9 +203,29 @@ export function ClinicalCasesView({
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <span style={{ fontSize: '12px', color: '#6b7280' }}>{post.timeAgo}</span>
-                    <button style={{ color: '#9ca3af' }}>
-                      <MoreHorizontal size={18} />
-                    </button>
+                    {post.isOwnCase && onDeleteCase && (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteCase(post.fullCase?.id || post.id)}
+                        title="Delete clinical case"
+                        style={{
+                          border: '1px solid #fee2e2',
+                          backgroundColor: '#fff5f5',
+                          color: '#dc2626',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          padding: '4px 8px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '11.5px',
+                          fontWeight: 600
+                        }}
+                      >
+                        <Trash2 size={12} />
+                        <span>Delete</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 

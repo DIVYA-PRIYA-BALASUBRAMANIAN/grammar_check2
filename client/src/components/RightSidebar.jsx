@@ -9,7 +9,10 @@ export function RightSidebar({
   onOpenChat,
   onViewAllDoctors,
   onSendRequest,
-  connectedDoctors = []
+  connectedDoctors = [],
+  communities = [],
+  onOpenCommunity,
+  onOpenCreateCommunity
 }) {
   const [connectedMap, setConnectedMap] = useState({});
 
@@ -156,52 +159,95 @@ export function RightSidebar({
         </div>
       </div>
 
-      {/* The Zenve Vet Advantage Widget Card */}
+      {/* Vet Communities Widget Card */}
       <div className="rail-widget-card">
         <div className="rail-widget-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span className="rail-widget-title">The Zenve Vet Advantage</span>
-            <Sparkles size={14} color="#d97706" />
+            <span className="rail-widget-title">Vet Communities</span>
+            <span className="comm-widget-count-badge">{(communities || []).length}</span>
           </div>
+          <button
+            className="rail-link-view-all"
+            onClick={() => onOpenCreateCommunity ? onOpenCreateCommunity() : (onOpenCommunity && onOpenCommunity())}
+            title="Start a new veterinary community"
+          >
+            <Plus size={13} />
+            <span>Create</span>
+          </button>
         </div>
 
-        <div className="advantage-items-group">
-          {/* Card 1: Your own professional page */}
-          <div className="advantage-single-row" onClick={onViewAllDoctors}>
-            <div className="advantage-icon-circle gold">
-              <Globe size={18} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <h4 className="advantage-title-text">Your own professional page</h4>
-              <p className="advantage-desc-text">A place for your work, your voice, your professional identity.</p>
-            </div>
-            <ChevronRight size={15} color="#9ca3af" style={{ alignSelf: 'center' }} />
-          </div>
+        <div className="comm-widget-list">
+          {(communities || []).length > 0 ? (
+            (communities || []).slice(0, 3).map((comm) => {
+              return (
+                <div
+                  key={comm.id}
+                  className="comm-widget-card-item"
+                  onClick={() => onOpenCommunity && onOpenCommunity(comm.id)}
+                >
+                  <div
+                    className="comm-widget-avatar-badge"
+                    style={{ background: comm.coverGradient || '#064e3b' }}
+                  >
+                    <Users size={16} color="#ffffff" />
+                  </div>
 
-          {/* Card 2: Meaningful connections */}
-          <div className="advantage-single-row" onClick={onViewAllDoctors}>
-            <div className="advantage-icon-circle teal">
-              <Users size={18} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <h4 className="advantage-title-text">Meaningful connections</h4>
-              <p className="advantage-desc-text">Discover peers beyond your clinic and your city.</p>
-            </div>
-            <ChevronRight size={15} color="#9ca3af" style={{ alignSelf: 'center' }} />
-          </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h4 className="comm-widget-title-text" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {comm.name}
+                    </h4>
+                    <p className="comm-widget-desc-text">
+                      <span>{comm.category}</span>
+                      <span> · </span>
+                      <span>{comm.members?.length || 1} members</span>
+                    </p>
+                  </div>
 
-          {/* Card 3: Grow with possibility */}
-          <div className="advantage-single-row">
-            <div className="advantage-icon-circle purple">
-              <TrendingUp size={18} />
+                  <ChevronRight size={15} color="#9ca3af" style={{ alignSelf: 'center', flexShrink: 0 }} />
+                </div>
+              );
+            })
+          ) : (
+            <div style={{
+              padding: '16px 12px',
+              textAlign: 'center',
+              backgroundColor: '#f9fafb',
+              borderRadius: '12px',
+              border: '1px dashed #e5e7eb'
+            }}>
+              <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: 600, color: '#374151' }}>
+                No active communities yet
+              </p>
+              <p style={{ margin: '0 0 10px 0', fontSize: '11px', color: '#6b7280', lineHeight: 1.4 }}>
+                Create the first specialty group to collaborate with peers.
+              </p>
+              <button
+                type="button"
+                onClick={() => onOpenCreateCommunity ? onOpenCreateCommunity() : (onOpenCommunity && onOpenCommunity())}
+                style={{
+                  backgroundColor: '#003822',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '5px 12px',
+                  fontSize: '11.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                + Start Community
+              </button>
             </div>
-            <div style={{ flex: 1 }}>
-              <h4 className="advantage-title-text">Grow with possibility</h4>
-              <p className="advantage-desc-text">Mentorship, research and innovation pathways.</p>
-            </div>
-            <ChevronRight size={15} color="#9ca3af" style={{ alignSelf: 'center' }} />
-          </div>
+          )}
         </div>
+
+        <button
+          className="comm-widget-explore-btn"
+          onClick={() => onOpenCommunity && onOpenCommunity()}
+        >
+          <span>Explore All Groups & Discussions</span>
+          <ArrowRight size={13} />
+        </button>
       </div>
     </aside>
   );

@@ -128,8 +128,9 @@ public class AuthController {
                 true,
                 1,
                 0,
-                "Registered veterinary practitioner under VCI: "
-                        + (req.vciNumber() != null ? req.vciNumber() : "VCI-REG-NEW"));
+                req.vciNumber() != null && !req.vciNumber().isBlank()
+                        ? "Registered veterinary practitioner under VCI: " + req.vciNumber().trim()
+                        : "Registered veterinary practitioner");
         newDoctor.setEmail(req.email() != null ? req.email() : null);
         newDoctor.setPhone(req.phone() != null ? req.phone() : null);
         newDoctor.setActive(true);
