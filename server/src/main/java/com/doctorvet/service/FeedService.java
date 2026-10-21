@@ -18,11 +18,11 @@ public class FeedService {
     private final NotificationRepository notificationRepo;
 
     public FeedService(PostRepository postRepo,
-                       CommentRepository commentRepo,
-                       PostLikeRepository likeRepo,
-                       SavedPostRepository savedRepo,
-                       ReportRepository reportRepo,
-                       NotificationRepository notificationRepo) {
+            CommentRepository commentRepo,
+            PostLikeRepository likeRepo,
+            SavedPostRepository savedRepo,
+            ReportRepository reportRepo,
+            NotificationRepository notificationRepo) {
         this.postRepo = postRepo;
         this.commentRepo = commentRepo;
         this.likeRepo = likeRepo;
@@ -50,8 +50,10 @@ public class FeedService {
     @Transactional
     public Optional<Post> updatePost(Long id, Map<String, String> body) {
         return postRepo.findById(id).map(p -> {
-            if (body.containsKey("content")) p.setContent(body.get("content"));
-            if (body.containsKey("imageUrl")) p.setImageUrl(body.get("imageUrl"));
+            if (body.containsKey("content"))
+                p.setContent(body.get("content"));
+            if (body.containsKey("imageUrl"))
+                p.setImageUrl(body.get("imageUrl"));
             return postRepo.save(p);
         });
     }
@@ -87,8 +89,7 @@ public class FeedService {
                             null,
                             "POST_LIKE",
                             doctorName + " liked your clinical post.",
-                            postId
-                    ));
+                            postId));
                 }
             }
             Post saved = postRepo.save(p);
@@ -105,7 +106,8 @@ public class FeedService {
     }
 
     @Transactional
-    public Optional<Comment> addComment(Long postId, Long authorId, String authorName, String authorAvatar, String authorSpecialty, String content) {
+    public Optional<Comment> addComment(Long postId, Long authorId, String authorName, String authorAvatar,
+            String authorSpecialty, String content) {
         return postRepo.findById(postId).map(p -> {
             Comment comment = new Comment(postId, authorId, authorName, authorAvatar, authorSpecialty, content);
             Comment savedComment = commentRepo.save(comment);
@@ -122,8 +124,7 @@ public class FeedService {
                         authorAvatar,
                         "POST_COMMENT",
                         authorName + " commented on your post: \"" + snippet + "\"",
-                        postId
-                ));
+                        postId));
             }
 
             return savedComment;

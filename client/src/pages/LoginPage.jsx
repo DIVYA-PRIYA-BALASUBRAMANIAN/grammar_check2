@@ -31,7 +31,7 @@ import loginBgVet from '../assets/login_bg_vet.jpg';
 import { SPECIALTIES, STATES_INDIA } from '../data/mockData';
 import { api } from '../services/api';
 
-export function LoginPage({ onLoginSuccess, onCancel }) {
+export function LoginPage({ onLoginSuccess, onCancel, onOpenTerms }) {
   const [isRegister, setIsRegister] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -42,7 +42,8 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
     specialty: 'Small Animal Medicine',
     state: 'Karnataka',
     city: 'Bengaluru',
-    rememberMe: true
+    rememberMe: true,
+    termsAccepted: true
   });
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -127,6 +128,11 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
       } else {
         handleVerifyLoginOtp();
       }
+      return;
+    }
+
+    if (isRegister && !formData.termsAccepted) {
+      setErrorMsg('You must accept the Zenve Pets Healthcare Pvt. Ltd. Terms & Conditions to create an account.');
       return;
     }
 
@@ -452,6 +458,56 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
                       </button>
                     </div>
                   </div>
+
+                  {/* Terms & Conditions Agreement */}
+                  <div className="auth-field-group" style={{ marginTop: '8px' }}>
+                    <label
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '8px',
+                        cursor: 'pointer',
+                        fontSize: '11.5px',
+                        color: '#374151',
+                        lineHeight: 1.45,
+                        background: '#f0fdf4',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        border: '1px solid #d1fae5'
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.termsAccepted}
+                        onChange={(e) => setFormData({ ...formData, termsAccepted: e.target.checked })}
+                        style={{ marginTop: '2px', accentColor: '#003822' }}
+                      />
+                      <span>
+                        I agree to the{' '}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onOpenTerms && onOpenTerms();
+                          }}
+                          style={{
+                            color: '#003822',
+                            fontWeight: 700,
+                            textDecoration: 'underline',
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            cursor: 'pointer',
+                            display: 'inline'
+                          }}
+                        >
+                          Terms & Conditions
+                        </button>
+                        {' '}of <strong>Zenve Pets Healthcare Pvt. Ltd.</strong> and confirm my veterinary licensure.
+                      </span>
+                    </label>
+                  </div>
                 </>
               ) : (
                 <>
@@ -693,6 +749,24 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
                 {isRegister
                   ? 'Zenve Vet authenticates licensed veterinary surgeons under State & National Veterinary Council frameworks.'
                   : 'Zenve Vet strictly authenticates licensed veterinary surgeons and clinical residents under State & National Veterinary Council frameworks.'}
+                {' '}
+                <button
+                  type="button"
+                  onClick={onOpenTerms}
+                  style={{
+                    color: '#065f46',
+                    fontWeight: 700,
+                    textDecoration: 'underline',
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    display: 'inline'
+                  }}
+                >
+                  Terms & Conditions
+                </button>
               </p>
             </div>
           </div>
@@ -736,6 +810,23 @@ export function LoginPage({ onLoginSuccess, onCancel }) {
           <Activity size={13} color="#34D399" />
           <span>1,240+ Doctors Online</span>
         </div>
+        <div className="wave-metric-sep" />
+        <button
+          type="button"
+          onClick={onOpenTerms}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#a7f3d0',
+            fontSize: '11.5px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            textDecoration: 'underline'
+          }}
+          title="Zenve Pets Healthcare Pvt. Ltd. Official Terms"
+        >
+          Zenve Pets Healthcare Terms
+        </button>
       </footer>
 
       {/* ================= FORGOT PASSWORD MODAL ================= */}

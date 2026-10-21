@@ -14,6 +14,7 @@ import { MemberBenefitsView } from './pages/MemberBenefitsView';
 import { AdvertiseView } from './pages/AdvertiseView';
 import { LoginPage } from './pages/LoginPage';
 import { ProfileView } from './pages/ProfileView';
+import { TermsView } from './pages/TermsView';
 
 // Modals
 import { DoctorModal } from './components/DoctorModal';
@@ -24,6 +25,7 @@ import { VideoPlayerModal } from './components/VideoPlayerModal';
 import { ClinicalCaseModal } from './components/ClinicalCaseModal';
 import { CreatePostModal } from './components/CreatePostModal';
 import { CommunityView } from './components/CommunityView';
+import { TermsAndConditionsModal } from './components/TermsAndConditionsModal';
 
 // API Service
 import { api } from './services/api';
@@ -85,6 +87,8 @@ export function App() {
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
   const [createPostInitialType, setCreatePostInitialType] = useState('CLINICAL_CASE');
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+  const [termsInitialSection, setTermsInitialSection] = useState(null);
 
   // Active chat peer
   const [activeChatDoctor, setActiveChatDoctor] = useState(null);
@@ -371,7 +375,7 @@ export function App() {
         .then(liveAds => {
           if (Array.isArray(liveAds)) setLiveCampaigns(liveAds);
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [activeTab]);
 
@@ -1049,7 +1053,7 @@ export function App() {
 
   const handleUpdateCommunityCover = async (commId, newCoverUrl) => {
     const cleanTargetId = String(commId).replace(/^comm-/i, '');
-    
+
     // 1. Immediate optimistic UI update so banner changes with zero delay
     setCommunities(prev => prev.map(c => {
       const cCleanId = String(c.id).replace(/^comm-/i, '');
@@ -1340,7 +1344,7 @@ export function App() {
         ]);
         if (Array.isArray(freshNotifs)) setNotifications(freshNotifs);
         if (Array.isArray(freshComms)) setCommunities(freshComms);
-      } catch (e) {}
+      } catch (e) { }
     } catch (e) {
       console.error('Failed to accept community invite:', e);
     }
@@ -1361,7 +1365,7 @@ export function App() {
         ]);
         if (Array.isArray(freshNotifs)) setNotifications(freshNotifs);
         if (Array.isArray(freshComms)) setCommunities(freshComms);
-      } catch (e) {}
+      } catch (e) { }
     } catch (e) {
       console.error('Failed to decline community invite:', e);
     }
@@ -1462,7 +1466,7 @@ export function App() {
       const isMsgNotif = (n.type === 'NEW_MESSAGE' || n.type === 'MESSAGE' || n.type === 'DIRECT_MESSAGE' || !n.type) &&
         ((doctor.id && n.senderId === doctor.id) || (doctor.name && n.senderName === doctor.name));
       if (isMsgNotif && !n.read) {
-        if (n.id) api.notifications.markAsRead(n.id).catch(() => {});
+        if (n.id) api.notifications.markAsRead(n.id).catch(() => { });
         return { ...n, read: true };
       }
       return n;
@@ -1478,8 +1482,8 @@ export function App() {
     // 1. Immediately reset unread count to 0 in local state so badges vanish instantly
     setConversations(prev => prev.map(c => {
       const isMatch = (conv.id && c.id === conv.id) ||
-                      (conv.doctor?.id && c.doctor?.id === conv.doctor.id) ||
-                      (conv.doctor?.name && c.doctor?.name === conv.doctor.name);
+        (conv.doctor?.id && c.doctor?.id === conv.doctor.id) ||
+        (conv.doctor?.name && c.doctor?.name === conv.doctor.name);
       if (isMatch) {
         return {
           ...c,
@@ -1498,11 +1502,11 @@ export function App() {
     // 2. Mark any related NEW_MESSAGE notifications as read immediately
     setNotifications(prev => prev.map(n => {
       const isMatch = (n.type === 'NEW_MESSAGE' || n.type === 'MESSAGE' || n.type === 'DIRECT_MESSAGE' || !n.type) &&
-                      ((conv.id && n.targetId === conv.id) ||
-                       (conv.doctor?.id && n.senderId === conv.doctor.id) ||
-                       (conv.doctor?.name && n.senderName === conv.doctor.name));
+        ((conv.id && n.targetId === conv.id) ||
+          (conv.doctor?.id && n.senderId === conv.doctor.id) ||
+          (conv.doctor?.name && n.senderName === conv.doctor.name));
       if (isMatch && !n.read) {
-        if (n.id) api.notifications.markAsRead(n.id).catch(() => {});
+        if (n.id) api.notifications.markAsRead(n.id).catch(() => { });
         return { ...n, read: true };
       }
       return n;
@@ -1832,13 +1836,27 @@ export function App() {
 
   if (!currentUser || isLoginView || activeTab === 'login') {
     return (
-      <LoginPage
-        onLoginSuccess={handleLoginSuccess}
-        onCancel={currentUser ? () => {
-          setIsLoginView(false);
-          if (activeTab === 'login') setActiveTab('feed');
-        } : null}
-      />
+      <>
+        <LoginPage
+          onLoginSuccess={handleLoginSuccess}
+          onCancel={currentUser ? () => {
+            setIsLoginView(false);
+            if (activeTab === 'login') setActiveTab('feed');
+          } : null}
+          onOpenTerms={(secId) => {
+            if (typeof secId === 'string') setTermsInitialSection(secId);
+            setIsTermsModalOpen(true);
+          }}
+        />
+        <TermsAndConditionsModal
+          isOpen={isTermsModalOpen}
+          onClose={() => {
+            setIsTermsModalOpen(false);
+            setTermsInitialSection(null);
+          }}
+          initialSectionId={termsInitialSection}
+        />
+      </>
     );
   }
 
@@ -1855,6 +1873,7 @@ export function App() {
         onLogout={handleLogout}
         onOpenCreateProfile={() => setIsCreateProfileOpen(true)}
         onOpenDoctorProfile={handleOpenDoctorProfile}
+        onOpenTerms={() => setIsTermsModalOpen(true)}
       />
 
       {/* 2. Main Content Layout */}
@@ -1887,6 +1906,7 @@ export function App() {
           onOpenDirectChat={handleOpenDirectChat}
           onAcceptCommunityInvite={handleAcceptCommunityInvite}
           onDeclineCommunityInvite={handleDeclineCommunityInvite}
+          onOpenTerms={() => setIsTermsModalOpen(true)}
         />
 
         {/* Workspace Layout */}
@@ -1915,7 +1935,7 @@ export function App() {
               onMarkAsRead={(convId) => {
                 const num = typeof convId === 'number' ? convId : parseInt(String(convId || '').replace(/\D/g, ''), 10);
                 if (!isNaN(num) && num > 0) {
-                  api.chat.markAsRead(num, currentUser?.id).catch(() => {});
+                  api.chat.markAsRead(num, currentUser?.id).catch(() => { });
                   setConversations(prev => prev.map(c => {
                     if (c.id === convId || c.id === num) {
                       return {
@@ -1947,7 +1967,7 @@ export function App() {
                   liveCampaigns={liveCampaigns}
                   onExpireCampaign={(campId) => {
                     setLiveCampaigns(prev => prev.filter(c => c.id !== campId));
-                    api.campaigns.updateStatus(campId, 'Completed').catch(() => {});
+                    api.campaigns.updateStatus(campId, 'Completed').catch(() => { });
                   }}
                   onOpenStory={(s) => setSelectedStory(s)}
                   onOpenCreatePost={handleOpenCreatePost}
@@ -2126,13 +2146,18 @@ export function App() {
                     try {
                       const liveAds = await api.campaigns.getPublicLive('Feed');
                       if (Array.isArray(liveAds)) setLiveCampaigns(liveAds);
-                    } catch (e) {}
+                    } catch (e) { }
                   }}
+                  onOpenTerms={() => setIsTermsModalOpen(true)}
                 />
+              )}
+
+              {activeTab === 'terms' && (
+                <TermsView onBackToFeed={() => setActiveTab('feed')} />
               )}
             </main>
 
-            {/* Right Rail Widgets - Hidden on full-width Advertise Dashboard & Community Page */}
+            {/* Right Rail Widgets - Hidden on full-width Advertise Dashboard, Terms View & Community Page */}
             {activeTab !== 'advertise' && activeTab !== 'communities' && (
               <RightSidebar
                 doctors={doctors}
@@ -2150,6 +2175,7 @@ export function App() {
                 onOpenCreateCommunity={() => {
                   setActiveTab('communities');
                 }}
+                onOpenTerms={() => setIsTermsModalOpen(true)}
               />
             )}
           </div>
@@ -2237,6 +2263,15 @@ export function App() {
         onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
         initialType={createPostInitialType}
         currentUser={currentUser}
+      />
+
+      <TermsAndConditionsModal
+        isOpen={isTermsModalOpen}
+        onClose={() => {
+          setIsTermsModalOpen(false);
+          setTermsInitialSection(null);
+        }}
+        initialSectionId={termsInitialSection}
       />
     </div>
   );

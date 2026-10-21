@@ -18,10 +18,12 @@ public class AdvertiserService {
 
     private final AdvertiserRepository advertiserRepo;
     private final TokenService tokenService;
+    private final EmailService emailService;
 
-    public AdvertiserService(AdvertiserRepository advertiserRepo, TokenService tokenService) {
+    public AdvertiserService(AdvertiserRepository advertiserRepo, TokenService tokenService, EmailService emailService) {
         this.advertiserRepo = advertiserRepo;
         this.tokenService = tokenService;
+        this.emailService = emailService;
     }
 
     public record RegisterDto(
@@ -77,6 +79,9 @@ public class AdvertiserService {
         adv.setTermsAccepted(dto.termsAccepted());
 
         Advertiser saved = advertiserRepo.save(adv);
+        if (saved.getBusinessEmail() != null && !saved.getBusinessEmail().isBlank()) {
+            emailService.sendAdvertiserWelcomeEmail(saved.getBusinessEmail(), saved.getFullName(), saved.getCompanyName());
+        }
         String token = tokenService.generateToken(saved.getId(), saved.getFullName(), saved.getBusinessEmail());
 
         return new AuthResult(token, saved);

@@ -1,23 +1,23 @@
 import React, { useState } from 'react';
-import { 
-  X, 
-  Users, 
-  User, 
-  Stethoscope, 
-  PawPrint, 
-  Award, 
-  GraduationCap, 
-  MapPin, 
-  Globe, 
-  Map, 
-  Building2, 
-  FileText, 
-  CreditCard, 
-  FileEdit, 
-  Pencil, 
-  ShieldCheck, 
-  Check, 
-  ChevronDown, 
+import {
+  X,
+  Users,
+  User,
+  Stethoscope,
+  PawPrint,
+  Award,
+  GraduationCap,
+  MapPin,
+  Globe,
+  Map,
+  Building2,
+  FileText,
+  CreditCard,
+  FileEdit,
+  Pencil,
+  ShieldCheck,
+  Check,
+  ChevronDown,
   Send,
   Camera,
   UploadCloud,
@@ -166,7 +166,7 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentU
         try {
           const updatedDoc = await api.doctors.update(docId, { coverImage: coverUrl });
           if (updatedDoc) onProfileCreated && onProfileCreated(updatedDoc);
-        } catch (e) {}
+        } catch (e) { }
       }
     } catch (err) {
       const reader = new FileReader();
@@ -177,7 +177,7 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentU
         try {
           const updatedDoc = await api.doctors.update(docId, { coverImage: dataUrl });
           if (updatedDoc) onProfileCreated && onProfileCreated(updatedDoc);
-        } catch (e) {}
+        } catch (e) { }
       };
       reader.readAsDataURL(file);
     }
@@ -230,13 +230,13 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentU
 
   return (
     <div className="modal-overlay create-profile-modal-overlay" onClick={onClose}>
-      <div 
-        className="create-profile-modal-card" 
+      <div
+        className="create-profile-modal-card"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button Top Right */}
-        <button 
-          className="create-profile-close-btn" 
+        <button
+          className="create-profile-close-btn"
           onClick={onClose}
           type="button"
           title="Close modal"
@@ -284,7 +284,7 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentU
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               {/* Avatar Preview + Clickable Overlay */}
-              <div 
+              <div
                 onClick={() => avatarInputRef.current?.click()}
                 style={{
                   position: 'relative',
@@ -685,8 +685,8 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentU
             </div>
 
             {/* Right Action Button */}
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="cp-submit-btn"
             >
               <Send size={15} strokeWidth={2.4} />

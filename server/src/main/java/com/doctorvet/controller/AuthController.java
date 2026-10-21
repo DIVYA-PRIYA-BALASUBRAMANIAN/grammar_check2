@@ -4,6 +4,7 @@ import com.doctorvet.model.DoctorProfile;
 import com.doctorvet.repository.DoctorProfileRepository;
 import com.doctorvet.security.TokenService;
 import org.springframework.beans.factory.annotation.Value;
+import com.doctorvet.service.EmailService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +19,7 @@ public class AuthController {
 
     private final DoctorProfileRepository doctorRepo;
     private final TokenService tokenService;
+    private final EmailService emailService;
 
     @Value("${apitxt.api-key:${APITXT_API_KEY:}}")
     private String apitxtApiKey;
@@ -25,9 +27,10 @@ public class AuthController {
     @Value("${apitxt.api-url:${APITXT_API_URL:}}")
     private String apitxtApiUrl;
 
-    public AuthController(DoctorProfileRepository doctorRepo, TokenService tokenService) {
+    public AuthController(DoctorProfileRepository doctorRepo, TokenService tokenService, EmailService emailService) {
         this.doctorRepo = doctorRepo;
         this.tokenService = tokenService;
+        this.emailService = emailService;
     }
 
     private final Map<String, ResetCodeInfo> resetCodes = new java.util.concurrent.ConcurrentHashMap<>();
@@ -140,6 +143,10 @@ public class AuthController {
             }
             newDoc.setActive(true);
             profile = doctorRepo.save(newDoc);
+
+            if (profile.getEmail() != null && !profile.getEmail().isBlank()) {
+                emailService.sendDoctorWelcomeEmail(profile.getEmail(), profile.getName(), profile.getSpecialty());
+            }
         } else {
             profile.setActive(true);
             profile = doctorRepo.save(profile);
@@ -184,10 +191,15 @@ public class AuthController {
         newDoctor.setActive(true);
         DoctorProfile saved = doctorRepo.save(newDoctor);
 
+        if (saved.getEmail() != null && !saved.getEmail().isBlank()) {
+            emailService.sendDoctorWelcomeEmail(saved.getEmail(), saved.getName(), saved.getSpecialty());
+        }
+
         String token = tokenService.generateToken(saved.getId(), saved.getName(), saved.getEmail());
 
         return ResponseEntity.ok(toAuthResponse(token, saved));
     }
+
 
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest req) {
@@ -527,6 +539,19 @@ public class AuthController {
                 "message", "Password reset successfully! You can now sign in with your new password.",
                 "token", token,
                 "user", toAuthResponse(token, saved)));
+    }
+
+    @PostMapping("/test-welcome-email")
+    public ResponseEntity<?> testWelcomeEmail(
+            @RequestParam(name = "to", defaultValue = "test@zenvevet.com") String to,
+            @RequestParam(name = "name", defaultValue = "Dr. Partner") String name) {
+        emailService.sendDoctorWelcomeEmail(to, name, "Veterinary Medicine");
+        return ResponseEntity.ok(Map.of(
+                "status", "DISPATCHED",
+                "recipient", to,
+                "sender", "no-reply@zenvevet.com",
+                "message", "Welcome email queued for " + to + " from no-reply@zenvevet.com"
+        ));
     }
 
     @GetMapping("/me")

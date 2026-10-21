@@ -23,7 +23,7 @@ import { AnalyticsChart } from '../components/advertiser/AnalyticsChart';
 import { CampaignPerformanceTable } from '../components/advertiser/CampaignPerformanceTable';
 import { AdvertiseHeroBanner } from '../components/advertiser/AdvertiseHeroBanner';
 
-export function AdvertiseView({ onCampaignsUpdated }) {
+export function AdvertiseView({ onCampaignsUpdated, onOpenTerms }) {
   // 1. Authentication State
   const [token, setToken] = useState(() => localStorage.getItem('zenve_advertiser_token') || '');
   const [account, setAccount] = useState(() => {
@@ -312,6 +312,7 @@ export function AdvertiseView({ onCampaignsUpdated }) {
             initialMode={authModalMode}
             onClose={() => setIsAuthModalOpen(false)}
             onAuthSuccess={handleAuthSuccess}
+            onOpenTerms={onOpenTerms}
           />
         </div>
       </div>
@@ -638,6 +639,7 @@ export function AdvertiseView({ onCampaignsUpdated }) {
         initialMode={authModalMode}
         onClose={() => setIsAuthModalOpen(false)}
         onAuthSuccess={handleAuthSuccess}
+        onOpenTerms={onOpenTerms}
       />
     </div>
   );

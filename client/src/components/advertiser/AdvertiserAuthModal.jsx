@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 
-export function AdvertiserAuthModal({ isOpen, onClose, onAuthSuccess, initialMode = 'login' }) {
+export function AdvertiserAuthModal({ isOpen, onClose, onAuthSuccess, initialMode = 'login', onOpenTerms }) {
   const [mode, setMode] = useState(initialMode); // 'login' | 'register' | 'key' | 'forgot'
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -330,7 +330,27 @@ export function AdvertiserAuthModal({ isOpen, onClose, onAuthSuccess, initialMod
                   style={{ marginTop: '3px' }}
                 />
                 <label htmlFor="adv-terms" style={{ fontSize: '12px', color: '#4b5563', lineHeight: 1.4 }}>
-                  I agree to Zenve Vet's Advertiser Terms, Clinical Advertising Standards, and Privacy Policy.
+                  I agree to Zenve Pets Healthcare Pvt. Ltd.'s{' '}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onOpenTerms && onOpenTerms();
+                    }}
+                    style={{
+                      color: '#003822',
+                      fontWeight: 700,
+                      textDecoration: 'underline',
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      display: 'inline'
+                    }}
+                  >
+                    Advertiser Terms, Clinical Standards, and Privacy Policy
+                  </button>.
                 </label>
               </div>
             </>
