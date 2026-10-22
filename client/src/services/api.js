@@ -44,7 +44,11 @@ async function fetchJson(endpoint, options = {}) {
         window.dispatchEvent(new CustomEvent('advertiser:unauthorized', { detail: { endpoint } }));
         throw new Error('Unauthorized: Advertiser session expired or invalid credentials');
       } else {
-        const isAuthPublic = endpoint.startsWith('/auth/login') || endpoint.startsWith('/auth/register');
+        const isAuthPublic = endpoint.startsWith('/auth/login') ||
+                             endpoint.startsWith('/auth/register') ||
+                             endpoint.startsWith('/auth/forgot-password') ||
+                             endpoint.startsWith('/auth/verify-otp') ||
+                             endpoint.startsWith('/auth/reset-password');
         if (!isAuthPublic) {
           const now = Date.now();
           if (now - lastAuthUnauthorizedTime > 1500) {
@@ -92,6 +96,21 @@ export const api = {
       fetchJson('/auth/register', {
         method: 'POST',
         body: JSON.stringify(userData)
+      }),
+    forgotPassword: (identifier) =>
+      fetchJson('/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ identifier })
+      }),
+    verifyOtp: (email, otp) =>
+      fetchJson('/auth/verify-otp', {
+        method: 'POST',
+        body: JSON.stringify({ email, otp })
+      }),
+    resetPassword: (email, otp, newPassword) =>
+      fetchJson('/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ email, otp, newPassword })
       }),
     getMe: () => fetchJson('/auth/me'),
     logout: () => fetchJson('/auth/logout', { method: 'POST' }).catch(() => ({}))

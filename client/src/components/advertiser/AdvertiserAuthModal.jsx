@@ -17,9 +17,11 @@ import {
   EyeOff
 } from 'lucide-react';
 import { api } from '../../services/api';
+import { ForgotPasswordModal } from '../ForgotPasswordModal';
 
 export function AdvertiserAuthModal({ isOpen, onClose, onAuthSuccess, initialMode = 'login', onOpenTerms }) {
   const [mode, setMode] = useState(initialMode); // 'login' | 'register' | 'key' | 'forgot'
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -376,7 +378,7 @@ export function AdvertiserAuthModal({ isOpen, onClose, onAuthSuccess, initialMod
                   <label className="advertiser-form-label" style={{ marginBottom: 0 }}>Password</label>
                   <button
                     type="button"
-                    onClick={() => setMode('forgot')}
+                    onClick={() => setIsForgotModalOpen(true)}
                     style={{ background: 'none', border: 'none', color: '#003822', fontSize: '11.5px', fontWeight: '600', cursor: 'pointer' }}
                   >
                     Forgot Password?
@@ -505,6 +507,18 @@ export function AdvertiserAuthModal({ isOpen, onClose, onAuthSuccess, initialMod
           )}
         </div>
       </div>
+
+      <ForgotPasswordModal
+        isOpen={isForgotModalOpen}
+        onClose={() => setIsForgotModalOpen(false)}
+        initialEmail={formData.businessEmail}
+        onPasswordResetSuccess={(resetEmail) => {
+          setFormData(prev => ({ ...prev, businessEmail: resetEmail, password: '' }));
+          setIsForgotModalOpen(false);
+          setMode('login');
+          setSuccessMsg('Your password has been changed successfully. Please log in with your new password.');
+        }}
+      />
     </div>
   );
 }

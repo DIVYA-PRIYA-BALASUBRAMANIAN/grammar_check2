@@ -12,6 +12,8 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Service
 public class EmailService {
@@ -35,7 +37,7 @@ public class EmailService {
     @Value("${spring.mail.password:}")
     private String mailPassword;
 
-    @Value("${spring.mail.host:smtp.gmail.com}")
+    @Value("${spring.mail.host:mail.zenvevet.com}")
     private String mailHost;
 
     public EmailService(@Autowired(required = false) JavaMailSender mailSender) {
@@ -83,6 +85,55 @@ public class EmailService {
     }
 
     /**
+     * Asynchronously sends a password reset OTP verification email from no-reply@zenvevet.com.
+     */
+    @Async
+    public void sendPasswordResetOtpEmail(String toEmail, String recipientName, String otpCode, int expiryMinutes) {
+        if (toEmail == null || toEmail.isBlank() || !toEmail.contains("@")) {
+            log.warn("[Zenve Mail] Skipping OTP email: invalid recipient email '{}'", toEmail);
+            return;
+        }
+
+        String displayName = (recipientName != null && !recipientName.isBlank()) ? recipientName : "Doctor / Member";
+        String subject = "Zenve Vet: Password Reset Verification Code (" + otpCode + ")";
+        String htmlBody = buildPasswordResetOtpHtml(displayName, toEmail, otpCode, expiryMinutes);
+        String plainText = buildPasswordResetOtpPlainText(displayName, otpCode, expiryMinutes);
+
+        log.info("==========================================================================");
+        log.info("[Zenve Security] PASSWORD RESET OTP GENERATED");
+        log.info("Recipient: {} | Name: {} | OTP: [{}] | Expiry: {} mins | Sender: {}",
+                toEmail, displayName, otpCode, expiryMinutes, fromEmail);
+        log.info("==========================================================================");
+
+        sendEmail(toEmail, subject, htmlBody, plainText);
+    }
+
+    /**
+     * Asynchronously sends a confirmation email to the user stating that their password has been changed.
+     */
+    @Async
+    public void sendPasswordChangedSuccessEmail(String toEmail, String recipientName) {
+        if (toEmail == null || toEmail.isBlank() || !toEmail.contains("@")) {
+            log.warn("[Zenve Mail] Skipping password changed email: invalid recipient email '{}'", toEmail);
+            return;
+        }
+
+        String displayName = (recipientName != null && !recipientName.isBlank()) ? recipientName : "Doctor / Member";
+        String subject = "Zenve Vet: Your Password Has Been Successfully Changed 🔒";
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd MMMM yyyy, hh:mm a"));
+        String htmlBody = buildPasswordChangedSuccessHtml(displayName, toEmail, timestamp);
+        String plainText = buildPasswordChangedSuccessPlainText(displayName, timestamp);
+
+        log.info("==========================================================================");
+        log.info("[Zenve Security] PASSWORD CHANGED CONFIRMATION EMAIL");
+        log.info("Recipient: {} | Name: {} | Status: Changed Successfully | Sender: {}",
+                toEmail, displayName, fromEmail);
+        log.info("==========================================================================");
+
+        sendEmail(toEmail, subject, htmlBody, plainText);
+    }
+
+    /**
      * Dispatches an email with HTML & plain text multipart support.
      * Guaranteed to never throw unhandled exceptions to calling methods.
      */
@@ -100,7 +151,7 @@ public class EmailService {
         // If credentials are not set and using remote SMTP, log simulation message to avoid hanging on auth failure
         boolean isLocalHost = "localhost".equalsIgnoreCase(mailHost) || "127.0.0.1".equals(mailHost);
         if (!isLocalHost && (mailPassword == null || mailPassword.isBlank())) {
-            log.info("[Zenve Mail - Ready] Automated welcome email prepared for: <{}> | From: {} <{}> | Subject: '{}'. (Set 'SPRING_MAIL_PASSWORD' in application.properties or environment variable to dispatch live SMTP messages)",
+            log.info("[Zenve Mail - Ready] Automated email prepared for: <{}> | From: {} <{}> | Subject: '{}'. (Set 'SPRING_MAIL_PASSWORD' in application.properties or environment variable to dispatch live SMTP messages)",
                     toEmail, senderName, fromEmail, subject);
             return;
         }
@@ -119,10 +170,226 @@ public class EmailService {
             helper.setText(plainTextAlternative != null ? plainTextAlternative : "", htmlContent);
 
             mailSender.send(message);
-            log.info("[Zenve Mail] Successfully dispatched automated welcome email to: {} from: {}", toEmail, fromEmail);
+            log.info("[Zenve Mail] Successfully dispatched automated email to: {} from: {}", toEmail, fromEmail);
         } catch (Exception e) {
-            log.error("[Zenve Mail] Could not dispatch welcome email to {} via SMTP [{}]: {}", toEmail, mailHost, e.getMessage());
+            log.error("[Zenve Mail] Could not dispatch email to {} via SMTP [{}]: {}", toEmail, mailHost, e.getMessage());
         }
+    }
+
+    private String buildPasswordResetOtpHtml(String recipientName, String email, String otpCode, int expiryMinutes) {
+        return """
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Zenve Vet Password Reset OTP</title>
+              <style>
+                body { margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B; }
+                .wrapper { width: 100%%; max-width: 600px; margin: 0 auto; background-color: #FFFFFF; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06); border: 1px solid #E2E8F0; }
+                .header { background: linear-gradient(135deg, #003822 0%%, #0D9488 60%%, #059669 100%%); padding: 34px 30px; text-align: center; color: #FFFFFF; }
+                .brand-badge { display: inline-block; background: rgba(255, 255, 255, 0.18); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 20px; padding: 4px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
+                .brand-title { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+                .brand-subtitle { margin: 6px 0 0 0; font-size: 13px; opacity: 0.92; font-weight: 400; }
+                .content { padding: 34px 30px; line-height: 1.6; }
+                .greeting { font-size: 19px; font-weight: 700; color: #0F172A; margin-bottom: 12px; }
+                .intro { font-size: 14.5px; color: #475569; margin-bottom: 22px; }
+                .otp-card { background: #F0FDF4; border: 2px dashed #0D9488; border-radius: 12px; padding: 22px 20px; text-align: center; margin: 24px 0; }
+                .otp-label { display: block; font-size: 12px; font-weight: 700; color: #047857; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 8px; }
+                .otp-code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 38px; font-weight: 800; letter-spacing: 10px; color: #003822; margin: 6px 0; }
+                .otp-meta { display: inline-block; font-size: 12px; color: #64748B; margin-top: 6px; font-weight: 500; }
+                .details-table { width: 100%%; border-collapse: collapse; margin: 22px 0; font-size: 13.5px; background: #F8FAFC; border-radius: 8px; overflow: hidden; border: 1px solid #E2E8F0; }
+                .details-table td { padding: 10px 16px; border-bottom: 1px solid #E2E8F0; }
+                .details-table tr:last-child td { border-bottom: none; }
+                .details-table .label { color: #64748B; font-weight: 600; width: 35%%; }
+                .details-table .value { color: #0F172A; font-weight: 500; }
+                .alert-box { background: #FFFBEB; border-left: 4px solid #F59E0B; border-radius: 6px; padding: 14px 16px; margin: 22px 0; font-size: 13px; color: #92400E; }
+                .footer { background-color: #0F172A; padding: 24px 30px; text-align: center; color: #94A3B8; font-size: 12px; line-height: 1.6; }
+              </style>
+            </head>
+            <body>
+              <div style="background-color: #F8FAFC; padding: 32px 16px;">
+                <div class="wrapper">
+                  <div class="header">
+                    <span class="brand-badge">Security Verification</span>
+                    <h1 class="brand-title">ZENVE VET</h1>
+                    <p class="brand-subtitle">The Professional Network for Animal Healthcare</p>
+                  </div>
+                  <div class="content">
+                    <div class="greeting">Hello %s,</div>
+                    <p class="intro">
+                      We received a request to reset the password for your Zenve Vet account.
+                      Please use the One-Time Password (OTP) below to verify your request and set your new password.
+                    </p>
+
+                    <div class="otp-card">
+                      <span class="otp-label">Verification Code (OTP)</span>
+                      <div class="otp-code">%s</div>
+                      <span class="otp-meta">⏱ Valid for %d minutes • Single-use only</span>
+                    </div>
+
+                    <table class="details-table">
+                      <tr>
+                        <td class="label">Registered Email</td>
+                        <td class="value">%s</td>
+                      </tr>
+                      <tr>
+                        <td class="label">Request Type</td>
+                        <td class="value">Password Reset Verification</td>
+                      </tr>
+                      <tr>
+                        <td class="label">Dispatched By</td>
+                        <td class="value">no-reply@zenvevet.com</td>
+                      </tr>
+                    </table>
+
+                    <div class="alert-box">
+                      <strong>Security Notice:</strong> Never share this OTP code with anyone. Zenve Vet representatives will never ask for your verification code. If you did not initiate this request, your account is still secure and you can safely disregard this email.
+                    </div>
+                  </div>
+                  <div class="footer">
+                    <p style="margin: 0 0 6px 0; font-weight: 600; color: #E2E8F0;">Zenve Pets Healthcare Pvt. Ltd.</p>
+                    <p style="margin: 0 0 10px 0;">Bengaluru, Karnataka, India • <a href="https://zenvevet.com" style="color: #14B8A6; text-decoration: none;">www.zenvevet.com</a></p>
+                    <p style="margin: 0; font-size: 11px; color: #64748B;">
+                      This automated security message was sent to %s from <strong>no-reply@zenvevet.com</strong>.
+                      <br>Please do not reply directly to this email address.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </body>
+            </html>
+            """.formatted(recipientName, otpCode, expiryMinutes, email, email);
+    }
+
+    private String buildPasswordResetOtpPlainText(String recipientName, String otpCode, int expiryMinutes) {
+        return """
+            Hello %s,
+
+            We received a request to reset your Zenve Vet account password.
+            Your One-Time Password (OTP) is:
+
+            ====================
+            %s
+            ====================
+
+            This OTP is valid for %d minutes.
+
+            Never share this OTP with anyone. If you did not request this password reset, please ignore this email.
+
+            Best regards,
+            Zenve Vet Security Team
+            Zenve Pets Healthcare Pvt. Ltd.
+            Sent from: no-reply@zenvevet.com
+            """.formatted(recipientName, otpCode, expiryMinutes);
+    }
+
+    private String buildPasswordChangedSuccessHtml(String recipientName, String email, String timestamp) {
+        return """
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Password Changed Successfully - Zenve Vet</title>
+              <style>
+                body { margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B; }
+                .wrapper { width: 100%%; max-width: 600px; margin: 0 auto; background-color: #FFFFFF; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06); border: 1px solid #E2E8F0; }
+                .header { background: linear-gradient(135deg, #003822 0%%, #0D9488 60%%, #059669 100%%); padding: 34px 30px; text-align: center; color: #FFFFFF; }
+                .brand-badge { display: inline-block; background: rgba(255, 255, 255, 0.18); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 20px; padding: 4px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
+                .brand-title { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+                .content { padding: 34px 30px; line-height: 1.6; }
+                .status-badge { display: inline-flex; align-items: center; background: #ECFDF5; border: 1px solid #A7F3D0; color: #047857; font-size: 13px; font-weight: 700; border-radius: 20px; padding: 6px 16px; margin-bottom: 16px; }
+                .greeting { font-size: 19px; font-weight: 700; color: #0F172A; margin-bottom: 12px; }
+                .intro { font-size: 14.5px; color: #475569; margin-bottom: 22px; }
+                .details-table { width: 100%%; border-collapse: collapse; margin: 22px 0; font-size: 13.5px; background: #F8FAFC; border-radius: 8px; overflow: hidden; border: 1px solid #E2E8F0; }
+                .details-table td { padding: 10px 16px; border-bottom: 1px solid #E2E8F0; }
+                .details-table tr:last-child td { border-bottom: none; }
+                .details-table .label { color: #64748B; font-weight: 600; width: 35%%; }
+                .details-table .value { color: #0F172A; font-weight: 500; }
+                .cta-container { text-align: center; margin: 28px 0 20px 0; }
+                .cta-btn { display: inline-block; background-color: #003822; color: #FFFFFF !important; text-decoration: none; font-weight: 700; font-size: 15px; padding: 13px 32px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 56, 34, 0.25); }
+                .danger-box { background: #FEF2F2; border-left: 4px solid #EF4444; border-radius: 6px; padding: 14px 16px; margin: 24px 0 10px 0; font-size: 13px; color: #991B1B; }
+                .footer { background-color: #0F172A; padding: 24px 30px; text-align: center; color: #94A3B8; font-size: 12px; line-height: 1.6; }
+              </style>
+            </head>
+            <body>
+              <div style="background-color: #F8FAFC; padding: 32px 16px;">
+                <div class="wrapper">
+                  <div class="header">
+                    <span class="brand-badge">Security Confirmation</span>
+                    <h1 class="brand-title">ZENVE VET</h1>
+                    <p style="margin: 6px 0 0 0; font-size: 13px; opacity: 0.92;">The Professional Network for Animal Healthcare</p>
+                  </div>
+                  <div class="content">
+                    <div class="status-badge">✓ Password Updated Successfully</div>
+                    <div class="greeting">Dear %s,</div>
+                    <p class="intro">
+                      This notification confirms that the password for your Zenve Vet account registered under <strong>%s</strong> was successfully updated.
+                    </p>
+
+                    <table class="details-table">
+                      <tr>
+                        <td class="label">Account Email</td>
+                        <td class="value">%s</td>
+                      </tr>
+                      <tr>
+                        <td class="label">Date & Time</td>
+                        <td class="value">%s</td>
+                      </tr>
+                      <tr>
+                        <td class="label">Status</td>
+                        <td class="value" style="color: #047857; font-weight: 700;">Password Changed & Secured</td>
+                      </tr>
+                      <tr>
+                        <td class="label">Dispatched From</td>
+                        <td class="value">no-reply@zenvevet.com</td>
+                      </tr>
+                    </table>
+
+                    <div class="cta-container">
+                      <a href="%s" class="cta-btn" target="_blank">Sign In to Zenve Vet →</a>
+                    </div>
+
+                    <div class="danger-box">
+                      <strong>Didn't make this change?</strong><br>
+                      If you did not perform this password change, your account may be compromised. Please immediately reach out to our emergency support desk at <a href="mailto:support@zenvevet.com" style="color: #991B1B; font-weight: 700;">support@zenvevet.com</a> so we can lock and protect your account.
+                    </div>
+                  </div>
+                  <div class="footer">
+                    <p style="margin: 0 0 6px 0; font-weight: 600; color: #E2E8F0;">Zenve Pets Healthcare Pvt. Ltd.</p>
+                    <p style="margin: 0 0 10px 0;">Bengaluru, Karnataka, India • <a href="https://zenvevet.com" style="color: #14B8A6; text-decoration: none;">www.zenvevet.com</a></p>
+                    <p style="margin: 0; font-size: 11px; color: #64748B;">
+                      This automated security communication was sent to %s from <strong>no-reply@zenvevet.com</strong>.
+                      <br>Please do not reply directly to this email address.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </body>
+            </html>
+            """.formatted(recipientName, email, email, timestamp, appUrl, email);
+    }
+
+    private String buildPasswordChangedSuccessPlainText(String recipientName, String timestamp) {
+        return """
+            Dear %s,
+
+            Your password for Zenve Vet has been changed successfully.
+
+            Event Details:
+            - Timestamp: %s
+            - Status: Password Changed Successfully
+            - Sender: no-reply@zenvevet.com
+
+            Sign in to Zenve Vet: %s
+
+            IMPORTANT: If you did not make this change, please immediately contact our security desk at support@zenvevet.com.
+
+            Best regards,
+            Zenve Vet Security Team
+            Zenve Pets Healthcare Pvt. Ltd.
+            """.formatted(recipientName, timestamp, appUrl);
     }
 
     private String buildDoctorWelcomeHtml(String doctorName, String email, String specialty) {

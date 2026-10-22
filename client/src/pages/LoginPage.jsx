@@ -24,9 +24,11 @@ import zenveLogo from '../assets/zenve_logo.png';
 import loginBgVet from '../assets/login_bg_vet.jpg';
 import { SPECIALTIES, STATES_INDIA } from '../data/mockData';
 import { api } from '../services/api';
+import { ForgotPasswordModal } from '../components/ForgotPasswordModal';
 
 export function LoginPage({ onLoginSuccess, onCancel, onOpenTerms }) {
   const [isRegister, setIsRegister] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     identifier: '',
@@ -380,7 +382,7 @@ export function LoginPage({ onLoginSuccess, onCancel, onOpenTerms }) {
                       <label className="auth-field-label">Password</label>
                       <button
                         type="button"
-                        onClick={() => alert('Password reset verification link has been dispatched to your registered email.')}
+                        onClick={() => setIsForgotPasswordOpen(true)}
                         className="auth-forgot-link"
                       >
                         Forgot Password?
@@ -525,6 +527,22 @@ export function LoginPage({ onLoginSuccess, onCancel, onOpenTerms }) {
           Zenve Pets Healthcare Terms
         </button>
       </footer>
+
+      {/* FORGOT PASSWORD MODAL (OTP DISPATCH & RESET) */}
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+        initialEmail={formData.identifier}
+        onPasswordResetSuccess={(resetEmail) => {
+          setFormData((prev) => ({
+            ...prev,
+            identifier: resetEmail,
+            password: ''
+          }));
+          setIsForgotPasswordOpen(false);
+          setErrorMsg('');
+        }}
+      />
     </div>
   );
 }
