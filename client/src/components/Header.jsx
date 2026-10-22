@@ -85,7 +85,7 @@ export function Header({
   return (
     <header className="top-header" style={{ position: 'sticky', top: 0, zIndex: 40, borderBottom: '1px solid #E5E7EB', backgroundColor: '#FFFFFF' }}>
       {/* 1. Brand Logo & Emblem */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div className="header-brand-search-wrap" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <button
           onClick={() => onTabSelect && onTabSelect('feed')}
           style={{
@@ -110,7 +110,7 @@ export function Header({
           }}>
             <PawPrint size={18} fill="#FFFFFF" color="#FFFFFF" />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.1 }}>
+          <div className="header-brand-text" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.1 }}>
             <span style={{ fontSize: '15px', fontWeight: '800', color: '#003822', letterSpacing: '-0.3px', fontFamily: 'var(--font-display, inherit)' }}>
               Zenve Vet
             </span>
@@ -122,7 +122,7 @@ export function Header({
 
         {/* Global Search Bar */}
         <div className="header-search-container" style={{ marginLeft: '6px' }}>
-          <div className="header-search-bar" style={{ width: '260px' }}>
+          <div className="header-search-bar" style={{ maxWidth: '260px', width: '100%' }}>
             <Search size={15} color="#6b7280" />
             <input
               type="text"
@@ -136,8 +136,8 @@ export function Header({
         </div>
       </div>
 
-      {/* 2.  Center Navigation Icons */}
-      <nav style={{ display: 'flex', alignItems: 'center', gap: '4px', margin: '0 auto' }}>
+      {/* 2. Center Navigation Icons */}
+      <nav className="header-center-nav" style={{ display: 'flex', alignItems: 'center', gap: '4px', margin: '0 auto' }}>
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -200,6 +200,7 @@ export function Header({
         {onOpenCreatePost && (
           <button
             onClick={() => onOpenCreatePost('CLINICAL_CASE')}
+            className="header-create-btn"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -218,7 +219,7 @@ export function Header({
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ECFDF5'}
           >
             <Sparkles size={14} color="#059669" />
-            <span>Post</span>
+            <span className="header-create-btn-label">Post</span>
           </button>
         )}
 

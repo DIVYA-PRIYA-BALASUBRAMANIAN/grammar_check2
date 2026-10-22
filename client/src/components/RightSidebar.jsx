@@ -69,12 +69,20 @@ export function RightSidebar({
               const isDocActive = !!doc.active || (currentUser && (doc.id === currentUser.id || String(doc.id).replace('doc-', '') === String(currentUser.id).replace('doc-', '')));
 
               return (
-                <div key={`sidebar-doc-${doc.id}`} className="people-card-row">
+                <div 
+                  key={`sidebar-doc-${doc.id}`} 
+                  className="people-card-row"
+                  onClick={() => onSelectDoctor && onSelectDoctor(doc, false)}
+                  title={`View Dr. ${doc.name.replace(/^dr\.?\s*/i, '')}'s profile (${isDocActive ? 'Active' : 'Inactive'})`}
+                  style={{ cursor: 'pointer' }}
+                >
                   <div 
                     className="people-meta-left"
-                    style={{ cursor: 'pointer', flex: 1, minWidth: 0 }}
-                    onClick={() => onSelectDoctor && onSelectDoctor(doc)}
-                    title={`View ${doc.name}'s profile (${isDocActive ? 'Active' : 'Inactive'})`}
+                    style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onSelectDoctor) onSelectDoctor(doc, false);
+                    }}
                   >
                     <div style={{ position: 'relative', flexShrink: 0 }}>
                       <Avatar src={doc.avatar} name={doc.name} size={40} className="people-avatar-img" />
@@ -118,7 +126,7 @@ export function RightSidebar({
                     </div>
                   </div>
 
-                  <div className="people-action-btns">
+                  <div className="people-action-btns" onClick={(e) => e.stopPropagation()}>
                     <button
                       className={`btn-circle-add ${isConnected ? 'connected' : ''}`}
                       onClick={() => toggleConnect(doc)}

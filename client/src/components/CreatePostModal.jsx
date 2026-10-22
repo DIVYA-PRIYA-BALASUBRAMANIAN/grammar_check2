@@ -241,17 +241,35 @@ export function CreatePostModal({
       <div
         className="modal-content"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: '680px', width: '100%', borderRadius: '16px', overflow: 'hidden' }}
+        style={{
+          maxWidth: '680px',
+          width: '100%',
+          borderRadius: '16px',
+          maxHeight: '92vh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        }}
       >
         {/* Modal Header */}
-        <div className="modal-header">
+        <div className="modal-header" style={{ flexShrink: 0 }}>
           <h3 className="modal-title">Share to Zenve Vet Community</h3>
           <button className="btn-close-modal" onClick={handleClose} type="button">
             <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="modal-body" style={{ padding: '20px 24px' }}>
+        <form
+          onSubmit={handleSubmit}
+          className="modal-body custom-scrollbar"
+          style={{
+            padding: '20px 24px',
+            overflowY: 'auto',
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
           {/* Top Tabs - Exact design from reference screenshot */}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', overflowX: 'auto', paddingBottom: '2px' }}>
             {[
@@ -1058,18 +1076,18 @@ export function CreatePostModal({
                     backgroundColor: '#000',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                   }}>
-                    {videoFileUrl && (videoFileUrl.endsWith('.mp4') || videoFileUrl.startsWith('blob:') || videoFileUrl.startsWith('data:video')) ? (
+                    {videoFileUrl && (/\.(mp4|webm|mov|m4v|ogg)$/i.test(videoFileUrl) || videoFileUrl.startsWith('blob:') || videoFileUrl.startsWith('data:video') || !mediaUrl?.match(/\.(jpg|jpeg|png|gif|webp)$/i)) ? (
                       <video
-                        src={videoFileUrl}
+                        src={videoFileUrl || mediaUrl}
                         controls
                         playsInline
-                        style={{ width: '100%', maxHeight: '240px', objectFit: 'contain', backgroundColor: '#000' }}
+                        style={{ width: '100%', maxHeight: '250px', objectFit: 'contain', backgroundColor: '#000', display: 'block' }}
                       />
                     ) : (
                       <img
                         src={mediaUrl}
                         alt="Reel preview"
-                        style={{ width: '100%', maxHeight: '220px', objectFit: 'cover' }}
+                        style={{ width: '100%', maxHeight: '220px', objectFit: 'cover', display: 'block' }}
                       />
                     )}
 
@@ -1109,15 +1127,21 @@ export function CreatePostModal({
           )}
 
           {/* ======================================================== */}
-          {/* FOOTER ACTIONS ROW - Exactly matching reference screenshot */}
+          {/* FOOTER ACTIONS ROW - Sticky at bottom so always visible */}
           {/* ======================================================== */}
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            paddingTop: '14px',
+            paddingTop: '12px',
+            paddingBottom: '4px',
             borderTop: '1px solid #E5E9E5',
-            marginTop: '8px'
+            marginTop: 'auto',
+            position: 'sticky',
+            bottom: 0,
+            backgroundColor: '#FFFFFF',
+            zIndex: 10,
+            boxShadow: '0 -4px 10px rgba(0, 0, 0, 0.02)'
           }}>
             {/* Left AI Assistant button */}
             <button

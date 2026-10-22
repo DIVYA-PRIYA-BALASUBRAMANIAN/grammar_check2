@@ -23,7 +23,8 @@ import {
   ExternalLink,
   Plus,
   Pencil,
-  X
+  X,
+  Trash2
 } from 'lucide-react';
 import { Avatar } from '../components/Avatar';
 import { api } from '../services/api';
@@ -34,6 +35,7 @@ export function ProfileView({
   currentUser,
   cases = [],
   posts = [],
+  connectedDoctors = [],
   onEditProfile,
   onSelectCase,
   onUpdateAvatar,
@@ -47,16 +49,11 @@ export function ProfileView({
   onSendRequest,
   onBackToFeed,
   onOpenCreateCase,
+  onDeleteCase,
+  onDeletePost,
   returnTab = 'feed'
 }) {
   const [activeTab, setActiveTab] = useState('about'); // 'about' | 'cases' | 'posts' | 'contact'
-  const [isEditingPhone, setIsEditingPhone] = useState(false);
-  const [phoneInput, setPhoneInput] = useState('');
-  const [isSavingPhone, setIsSavingPhone] = useState(false);
-
-  const [isEditingEmail, setIsEditingEmail] = useState(false);
-  const [emailInput, setEmailInput] = useState('');
-  const [isSavingEmail, setIsSavingEmail] = useState(false);
 
   const photoInputRef = useRef(null);
   const coverInputRef = useRef(null);
@@ -66,9 +63,12 @@ export function ProfileView({
 
   const targetDoc = doctor || currentUser;
 
-  const isOwnProfile = !doctor || (currentUser && (
-    targetDoc.id === currentUser.id ||
-    String(targetDoc.id).replace('doc-', '') === String(currentUser.id).replace('doc-', '') ||
+  React.useEffect(() => {
+    setActiveTab('about');
+  }, [targetDoc?.id, targetDoc?.name]);
+
+  const isOwnProfile = !doctor || targetDoc?.isCurrentUser || Boolean(currentUser && (
+    (targetDoc.id != null && currentUser.id != null && String(targetDoc.id).replace('doc-', '') === String(currentUser.id).replace('doc-', '')) ||
     (targetDoc.email && currentUser.email && targetDoc.email.toLowerCase() === currentUser.email.toLowerCase()) ||
     (targetDoc.name && currentUser.name && targetDoc.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
   ));
@@ -99,8 +99,6 @@ export function ProfileView({
       if (fresh.phone) base.phone = fresh.phone;
       if (fresh.email) base.email = fresh.email;
       if (fresh.experienceYears) base.experienceYears = fresh.experienceYears;
-      if (fresh.connectionsCount) base.connectionsCount = fresh.connectionsCount;
-      if (fresh.casesCount) base.casesCount = fresh.casesCount;
       if (fresh.coverImage && (!base.coverImage || base.coverImage.includes('unsplash.com'))) base.coverImage = fresh.coverImage;
       if (fresh.avatar && (!base.avatar || base.avatar.includes('unsplash.com'))) base.avatar = fresh.avatar;
     }
@@ -112,23 +110,37 @@ export function ProfileView({
   const displayPhone = activeDoc.phone || (isOwnProfile && currentUser?.phone) || '+91 98401 23456';
   const displayEmail = activeDoc.email || (isOwnProfile && currentUser?.email) || (activeDoc.name ? `${activeDoc.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@zenvevet.com` : 'doctor@zenvevet.com');
 
-  const doctorCases = cases.filter(c => {
-    if (!c) return false;
-    if (activeDoc.id && (c.authorId === activeDoc.id || String(c.authorId).replace('doc-', '') === String(activeDoc.id).replace('doc-', ''))) return true;
-    if (c.authorName && activeDoc.name) {
-      return c.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === activeDoc.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim();
+  // Helper to match items authored by this practitioner
+  const isDocItem = (authorId, authorName) => {
+    if (isOwnProfile) {
+      if (authorId === 'doc-me') return true;
+      if (currentUser?.id && (authorId === currentUser.id || String(authorId).replace('doc-', '') === String(currentUser.id).replace('doc-', ''))) return true;
+      if (authorName && authorName.toLowerCase().includes('you')) return true;
+      if (currentUser?.name && authorName) {
+        const cleanA = authorName.toLowerCase().replace(/^dr\.?\s*/i, '').replace(/\s*\([a-z\s]+\)/i, '').trim();
+        const cleanMe = currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').replace(/\s*\([a-z\s]+\)/i, '').trim();
+        if (cleanA && cleanMe && (cleanA === cleanMe || cleanA.includes(cleanMe) || cleanMe.includes(cleanA))) return true;
+      }
+    }
+    if (activeDoc.id && (authorId === activeDoc.id || String(authorId).replace('doc-', '') === String(activeDoc.id).replace('doc-', ''))) return true;
+    if (authorName && activeDoc.name) {
+      const cleanA = authorName.toLowerCase().replace(/^dr\.?\s*/i, '').replace(/\s*\([a-z\s]+\)/i, '').trim();
+      const cleanD = activeDoc.name.toLowerCase().replace(/^dr\.?\s*/i, '').replace(/\s*\([a-z\s]+\)/i, '').trim();
+      if (cleanA && cleanD && (cleanA === cleanD || cleanA.includes(cleanD) || cleanD.includes(cleanA))) return true;
     }
     return false;
-  });
+  };
 
-  const doctorPosts = posts.filter(p => {
-    if (!p) return false;
-    if (activeDoc.id && (p.authorId === activeDoc.id || String(p.authorId).replace('doc-', '') === String(activeDoc.id).replace('doc-', ''))) return true;
-    if (p.authorName && activeDoc.name) {
-      return p.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === activeDoc.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim();
-    }
-    return false;
-  });
+  const doctorCases = cases.filter(c => c && isDocItem(c.authorId, c.authorName));
+  const doctorPosts = posts.filter(p => p && isDocItem(p.authorId, p.authorName));
+
+  const displayConnectionsCount = isOwnProfile
+    ? (Array.isArray(connectedDoctors) ? connectedDoctors.length : 0)
+    : (activeDoc.connectionsCount != null ? Number(activeDoc.connectionsCount) : (isConnected ? 1 : 0));
+
+  const displayExperienceYears = activeDoc.experienceYears != null ? activeDoc.experienceYears : (activeDoc.experience || 0);
+  const displayExperienceText = `${displayExperienceYears} ${Number(displayExperienceYears) === 1 ? 'yr' : 'yrs'}`;
+  const displayVciStatus = activeDoc.verified !== false ? 'Verified' : 'Pending';
 
   const displayAvatar = (activeDoc.avatar && !activeDoc.avatar.includes('unsplash.com'))
     ? activeDoc.avatar
@@ -192,45 +204,7 @@ export function ProfileView({
     }
   };
 
-  const handleSavePhone = async (e) => {
-    if (e) e.preventDefault();
-    if (!phoneInput.trim()) return;
-    setIsSavingPhone(true);
-    try {
-      if (onUpdatePhone) {
-        await onUpdatePhone(phoneInput.trim());
-      } else {
-        const docId = activeDoc.id || currentUser?.id || 1;
-        await api.doctors.update(docId, { phone: phoneInput.trim() });
-      }
-      setIsEditingPhone(false);
-    } catch (err) {
-      console.error('Failed to update phone:', err);
-      alert('Failed to update phone number');
-    } finally {
-      setIsSavingPhone(false);
-    }
-  };
 
-  const handleSaveEmail = async (e) => {
-    if (e) e.preventDefault();
-    if (!emailInput.trim()) return;
-    setIsSavingEmail(true);
-    try {
-      if (onUpdateEmail) {
-        await onUpdateEmail(emailInput.trim());
-      } else {
-        const docId = activeDoc.id || currentUser?.id || 1;
-        await api.doctors.update(docId, { email: emailInput.trim() });
-      }
-      setIsEditingEmail(false);
-    } catch (err) {
-      console.error('Failed to update email:', err);
-      alert('Failed to update email address');
-    } finally {
-      setIsSavingEmail(false);
-    }
-  };
 
   return (
     <div className="profile-view-container" style={{ maxWidth: '860px', margin: '0 auto', paddingBottom: '60px' }}>
@@ -284,7 +258,7 @@ export function ProfileView({
       </div>
 
       {/* Main Profile Card */}
-      <div style={{
+      <div className="profile-main-card" style={{
         backgroundColor: '#FFFFFF',
         borderRadius: '16px',
         overflow: 'hidden',
@@ -292,7 +266,7 @@ export function ProfileView({
         boxShadow: '0 4px 20px rgba(0, 35, 20, 0.05)'
       }}>
         {/* Cover Banner */}
-        <div style={{
+        <div className="profile-cover-banner" style={{
           height: '200px',
           background: displayCover
             ? `url(${displayCover}) center/cover no-repeat`
@@ -341,8 +315,8 @@ export function ProfileView({
         </div>
 
         {/* Doctor Identity Header */}
-        <div style={{ padding: '0 28px 24px 28px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '-55px', marginBottom: '18px' }}>
+        <div className="profile-identity-header" style={{ padding: '0 28px 24px 28px' }}>
+          <div className="profile-avatar-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '-55px', marginBottom: '18px' }}>
             <div style={{ position: 'relative' }}>
               <Avatar
                 src={displayAvatar}
@@ -400,7 +374,7 @@ export function ProfileView({
             </div>
 
             {/* Profile Action Buttons */}
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div className="profile-actions-wrap" style={{ display: 'flex', gap: '10px' }}>
               {isOwnProfile ? (
                 <button
                   onClick={onEditProfile}
@@ -512,8 +486,8 @@ export function ProfileView({
 
           {/* Title & Headline */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: '800', color: '#111827', margin: 0 }}>
+            <div className="profile-name-row" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <h1 className="profile-name-text" style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: '800', color: '#111827', margin: 0 }}>
                 {activeDoc.name || 'Veterinary Practitioner'}
               </h1>
               {activeDoc.verified && (
@@ -597,7 +571,7 @@ export function ProfileView({
             </div>
 
             {/* Metrics Impact Bar */}
-            <div style={{
+            <div className="profile-metrics-bar" style={{
               display: 'flex',
               gap: '24px',
               marginTop: '16px',
@@ -608,25 +582,25 @@ export function ProfileView({
             }}>
               <div>
                 <span style={{ display: 'block', fontSize: '18px', fontWeight: 800, color: '#111827' }}>
-                  {activeDoc.connectionsCount || 428}
+                  {displayConnectionsCount}
                 </span>
                 <span style={{ fontSize: '11.5px', color: '#6B7280', fontWeight: 500 }}>Professional Network</span>
               </div>
               <div style={{ borderLeft: '1px solid #E5E7EB', paddingLeft: '24px' }}>
                 <span style={{ display: 'block', fontSize: '18px', fontWeight: 800, color: '#111827' }}>
-                  {doctorCases.length > 0 ? doctorCases.length : (activeDoc.casesCount || 34)}
+                  {doctorCases.length}
                 </span>
                 <span style={{ fontSize: '11.5px', color: '#6B7280', fontWeight: 500 }}>Published Cases</span>
               </div>
               <div style={{ borderLeft: '1px solid #E5E7EB', paddingLeft: '24px' }}>
                 <span style={{ display: 'block', fontSize: '18px', fontWeight: 800, color: '#111827' }}>
-                  {activeDoc.experienceYears || 8} yrs
+                  {displayExperienceText}
                 </span>
                 <span style={{ fontSize: '11.5px', color: '#6B7280', fontWeight: 500 }}>Clinical Practice</span>
               </div>
               <div style={{ borderLeft: '1px solid #E5E7EB', paddingLeft: '24px' }}>
-                <span style={{ display: 'block', fontSize: '18px', fontWeight: 800, color: '#059669' }}>
-                  100%
+                <span style={{ display: 'block', fontSize: '18px', fontWeight: 800, color: activeDoc.verified !== false ? '#059669' : '#D97706' }}>
+                  {displayVciStatus}
                 </span>
                 <span style={{ fontSize: '11.5px', color: '#6B7280', fontWeight: 500 }}>VCI Verified</span>
               </div>
@@ -634,7 +608,7 @@ export function ProfileView({
           </div>
 
           {/* Section Navigation Tabs */}
-          <div style={{ display: 'flex', borderBottom: '1px solid #E5E7EB', marginTop: '22px', gap: '24px' }}>
+          <div className="profile-section-tabs" style={{ display: 'flex', borderBottom: '1px solid #E5E7EB', marginTop: '22px', gap: '24px' }}>
             {[
               { id: 'about', label: 'About & Credentials' },
               { id: 'cases', label: `Published Cases (${doctorCases.length})` },
@@ -676,7 +650,7 @@ export function ProfileView({
               <h4 style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.6px', color: '#64726A', marginBottom: '10px' }}>
                 Credentials & Hospital Practice
               </h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
+              <div className="profile-creds-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
                 <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '10px', border: '1px solid #F3F4F6' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#059669', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
                     <GraduationCap size={17} />
@@ -788,9 +762,37 @@ export function ProfileView({
                       <h4 style={{ margin: 0, fontSize: '15px', color: '#003822', fontWeight: 700 }}>
                         {c.title}
                       </h4>
-                      <span style={{ fontSize: '11px', color: '#059669', backgroundColor: '#ECFDF5', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
-                        {c.species || 'Canine'}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '11px', color: '#059669', backgroundColor: '#ECFDF5', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+                          {c.species || 'Canine'}
+                        </span>
+                        {isOwnProfile && onDeleteCase && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteCase(c.id);
+                            }}
+                            title="Delete clinical case"
+                            style={{
+                              border: '1px solid #fee2e2',
+                              backgroundColor: '#fff5f5',
+                              color: '#dc2626',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              padding: '3px 8px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontSize: '11px',
+                              fontWeight: 600
+                            }}
+                          >
+                            <Trash2 size={12} />
+                            <span>Delete</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#4B5563', lineHeight: 1.4 }}>
                       {c.presentingComplaint || c.treatment || 'Clinical diagnosis and surgical report.'}
@@ -818,11 +820,36 @@ export function ProfileView({
               ) : (
                 doctorPosts.map((p) => (
                   <div key={p.id} style={{ padding: '16px 18px', borderRadius: '10px', border: '1px solid #E5E7EB', backgroundColor: '#FFFFFF' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '11px', color: '#059669', backgroundColor: '#ECFDF5', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
-                        {p.badgeLabel || 'CLINICAL UPDATE'}
-                      </span>
-                      <span style={{ fontSize: '11.5px', color: '#9CA3AF' }}>{p.timestamp || 'Recent'}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '11px', color: '#059669', backgroundColor: '#ECFDF5', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+                          {p.badgeLabel || 'CLINICAL UPDATE'}
+                        </span>
+                        <span style={{ fontSize: '11.5px', color: '#9CA3AF' }}>{p.timestamp || 'Recent'}</span>
+                      </div>
+                      {isOwnProfile && onDeletePost && (
+                        <button
+                          type="button"
+                          onClick={() => onDeletePost(p.id)}
+                          title="Delete post"
+                          style={{
+                            border: '1px solid #fee2e2',
+                            backgroundColor: '#fff5f5',
+                            color: '#dc2626',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            padding: '3px 8px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '11px',
+                            fontWeight: 600
+                          }}
+                        >
+                          <Trash2 size={12} />
+                          <span>Delete</span>
+                        </button>
+                      )}
                     </div>
                     <p style={{ margin: '6px 0 10px 0', fontSize: '13.5px', color: '#1F2937', lineHeight: 1.5 }}>
                       {p.content}
@@ -840,80 +867,24 @@ export function ProfileView({
           {/* Tab 4: Hospital & Contact */}
           {activeTab === 'contact' && (
             <div style={{ paddingTop: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '10px', border: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <Phone size={18} color="#059669" />
-                  <div>
-                    <span style={{ display: 'block', fontSize: '11.5px', color: '#6B7280', fontWeight: 600 }}>CLINIC DESK TELEPHONE</span>
-                    <a href={`tel:${displayPhone.replace(/\s+/g, '')}`} style={{ fontSize: '14px', color: '#111827', textDecoration: 'none', fontWeight: 700 }}>
-                      {displayPhone}
-                    </a>
-                  </div>
+              <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '10px', border: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Phone size={18} color="#059669" />
+                <div>
+                  <span style={{ display: 'block', fontSize: '11.5px', color: '#6B7280', fontWeight: 600 }}>CLINIC DESK TELEPHONE</span>
+                  <a href={`tel:${displayPhone.replace(/\s+/g, '')}`} style={{ fontSize: '14px', color: '#111827', textDecoration: 'none', fontWeight: 700 }}>
+                    {displayPhone}
+                  </a>
                 </div>
-                {isOwnProfile && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPhoneInput(activeDoc.phone || currentUser?.phone || '');
-                      setIsEditingPhone(true);
-                      window.scrollTo({ top: 380, behavior: 'smooth' });
-                    }}
-                    style={{
-                      border: '1px solid #059669',
-                      background: '#ECFDF5',
-                      color: '#065F46',
-                      borderRadius: '6px',
-                      padding: '5px 12px',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      fontSize: '12px',
-                      fontWeight: 700
-                    }}
-                  >
-                    <Pencil size={12} />
-                    <span>Enter Phone</span>
-                  </button>
-                )}
               </div>
 
-              <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '10px', border: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <Mail size={18} color="#059669" />
-                  <div>
-                    <span style={{ display: 'block', fontSize: '11.5px', color: '#6B7280', fontWeight: 600 }}>PROFESSIONAL EMAIL</span>
-                    <a href={`mailto:${displayEmail}`} style={{ fontSize: '14px', color: '#111827', textDecoration: 'none', fontWeight: 700 }}>
-                      {displayEmail}
-                    </a>
-                  </div>
+              <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '10px', border: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Mail size={18} color="#059669" />
+                <div>
+                  <span style={{ display: 'block', fontSize: '11.5px', color: '#6B7280', fontWeight: 600 }}>PROFESSIONAL EMAIL</span>
+                  <a href={`mailto:${displayEmail}`} style={{ fontSize: '14px', color: '#111827', textDecoration: 'none', fontWeight: 700 }}>
+                    {displayEmail}
+                  </a>
                 </div>
-                {isOwnProfile && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEmailInput(activeDoc.email || currentUser?.email || '');
-                      setIsEditingEmail(true);
-                      window.scrollTo({ top: 380, behavior: 'smooth' });
-                    }}
-                    style={{
-                      border: '1px solid #2563EB',
-                      background: '#EFF6FF',
-                      color: '#1E40AF',
-                      borderRadius: '6px',
-                      padding: '5px 12px',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      fontSize: '12px',
-                      fontWeight: 700
-                    }}
-                  >
-                    <Pencil size={12} />
-                    <span>Enter Email</span>
-                  </button>
-                )}
               </div>
 
               <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '10px', border: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', gap: '12px' }}>

@@ -14,6 +14,7 @@ import {
   Lock,
   MessageSquare,
   ArrowRight,
+  ArrowLeft,
   UserCheck,
   UserPlus,
   Sparkles,
@@ -42,6 +43,15 @@ export function MessagesView({
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+
+  // Mobile view state: toggle between chat and contacts list on mobile
+  const [mobileShowChat, setMobileShowChat] = useState(!!activeChatDoctor);
+
+  useEffect(() => {
+    if (activeChatDoctor) {
+      setMobileShowChat(true);
+    }
+  }, [activeChatDoctor]);
 
   // Auto-scroll to bottom of chat
   useEffect(() => {
@@ -527,28 +537,35 @@ export function MessagesView({
   ];
 
   return (
-    <div style={{
-      display: 'flex',
-      gap: '20px',
-      width: '100%',
-      height: 'calc(100vh - 100px)',
-      minHeight: '620px',
-      boxSizing: 'border-box'
-    }}>
+    <div
+      className="messages-main-container"
+      data-mobile-view={mobileShowChat ? 'chat' : 'contacts'}
+      style={{
+        display: 'flex',
+        gap: '20px',
+        width: '100%',
+        height: 'calc(100vh - 100px)',
+        minHeight: '620px',
+        boxSizing: 'border-box'
+      }}
+    >
       {/* ======================================================== */}
       {/* 1. CENTER: ACTIVE CHAT CONTAINER                         */}
       {/* ======================================================== */}
-      <div style={{
-        flex: 1,
-        minWidth: 0,
-        backgroundColor: '#FFFFFF',
-        borderRadius: '24px',
-        boxShadow: '0 4px 20px rgba(0, 45, 25, 0.04)',
-        border: '1px solid #E5E7EB',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden'
-      }}>
+      <div
+        className="messages-chat-pane"
+        style={{
+          flex: 1,
+          minWidth: 0,
+          backgroundColor: '#FFFFFF',
+          borderRadius: '24px',
+          boxShadow: '0 4px 20px rgba(0, 45, 25, 0.04)',
+          border: '1px solid #E5E7EB',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        }}
+      >
         {currentDoctor ? (
           <>
             {/* Chat Header Bar */}
@@ -561,29 +578,43 @@ export function MessagesView({
               backgroundColor: '#FFFFFF'
             }}>
               {/* Doctor Info (Clickable to open profile) */}
-              <div
-                onClick={() => onOpenDoctorProfile && onOpenDoctorProfile(currentDoctor, true)}
-                style={{ display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer' }}
-                title={`View ${currentDoctor.name}'s Profile`}
-              >
-                <div style={{ position: 'relative', width: '46px', height: '46px' }}>
-                  <Avatar
-                    src={currentDoctor.avatar}
-                    name={currentDoctor.name}
-                    size={46}
-                    fontSize={18}
-                  />
-                  <span style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    right: 0,
-                    width: '11px',
-                    height: '11px',
-                    borderRadius: '50%',
-                    backgroundColor: currentDoctor.active ? '#10B981' : '#9CA3AF',
-                    border: '2px solid #FFFFFF'
-                  }} />
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileShowChat(false);
+                    if (onSelectConversation) onSelectConversation(null);
+                  }}
+                  className="messages-mobile-back-btn"
+                  title="Back to all conversations"
+                >
+                  <ArrowLeft size={18} />
+                  <span>Chats</span>
+                </button>
+
+                <div
+                  onClick={() => onOpenDoctorProfile && onOpenDoctorProfile(currentDoctor, true)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer' }}
+                  title={`View ${currentDoctor.name}'s Profile`}
+                >
+                  <div style={{ position: 'relative', width: '46px', height: '46px', flexShrink: 0 }}>
+                    <Avatar
+                      src={currentDoctor.avatar}
+                      name={currentDoctor.name}
+                      size={46}
+                      fontSize={18}
+                    />
+                    <span style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      right: 0,
+                      width: '11px',
+                      height: '11px',
+                      borderRadius: '50%',
+                      backgroundColor: currentDoctor.active ? '#10B981' : '#9CA3AF',
+                      border: '2px solid #FFFFFF'
+                    }} />
+                  </div>
 
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -617,6 +648,7 @@ export function MessagesView({
                   </p>
                 </div>
               </div>
+            </div>
 
               {/* Header Action: Profile Button */}
               <button
@@ -1134,18 +1166,21 @@ export function MessagesView({
       {/* ======================================================== */}
       {/* 2. RIGHT: CONNECTED PEOPLE SIDEBAR                       */}
       {/* ======================================================== */}
-      <aside style={{
-        width: '340px',
-        minWidth: '340px',
-        backgroundColor: '#FFFFFF',
-        borderRadius: '24px',
-        boxShadow: '0 4px 20px rgba(0, 45, 25, 0.04)',
-        border: '1px solid #E5E7EB',
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '22px 20px',
-        boxSizing: 'border-box'
-      }}>
+      <aside
+        className="messages-contacts-pane"
+        style={{
+          width: '340px',
+          minWidth: '340px',
+          backgroundColor: '#FFFFFF',
+          borderRadius: '24px',
+          boxShadow: '0 4px 20px rgba(0, 45, 25, 0.04)',
+          border: '1px solid #E5E7EB',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '22px 20px',
+          boxSizing: 'border-box'
+        }}
+      >
         {/* Header: Direct Messages + count badge */}
         <div style={{
           display: 'flex',
@@ -1222,6 +1257,7 @@ export function MessagesView({
                 <div
                   key={`contact-item-${person.id || person.name || idx}`}
                   onClick={() => {
+                    setMobileShowChat(true);
                     if (onSelectConversation) {
                       if (existing) {
                         onSelectConversation({ ...existing, doctor: person, unread: 0 });

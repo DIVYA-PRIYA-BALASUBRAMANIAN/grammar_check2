@@ -540,17 +540,51 @@ public class CommunityService {
         map.put("createdAt", c.getCreatedAt() != null ? c.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) : "");
         map.put("inviteCode", c.getInviteCode());
 
+        // Live doctor profile lookup map for up-to-date name, avatar, specialty
+        Map<Long, DoctorProfile> doctorById = new HashMap<>();
+        List<DoctorProfile> allDoctors = doctorRepo.findAll();
+        for (DoctorProfile dp : allDoctors) {
+            if (dp.getId() != null) {
+                doctorById.put(dp.getId(), dp);
+            }
+        }
+
+        java.util.function.BiFunction<Long, String, DoctorProfile> findDoc = (docId, docName) -> {
+            if (docId != null && doctorById.containsKey(docId)) {
+                return doctorById.get(docId);
+            }
+            if (docName != null && !docName.isBlank()) {
+                String cleanTarget = docName.toLowerCase().replaceAll("(?i)^dr\\.?\\s*", "").trim();
+                for (DoctorProfile dp : allDoctors) {
+                    if (dp.getName() != null) {
+                        String clean = dp.getName().toLowerCase().replaceAll("(?i)^dr\\.?\\s*", "").trim();
+                        if (clean.equals(cleanTarget)) {
+                            return dp;
+                        }
+                    }
+                }
+            }
+            return null;
+        };
+
+        DoctorProfile creatorDoc = findDoc.apply(c.getCreatorId(), c.getCreatorName());
+        if (creatorDoc != null) {
+            if (creatorDoc.getName() != null) map.put("creatorName", creatorDoc.getName());
+            if (creatorDoc.getAvatar() != null) map.put("creatorAvatar", creatorDoc.getAvatar());
+        }
+
         // Members
         List<CommunityMember> members = memberRepo.findByCommunityIdOrderByJoinedAtAsc(c.getId());
         List<Map<String, Object>> memberList = new ArrayList<>();
         for (CommunityMember m : members) {
+            DoctorProfile dp = findDoc.apply(m.getDoctorId(), m.getDoctorName());
             Map<String, Object> mObj = new LinkedHashMap<>();
             mObj.put("id", m.getDoctorId());
-            mObj.put("name", m.getDoctorName());
+            mObj.put("name", dp != null && dp.getName() != null ? dp.getName() : m.getDoctorName());
             mObj.put("role", m.getRole());
-            mObj.put("specialty", m.getSpecialty());
-            mObj.put("city", m.getCity());
-            mObj.put("avatar", m.getAvatar());
+            mObj.put("specialty", dp != null && dp.getSpecialty() != null ? dp.getSpecialty() : m.getSpecialty());
+            mObj.put("city", dp != null && dp.getCity() != null ? dp.getCity() : m.getCity());
+            mObj.put("avatar", dp != null && dp.getAvatar() != null ? dp.getAvatar() : m.getAvatar());
             memberList.add(mObj);
         }
         map.put("members", memberList);
@@ -562,13 +596,14 @@ public class CommunityService {
         for (CommunityInvite inv : pendingInvites) {
             pendingDocIds.add(inv.getInviteeDoctorId());
             if (currentDoctorId != null && currentDoctorId.equals(inv.getInviteeDoctorId())) {
+                DoctorProfile inviterDoc = findDoc.apply(inv.getInviterId(), inv.getInviterName());
                 myPendingInviteMap = new LinkedHashMap<>();
                 myPendingInviteMap.put("id", inv.getId());
                 myPendingInviteMap.put("communityId", inv.getCommunityId());
                 myPendingInviteMap.put("communityName", inv.getCommunityName());
                 myPendingInviteMap.put("inviterId", inv.getInviterId());
-                myPendingInviteMap.put("inviterName", inv.getInviterName());
-                myPendingInviteMap.put("inviterAvatar", inv.getInviterAvatar());
+                myPendingInviteMap.put("inviterName", inviterDoc != null && inviterDoc.getName() != null ? inviterDoc.getName() : inv.getInviterName());
+                myPendingInviteMap.put("inviterAvatar", inviterDoc != null && inviterDoc.getAvatar() != null ? inviterDoc.getAvatar() : inv.getInviterAvatar());
                 myPendingInviteMap.put("createdAt", formatRelativeTime(inv.getCreatedAt()));
             }
         }
@@ -580,12 +615,13 @@ public class CommunityService {
         List<CommunityPost> posts = postRepo.findByCommunityIdOrderByCreatedAtDesc(c.getId());
         List<Map<String, Object>> postList = new ArrayList<>();
         for (CommunityPost p : posts) {
+            DoctorProfile dp = findDoc.apply(p.getAuthorId(), p.getAuthorName());
             Map<String, Object> pObj = new LinkedHashMap<>();
             pObj.put("id", p.getId());
             pObj.put("authorId", p.getAuthorId());
-            pObj.put("authorName", p.getAuthorName());
-            pObj.put("authorAvatar", p.getAuthorAvatar());
-            pObj.put("authorSpecialty", p.getAuthorSpecialty());
+            pObj.put("authorName", dp != null && dp.getName() != null ? dp.getName() : p.getAuthorName());
+            pObj.put("authorAvatar", dp != null && dp.getAvatar() != null ? dp.getAvatar() : p.getAuthorAvatar());
+            pObj.put("authorSpecialty", dp != null && dp.getSpecialty() != null ? dp.getSpecialty() : p.getAuthorSpecialty());
             pObj.put("tag", p.getTag());
             pObj.put("content", p.getContent());
             pObj.put("imageUrl", p.getImageUrl());
@@ -599,10 +635,12 @@ public class CommunityService {
             List<CommunityPostComment> comments = commentRepo.findByCommunityPostIdOrderByCreatedAtAsc(p.getId());
             List<Map<String, Object>> commentList = new ArrayList<>();
             for (CommunityPostComment comm : comments) {
+                DoctorProfile commDoc = findDoc.apply(comm.getAuthorId(), comm.getAuthorName());
                 Map<String, Object> cObj = new LinkedHashMap<>();
                 cObj.put("id", comm.getId());
-                cObj.put("authorName", comm.getAuthorName());
-                cObj.put("authorAvatar", comm.getAuthorAvatar());
+                cObj.put("authorId", comm.getAuthorId());
+                cObj.put("authorName", commDoc != null && commDoc.getName() != null ? commDoc.getName() : comm.getAuthorName());
+                cObj.put("authorAvatar", commDoc != null && commDoc.getAvatar() != null ? commDoc.getAvatar() : comm.getAuthorAvatar());
                 cObj.put("text", comm.getText());
                 cObj.put("timestamp", formatRelativeTime(comm.getCreatedAt()));
                 commentList.add(cObj);
@@ -617,10 +655,12 @@ public class CommunityService {
         List<CommunityCase> cases = caseRepo.findByCommunityIdOrderByCreatedAtDesc(c.getId());
         List<Map<String, Object>> caseList = new ArrayList<>();
         for (CommunityCase cs : cases) {
+            DoctorProfile dp = findDoc.apply(cs.getAuthorId(), cs.getAuthorName());
             Map<String, Object> csObj = new LinkedHashMap<>();
             csObj.put("id", cs.getId());
-            csObj.put("authorName", cs.getAuthorName());
-            csObj.put("authorAvatar", cs.getAuthorAvatar());
+            csObj.put("authorId", cs.getAuthorId());
+            csObj.put("authorName", dp != null && dp.getName() != null ? dp.getName() : cs.getAuthorName());
+            csObj.put("authorAvatar", dp != null && dp.getAvatar() != null ? dp.getAvatar() : cs.getAuthorAvatar());
             csObj.put("title", cs.getTitle());
             csObj.put("species", cs.getSpecies());
             csObj.put("age", cs.getAge());
@@ -636,9 +676,11 @@ public class CommunityService {
         List<CommunityReel> reels = reelRepo.findByCommunityIdOrderByCreatedAtDesc(c.getId());
         List<Map<String, Object>> reelList = new ArrayList<>();
         for (CommunityReel r : reels) {
+            DoctorProfile dp = findDoc.apply(r.getAuthorId(), r.getAuthorName());
             Map<String, Object> rObj = new LinkedHashMap<>();
             rObj.put("id", r.getId());
-            rObj.put("authorName", r.getAuthorName());
+            rObj.put("authorId", r.getAuthorId());
+            rObj.put("authorName", dp != null && dp.getName() != null ? dp.getName() : r.getAuthorName());
             rObj.put("title", r.getTitle());
             rObj.put("videoUrl", r.getVideoUrl());
             rObj.put("thumbnail", r.getThumbnail());
@@ -653,11 +695,12 @@ public class CommunityService {
         List<CommunityMessage> messages = messageRepo.findByCommunityIdOrderByCreatedAtAsc(c.getId());
         List<Map<String, Object>> msgList = new ArrayList<>();
         for (CommunityMessage m : messages) {
+            DoctorProfile dp = findDoc.apply(m.getSenderId(), m.getSenderName());
             Map<String, Object> mObj = new LinkedHashMap<>();
             mObj.put("id", m.getId());
             mObj.put("senderId", m.getSenderId());
-            mObj.put("senderName", m.getSenderName());
-            mObj.put("senderAvatar", m.getSenderAvatar());
+            mObj.put("senderName", dp != null && dp.getName() != null ? dp.getName() : m.getSenderName());
+            mObj.put("senderAvatar", dp != null && dp.getAvatar() != null ? dp.getAvatar() : m.getSenderAvatar());
             mObj.put("text", m.getText());
             mObj.put("timestamp", m.getCreatedAt() != null ? m.getCreatedAt().format(DateTimeFormatter.ofPattern("hh:mm a")) : "Just now");
             msgList.add(mObj);

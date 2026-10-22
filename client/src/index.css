@@ -1330,6 +1330,20 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 8px 10px;
+  margin: -4px -8px;
+  border-radius: 12px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+
+.people-card-row:hover {
+  background-color: #f0fdf4;
+  transform: translateX(2px);
+}
+
+.people-card-row:hover .people-doctor-name {
+  color: #059669;
 }
 
 .people-meta-left {
@@ -9154,6 +9168,20 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 8px 10px;
+  margin: -4px -8px;
+  border-radius: 12px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+
+.people-card-row:hover {
+  background-color: #f0fdf4;
+  transform: translateX(2px);
+}
+
+.people-card-row:hover .people-doctor-name {
+  color: #059669;
 }
 
 .people-meta-left {
@@ -16657,5 +16685,827 @@ a {
 
   .terms-document-scroll {
     overflow: visible !important;
+  }
+}
+
+/* ==============================================================================
+   Universal Responsive Design: Doctor Profile Modal & Profile View
+   Supports Mobile (<=420px, <=640px), Tablet (<=768px), Laptop (<=1024px), Desktop (>1024px)
+   ============================================================================== */
+
+/* Modal Overlay & Card Container */
+.doctor-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 24, 15, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.doctor-modal-card {
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  background-color: #FFFFFF;
+  border-radius: 20px;
+  box-shadow: 0 25px 65px rgba(0, 35, 20, 0.28), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  animation: doctorModalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  scrollbar-width: thin;
+  scrollbar-color: #CBD5E1 transparent;
+}
+
+.doctor-modal-card::-webkit-scrollbar {
+  width: 6px;
+}
+.doctor-modal-card::-webkit-scrollbar-track {
+  background: transparent;
+}
+.doctor-modal-card::-webkit-scrollbar-thumb {
+  background-color: #CBD5E1;
+  border-radius: 10px;
+}
+
+@keyframes doctorModalPop {
+  0% {
+    transform: scale(0.96) translateY(8px);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Cover Banner */
+.doctor-modal-cover {
+  height: 145px;
+  position: relative;
+  padding: 14px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-shrink: 0;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.doctor-modal-cover-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.doctor-modal-cover-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background-color: rgba(0, 0, 0, 0.45);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  transition: all 0.15s ease;
+}
+
+.doctor-modal-cover-btn:hover {
+  background-color: rgba(0, 0, 0, 0.65);
+}
+
+.doctor-modal-close-btn {
+  color: #FFFFFF;
+  background-color: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  transition: all 0.15s ease;
+}
+
+.doctor-modal-close-btn:hover {
+  background-color: rgba(0, 0, 0, 0.7);
+  transform: rotate(90deg);
+}
+
+/* Body & Header Info */
+.doctor-modal-body {
+  padding: 0 24px 24px 24px;
+}
+
+.doctor-modal-avatar-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: -48px;
+  margin-bottom: 14px;
+  gap: 12px;
+}
+
+.doctor-modal-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.doctor-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.doctor-modal-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.doctor-modal-name {
+  font-family: var(--font-display, 'Outfit', sans-serif);
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.doctor-modal-specialty {
+  font-size: 14.5px;
+  color: #003822;
+  font-weight: 700;
+  margin: 4px 0 2px 0;
+}
+
+.doctor-modal-location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #64726A;
+  margin: 0;
+  flex-wrap: wrap;
+}
+
+/* Contact Badges Row */
+.doctor-modal-contact-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.doctor-modal-contact-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  text-decoration: none;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Stats / Metrics Impact Bar */
+.doctor-modal-stats-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  background-color: #F8F9FA;
+  border-radius: 12px;
+  border: 1px solid #F0F2F5;
+  text-align: left;
+}
+
+.doctor-modal-stat-card {
+  min-width: 0;
+}
+
+.doctor-modal-stat-card + .doctor-modal-stat-card {
+  border-left: 1px solid #E5E7EB;
+  padding-left: 10px;
+}
+
+.doctor-modal-stat-num {
+  display: block;
+  font-size: 16px;
+  font-weight: 800;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.doctor-modal-stat-label {
+  font-size: 11px;
+  color: #6B7280;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+/* Navigation Tabs */
+.doctor-modal-tabs-bar {
+  display: flex;
+  border-bottom: 1px solid #E5E7EB;
+  margin-top: 16px;
+  gap: 16px;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.doctor-modal-tabs-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.doctor-modal-tab-btn {
+  padding: 8px 4px;
+  background: none;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+/* Credentials Grid */
+.doctor-modal-creds-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.doctor-modal-cred-card {
+  padding: 12px;
+  background-color: #F9FAFB;
+  border-radius: 8px;
+  border: 1px solid #F3F4F6;
+  min-width: 0;
+}
+
+/* ==============================================================================
+   Responsive Breakpoints for Doctor Profile Modal & ProfileView
+   ============================================================================== */
+
+/* Laptop & Large Tablet (<= 1024px) */
+@media (max-width: 1024px) {
+  .doctor-modal-card {
+    max-width: 600px;
+  }
+}
+
+/* Tablet (<= 768px) */
+@media (max-width: 768px) {
+  .doctor-modal-overlay {
+    padding: 12px;
+  }
+  .doctor-modal-card {
+    max-height: 92vh;
+    border-radius: 18px;
+  }
+  .doctor-modal-body {
+    padding: 0 18px 20px 18px;
+  }
+  .doctor-modal-cover {
+    height: 130px;
+    padding: 12px 14px;
+  }
+  .profile-metrics-bar {
+    gap: 14px !important;
+    padding: 12px 14px !important;
+  }
+  .profile-metrics-bar > div + div {
+    padding-left: 14px !important;
+  }
+}
+
+/* Mobile Standard (<= 640px) */
+@media (max-width: 640px) {
+  .doctor-modal-overlay {
+    padding: 8px 6px;
+    align-items: flex-end;
+  }
+  .doctor-modal-card {
+    max-height: 94vh;
+    border-radius: 20px 20px 12px 12px;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.25);
+  }
+  .doctor-modal-cover {
+    height: 115px;
+    padding: 10px 12px;
+  }
+  .doctor-modal-cover-btn {
+    padding: 4px 9px;
+    font-size: 10.5px;
+  }
+  .doctor-modal-close-btn {
+    width: 28px;
+    height: 28px;
+  }
+  .doctor-modal-body {
+    padding: 0 14px 18px 14px;
+  }
+  .doctor-modal-avatar-row {
+    margin-top: -38px;
+    gap: 8px;
+  }
+  .doctor-modal-avatar-row .avatar-img,
+  .doctor-modal-avatar-row img,
+  .doctor-modal-avatar-row div[title] {
+    width: 76px !important;
+    height: 76px !important;
+    min-width: 76px !important;
+    min-height: 76px !important;
+    font-size: 30px !important;
+  }
+  .doctor-modal-name {
+    font-size: 18.5px;
+  }
+  .doctor-modal-specialty {
+    font-size: 13.5px;
+  }
+  .doctor-modal-location {
+    font-size: 12px;
+  }
+  .doctor-modal-stats-bar {
+    padding: 10px 8px;
+    gap: 4px;
+  }
+  .doctor-modal-stat-card + .doctor-modal-stat-card {
+    padding-left: 6px;
+  }
+  .doctor-modal-stat-num {
+    font-size: 14px;
+  }
+  .doctor-modal-stat-label {
+    font-size: 9.5px;
+  }
+  .doctor-modal-creds-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .doctor-modal-tabs-bar {
+    gap: 12px;
+    margin-top: 14px;
+  }
+  .doctor-modal-tab-btn {
+    font-size: 12.5px;
+    padding: 7px 2px;
+  }
+}
+
+/* ==============================================================================
+   Universal Responsive System: Mobile, Tablet, Laptop, and Desktop
+   ============================================================================== */
+
+/* 1. Mobile Bottom Navigation Bar (Hidden on Desktop & Laptop > 768px) */
+.mobile-bottom-nav {
+  display: none;
+}
+
+.mobile-bottom-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  height: 60px;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 0 6px;
+  position: relative;
+}
+
+.mobile-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: none;
+  border: none;
+  padding: 5px 8px;
+  color: #6B7280;
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  flex: 1;
+  transition: all 0.15s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-nav-btn.active {
+  color: #003822;
+  font-weight: 800;
+}
+
+.mobile-nav-icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-nav-badge {
+  position: absolute;
+  top: -6px;
+  right: -9px;
+  background-color: #DC2626;
+  color: #FFFFFF;
+  font-size: 9px;
+  font-weight: 800;
+  border-radius: 9999px;
+  padding: 1px 4.5px;
+  border: 1.5px solid #FFFFFF;
+  line-height: 1.1;
+}
+
+.mobile-nav-active-pill {
+  position: absolute;
+  bottom: 2px;
+  width: 16px;
+  height: 2.5px;
+  border-radius: 3px;
+  background-color: #003822;
+}
+
+.mobile-nav-fab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-top: -18px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  flex: 1;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-nav-fab-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #003822 0%, #05633C 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 56, 34, 0.35);
+  border: 2.5px solid #FFFFFF;
+  transition: transform 0.18s ease;
+}
+
+.mobile-nav-fab:active .mobile-nav-fab-circle {
+  transform: scale(0.92);
+}
+
+.mobile-nav-label {
+  font-size: 10px;
+  line-height: 1.1;
+  margin-top: 3px;
+}
+
+.mobile-nav-label.fab-label {
+  font-weight: 700;
+  color: #003822;
+  margin-top: 4px;
+}
+
+/* 2. Messages Mobile Back Button */
+.messages-mobile-back-btn {
+  display: none;
+}
+
+/* ==============================================================================
+   Breakpoints: Laptop (<=1024px), Tablet (<=860px, <=768px), Mobile (<=640px, <=420px)
+   ============================================================================== */
+
+/* Laptop & Tablet Landscape (<= 1024px) */
+@media (max-width: 1024px) {
+  .doctor-modal-card {
+    max-width: 600px;
+  }
+  .header-search-bar {
+    max-width: 185px !important;
+  }
+  .header-center-nav button {
+    padding: 6px 8px !important;
+  }
+  .header-center-nav span {
+    font-size: 10px !important;
+  }
+  .feed-right-rail,
+  .right-sidebar {
+    display: none !important;
+  }
+}
+
+/* Tablet (<= 860px) */
+@media (max-width: 860px) {
+  .left-sidebar {
+    display: none !important;
+  }
+  .workspace-two-column-layout {
+    padding: 12px 10px !important;
+  }
+}
+
+/* Tablet Portrait & Mobile (<= 768px) */
+@media (max-width: 768px) {
+  /* Bottom Nav visible */
+  .mobile-bottom-nav {
+    display: block !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 99998 !important;
+    background: rgba(255, 255, 255, 0.94) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border-top: 1px solid rgba(229, 231, 235, 0.9) !important;
+    box-shadow: 0 -4px 20px rgba(0, 35, 20, 0.08) !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+  }
+
+  /* Padding offset so content doesn't hide behind bottom bar */
+  .main-content-layout {
+    padding-bottom: 74px !important;
+  }
+  .feed-main-column {
+    padding-bottom: 30px !important;
+  }
+
+  /* Hide center nav from Header since bottom bar is active */
+  .header-center-nav {
+    display: none !important;
+  }
+
+  /* Header adjustments */
+  .top-header {
+    padding: 0 14px !important;
+    height: 56px !important;
+  }
+  .header-search-container {
+    max-width: 220px !important;
+    margin-left: 6px !important;
+  }
+  .header-create-btn-label {
+    display: none !important;
+  }
+  .header-create-btn {
+    padding: 6px 10px !important;
+    border-radius: 50% !important;
+  }
+
+  /* Messages View Mobile Stack */
+  .messages-workspace-layout {
+    padding: 10px 8px !important;
+  }
+  .messages-main-container {
+    height: calc(100vh - 145px) !important;
+    min-height: auto !important;
+    gap: 0 !important;
+  }
+  .messages-main-container[data-mobile-view="chat"] .messages-chat-pane {
+    display: flex !important;
+    width: 100% !important;
+    border-radius: 16px !important;
+  }
+  .messages-main-container[data-mobile-view="chat"] .messages-contacts-pane {
+    display: none !important;
+  }
+  .messages-main-container[data-mobile-view="chat"] .messages-mobile-back-btn {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 4px;
+    background: #F3F4F6;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #003822;
+    cursor: pointer;
+    margin-right: 6px;
+    flex-shrink: 0;
+  }
+  .messages-main-container[data-mobile-view="contacts"] .messages-chat-pane {
+    display: none !important;
+  }
+  .messages-main-container[data-mobile-view="contacts"] .messages-contacts-pane {
+    display: flex !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    border-radius: 16px !important;
+  }
+  .messages-main-container[data-mobile-view="contacts"] .messages-mobile-back-btn {
+    display: none !important;
+  }
+
+  /* Profile View adjustments */
+  .profile-cover-banner {
+    height: 160px !important;
+    padding: 12px 14px !important;
+  }
+  .profile-identity-header {
+    padding: 0 18px 20px 18px !important;
+  }
+  .profile-avatar-row {
+    margin-top: -45px !important;
+  }
+  .profile-metrics-bar {
+    gap: 12px !important;
+    padding: 12px 14px !important;
+  }
+  .profile-metrics-bar > div + div {
+    padding-left: 12px !important;
+  }
+}
+
+/* Mobile Standard (<= 640px) */
+@media (max-width: 640px) {
+  /* Modals as elegant bottom sheets */
+  .modal-overlay {
+    padding: 0 !important;
+    align-items: flex-end !important;
+  }
+  .modal-content {
+    border-radius: 20px 20px 0 0 !important;
+    max-height: 94vh !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .modal-body {
+    padding: 16px 14px !important;
+  }
+
+  /* Feed Hero Banner Mobile */
+  .hero-banner-inner {
+    flex-direction: column !important;
+  }
+  .hero-photo-wrap {
+    display: none !important;
+  }
+  .hero-text-content {
+    padding: 18px 16px !important;
+  }
+  .hero-headline {
+    font-size: 22px !important;
+  }
+  .hero-subtext {
+    font-size: 12.5px !important;
+    margin-bottom: 12px !important;
+  }
+
+  /* Post Composer Mobile */
+  .feed-post-composer {
+    padding: 12px !important;
+  }
+  .composer-tools-row {
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    padding-bottom: 2px !important;
+  }
+  .composer-action-pills {
+    flex-wrap: nowrap !important;
+    white-space: nowrap !important;
+  }
+  .btn-composer-pill {
+    font-size: 12px !important;
+    padding: 6px 10px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Profile View Mobile Overrides */
+  .profile-view-container {
+    padding: 0 6px !important;
+    margin-bottom: 20px !important;
+  }
+  .profile-main-card {
+    border-radius: 14px !important;
+  }
+  .profile-cover-banner {
+    height: 130px !important;
+    padding: 10px 12px !important;
+  }
+  .profile-identity-header {
+    padding: 0 14px 18px 14px !important;
+  }
+  .profile-avatar-row {
+    margin-top: -38px !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+  }
+  .profile-avatar-row .avatar-img,
+  .profile-avatar-row img,
+  .profile-avatar-row div[title] {
+    width: 76px !important;
+    height: 76px !important;
+    min-width: 76px !important;
+    min-height: 76px !important;
+    font-size: 30px !important;
+  }
+  .profile-actions-wrap {
+    width: 100% !important;
+    margin-top: 6px !important;
+  }
+  .profile-actions-wrap button {
+    flex: 1 !important;
+    justify-content: center !important;
+    font-size: 13px !important;
+    padding: 8px 14px !important;
+  }
+  .profile-name-text {
+    font-size: 20px !important;
+  }
+  .profile-metrics-bar {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+    padding: 12px !important;
+  }
+  .profile-metrics-bar > div + div {
+    border-left: none !important;
+    padding-left: 0 !important;
+  }
+  .profile-metrics-bar > div:nth-child(even) {
+    border-left: 1px solid #E5E7EB !important;
+    padding-left: 10px !important;
+  }
+  .profile-section-tabs {
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    gap: 14px !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    margin-top: 14px !important;
+  }
+  .profile-section-tabs::-webkit-scrollbar {
+    display: none !important;
+  }
+  .profile-creds-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+}
+
+/* Extra Small Phones (<= 420px) */
+@media (max-width: 420px) {
+  .header-brand-text {
+    display: none !important;
+  }
+  .header-search-container {
+    max-width: 155px !important;
+  }
+  .header-search-input {
+    font-size: 12px !important;
+  }
+  .profile-actions-wrap {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  .profile-actions-wrap button {
+    width: 100% !important;
+  }
+  .profile-name-text {
+    font-size: 18px !important;
+  }
+  .profile-cover-banner {
+    height: 110px !important;
   }
 }

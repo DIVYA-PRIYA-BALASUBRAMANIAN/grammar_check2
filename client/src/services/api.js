@@ -439,8 +439,13 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(data)
       }),
-    deletePost: (id) =>
-      fetchJson(`/feed/posts/${id}`, { method: 'DELETE' }),
+    deletePost: (id) => {
+      const cleanId = String(id).replace(/^post-/i, '');
+      if (isNaN(Number(cleanId))) {
+        return Promise.resolve({ message: 'Deleted locally' });
+      }
+      return fetchJson(`/feed/posts/${cleanId}`, { method: 'DELETE' });
+    },
     toggleLike: (postId, doctorId = 1, doctorName = 'Dr. You') =>
       fetchJson(`/feed/posts/${postId}/like?doctorId=${doctorId}&doctorName=${encodeURIComponent(doctorName)}`, {
         method: 'POST'
@@ -553,6 +558,9 @@ export const api = {
     }),
     delete: (id) => {
       const cleanId = String(id).replace(/^vid-/i, '');
+      if (isNaN(Number(cleanId))) {
+        return Promise.resolve({ message: 'Deleted locally' });
+      }
       return fetchJson(`/videos/${cleanId}`, { method: 'DELETE' });
     },
     getComments: (id) => fetchJson(`/videos/${id}/comments`).catch(() => []),
@@ -575,6 +583,9 @@ export const api = {
     }),
     delete: (id) => {
       const cleanId = String(id).replace(/^case-/i, '');
+      if (isNaN(Number(cleanId))) {
+        return Promise.resolve({ message: 'Deleted locally' });
+      }
       return fetchJson(`/cases/${cleanId}`, { method: 'DELETE' });
     }
   },

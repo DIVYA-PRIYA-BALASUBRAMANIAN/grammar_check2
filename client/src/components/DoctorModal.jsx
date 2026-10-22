@@ -18,7 +18,8 @@ import {
   Share2,
   Camera,
   UserPen,
-  ExternalLink
+  ExternalLink,
+  Trash2
 } from 'lucide-react';
 import { Avatar } from './Avatar';
 import { api } from '../services/api';
@@ -35,17 +36,38 @@ export function DoctorModal({
   onSelectCase,
   cases = [],
   posts = [],
+  connectedDoctors = [],
   currentUser,
   onEditProfile,
   onUpdateAvatar,
   onUpdateCover,
-  onViewFullPageProfile
+  onViewFullPageProfile,
+  onDeleteCase,
+  onDeletePost
 }) {
   const [activeTab, setActiveTab] = useState('about'); // 'about' | 'cases' | 'posts' | 'contact'
+  const [liveDoctor, setLiveDoctor] = useState(null);
   const modalPhotoInputRef = React.useRef(null);
   const modalCoverInputRef = React.useRef(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
+
+  // Fetch full live profile details whenever a doctor is selected
+  React.useEffect(() => {
+    setActiveTab('about');
+    if (!doctor) {
+      setLiveDoctor(null);
+      return;
+    }
+    const cleanId = String(doctor.id || '').replace(/\D/g, '');
+    if (cleanId) {
+      api.doctors.getById(cleanId)
+        .then(res => {
+          if (res) setLiveDoctor(res);
+        })
+        .catch(() => {});
+    }
+  }, [doctor?.id]);
 
   const handleQuickPhotoUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -93,17 +115,14 @@ export function DoctorModal({
     }
   };
 
-  if (!doctor) return null;
-
-  const isOwnProfile = currentUser && (
-    doctor.id === currentUser.id ||
-    String(doctor.id).replace('doc-', '') === String(currentUser.id).replace('doc-', '') ||
+  const isOwnProfile = !doctor ? false : Boolean(doctor.isCurrentUser || (currentUser && (
+    (doctor.id != null && currentUser.id != null && String(doctor.id).replace('doc-', '') === String(currentUser.id).replace('doc-', '')) ||
     (doctor.email && currentUser.email && doctor.email.toLowerCase() === currentUser.email.toLowerCase()) ||
     (doctor.name && currentUser.name && doctor.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
-  );
+  )));
 
   const resolvedDoctor = React.useMemo(() => {
-    if (!doctor) return null;
+    if (!doctor) return {};
 
     const targetId = doctor.id || (isOwnProfile && currentUser?.id);
     const targetName = doctor.name || (isOwnProfile && currentUser?.name);
@@ -116,76 +135,92 @@ export function DoctorModal({
     const base = {
       ...(fresh || {}),
       ...doctor,
+      ...(liveDoctor || {}),
       ...(isOwnProfile && currentUser ? currentUser : {})
     };
 
-    if (fresh) {
-      if (fresh.bio && (!base.bio || base.bio.startsWith('Dedicated veterinary'))) base.bio = fresh.bio;
-      if (fresh.qualification) base.qualification = fresh.qualification;
-      if (fresh.clinic) base.clinic = fresh.clinic;
-      if (fresh.city) base.city = fresh.city;
-      if (fresh.state) base.state = fresh.state;
-      if (fresh.phone) base.phone = fresh.phone;
-      if (fresh.email) base.email = fresh.email;
-      if (fresh.experienceYears) base.experienceYears = fresh.experienceYears;
-      if (fresh.connectionsCount) base.connectionsCount = fresh.connectionsCount;
-      if (fresh.casesCount) base.casesCount = fresh.casesCount;
-      if (fresh.coverImage && (!base.coverImage || base.coverImage.includes('unsplash.com'))) base.coverImage = fresh.coverImage;
-      if (fresh.avatar && (!base.avatar || base.avatar.includes('unsplash.com'))) base.avatar = fresh.avatar;
+    const source = liveDoctor || fresh;
+    if (source) {
+      if (source.bio && (!base.bio || base.bio.startsWith('Dedicated veterinary'))) base.bio = source.bio;
+      if (source.qualification) base.qualification = source.qualification;
+      if (source.clinic) base.clinic = source.clinic;
+      if (source.city) base.city = source.city;
+      if (source.state) base.state = source.state;
+      if (source.phone) base.phone = source.phone;
+      if (source.email) base.email = source.email;
+      if (source.licenseNumber) base.licenseNumber = source.licenseNumber;
+      if (source.experienceYears != null) base.experienceYears = source.experienceYears;
+      if (source.connectionsCount != null) base.connectionsCount = source.connectionsCount;
+      if (source.casesCount != null) base.casesCount = source.casesCount;
+      if (source.coverImage && (!base.coverImage || base.coverImage.includes('unsplash.com'))) base.coverImage = source.coverImage;
+      if (source.avatar && (!base.avatar || base.avatar.includes('unsplash.com'))) base.avatar = source.avatar;
     }
 
     return base;
-  }, [doctor, doctors, isOwnProfile, currentUser]);
+  }, [doctor, doctors, liveDoctor, isOwnProfile, currentUser]);
 
-  const activeDoc = resolvedDoctor || doctor;
-  const displayPhone = activeDoc.phone || (isOwnProfile && currentUser?.phone) || '+91 98401 23456';
-  const displayEmail = activeDoc.email || (isOwnProfile && currentUser?.email) || (activeDoc.name ? `${activeDoc.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@zenvevet.com` : 'doctor@zenvevet.com');
+  const activeDoc = resolvedDoctor || liveDoctor || doctor || {};
+  const displayPhone = activeDoc?.phone || (isOwnProfile && currentUser?.phone) || '+91 98401 23456';
+  const displayEmail = activeDoc?.email || (isOwnProfile && currentUser?.email) || (activeDoc?.name ? `${activeDoc.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@zenvevet.com` : 'doctor@zenvevet.com');
 
-  const doctorCases = cases.filter(c => {
-    if (!c) return false;
-    if (activeDoc.id && (c.authorId === activeDoc.id || String(c.authorId).replace('doc-', '') === String(activeDoc.id).replace('doc-', ''))) return true;
-    if (c.authorName && activeDoc.name) {
-      return c.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === activeDoc.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim();
+  // Helper to match items authored by this practitioner
+  const isDocItem = (authorId, authorName) => {
+    if (isOwnProfile) {
+      if (authorId === 'doc-me') return true;
+      if (currentUser?.id && (authorId === currentUser.id || String(authorId).replace('doc-', '') === String(currentUser.id).replace('doc-', ''))) return true;
+      if (authorName && authorName.toLowerCase().includes('you')) return true;
+      if (currentUser?.name && authorName) {
+        const cleanA = authorName.toLowerCase().replace(/^dr\.?\s*/i, '').replace(/\s*\([a-z\s]+\)/i, '').trim();
+        const cleanMe = currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').replace(/\s*\([a-z\s]+\)/i, '').trim();
+        if (cleanA && cleanMe && (cleanA === cleanMe || cleanA.includes(cleanMe) || cleanMe.includes(cleanA))) return true;
+      }
+    }
+    if (activeDoc?.id && (authorId === activeDoc.id || String(authorId).replace('doc-', '') === String(activeDoc.id).replace('doc-', ''))) return true;
+    if (authorName && activeDoc?.name) {
+      const cleanA = authorName.toLowerCase().replace(/^dr\.?\s*/i, '').replace(/\s*\([a-z\s]+\)/i, '').trim();
+      const cleanD = activeDoc.name.toLowerCase().replace(/^dr\.?\s*/i, '').replace(/\s*\([a-z\s]+\)/i, '').trim();
+      if (cleanA && cleanD && (cleanA === cleanD || cleanA.includes(cleanD) || cleanD.includes(cleanA))) return true;
     }
     return false;
-  });
+  };
 
-  const doctorPosts = posts.filter(p => {
-    if (!p) return false;
-    if (activeDoc.id && (p.authorId === activeDoc.id || String(p.authorId).replace('doc-', '') === String(activeDoc.id).replace('doc-', ''))) return true;
-    if (p.authorName && activeDoc.name) {
-      return p.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === activeDoc.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim();
-    }
-    return false;
-  });
+  const doctorCases = cases.filter(c => c && isDocItem(c.authorId, c.authorName));
+  const doctorPosts = posts.filter(p => p && isDocItem(p.authorId, p.authorName));
 
-  const displayAvatar = (activeDoc.avatar && !activeDoc.avatar.includes('unsplash.com'))
+  const displayConnectionsCount = isOwnProfile
+    ? (Array.isArray(connectedDoctors) ? connectedDoctors.length : 0)
+    : (activeDoc?.connectionsCount != null ? Number(activeDoc.connectionsCount) : (isConnected ? 1 : 0));
+
+  const displayExperienceYears = activeDoc?.experienceYears != null ? activeDoc.experienceYears : (activeDoc?.experience || 0);
+  const displayExperienceText = `${displayExperienceYears} ${Number(displayExperienceYears) === 1 ? 'yr' : 'yrs'}`;
+  const displayVciStatus = activeDoc?.verified !== false ? '100%' : 'Pending';
+
+  const displayAvatar = (activeDoc?.avatar && !activeDoc.avatar.includes('unsplash.com'))
     ? activeDoc.avatar
-    : ((isOwnProfile && currentUser?.avatar && !currentUser.avatar.includes('unsplash.com')) ? currentUser.avatar : (doctor.avatar || ''));
+    : ((isOwnProfile && currentUser?.avatar && !currentUser.avatar.includes('unsplash.com')) ? currentUser.avatar : (doctor?.avatar || ''));
 
-  const displayCover = (activeDoc.coverImage && !activeDoc.coverImage.includes('unsplash.com'))
+  const displayCover = (activeDoc?.coverImage && !activeDoc.coverImage.includes('unsplash.com'))
     ? activeDoc.coverImage
-    : ((isOwnProfile && currentUser?.coverImage && !currentUser.coverImage.includes('unsplash.com')) ? currentUser.coverImage : (doctor.coverImage || ''));
+    : ((isOwnProfile && currentUser?.coverImage && !currentUser.coverImage.includes('unsplash.com')) ? currentUser.coverImage : (doctor?.coverImage || ''));
+
+  if (!doctor) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 1000 }}>
+    <div className="modal-overlay doctor-modal-overlay" onClick={onClose} style={{ zIndex: 99999 }}>
       <div
-        className="modal-content"
+        className="modal-content doctor-modal-card"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: '640px', width: '100%', borderRadius: '18px', overflow: 'hidden' }}
       >
         {/* Cover Image Banner */}
-        <div style={{
-          height: '140px',
-          background: displayCover
-            ? `url(${displayCover}) center/cover no-repeat`
-            : 'linear-gradient(135deg, #003822 0%, #05633C 50%, #0D472B 100%)',
-          position: 'relative',
-          padding: '14px 18px',
-          display: 'flex',
-          justifyContent: isOwnProfile ? 'space-between' : 'flex-end',
-          alignItems: 'flex-start'
-        }}>
+        <div
+          className="doctor-modal-cover"
+          style={{
+            background: displayCover
+              ? `url(${displayCover}) center/cover no-repeat`
+              : 'linear-gradient(135deg, #003822 0%, #05633C 50%, #0D472B 100%)',
+            justifyContent: isOwnProfile ? 'space-between' : 'flex-end'
+          }}
+        >
           {isOwnProfile && (
             <>
               <input
@@ -199,21 +234,7 @@ export function DoctorModal({
                 type="button"
                 onClick={() => modalCoverInputRef.current?.click()}
                 disabled={isUploadingCover}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  backgroundColor: 'rgba(0,0,0,0.45)',
-                  color: '#FFFFFF',
-                  border: '1px solid rgba(255,255,255,0.3)',
-                  borderRadius: '20px',
-                  padding: '5px 12px',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  backdropFilter: 'blur(4px)',
-                  transition: 'all 0.15s ease'
-                }}
+                className="doctor-modal-cover-btn"
                 title="Change Cover Banner Photo"
               >
                 <Camera size={13} />
@@ -222,7 +243,7 @@ export function DoctorModal({
             </>
           )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="doctor-modal-cover-actions">
             {onViewFullPageProfile && (
               <button
                 type="button"
@@ -230,20 +251,7 @@ export function DoctorModal({
                   onClose();
                   onViewFullPageProfile(activeDoc);
                 }}
-                style={{
-                  color: '#FFFFFF',
-                  backgroundColor: 'rgba(0,0,0,0.45)',
-                  borderRadius: '20px',
-                  border: '1px solid rgba(255,255,255,0.3)',
-                  padding: '5px 12px',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  backdropFilter: 'blur(4px)'
-                }}
+                className="doctor-modal-cover-btn"
                 title="Open in full page profile view"
               >
                 <ExternalLink size={12} />
@@ -251,22 +259,23 @@ export function DoctorModal({
               </button>
             )}
             <button
-              className="btn-close-modal"
+              className="doctor-modal-close-btn"
               onClick={onClose}
-              style={{ color: '#FFFFFF', backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: '50%', width: '32px', height: '32px' }}
+              title="Close Profile"
+              aria-label="Close"
             >
-              <X size={18} />
+              <X size={17} />
             </button>
           </div>
         </div>
 
         {/* Doctor Header Info Card */}
-        <div style={{ padding: '0 24px 20px 24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '-48px', marginBottom: '14px' }}>
-            <div style={{ position: 'relative' }}>
+        <div className="doctor-modal-body">
+          <div className="doctor-modal-avatar-row">
+            <div className="doctor-modal-avatar-wrap">
               <Avatar
                 src={displayAvatar}
-                name={activeDoc.name || doctor.name}
+                name={activeDoc?.name || doctor.name}
                 size={96}
                 fontSize={38}
                 style={{
@@ -309,7 +318,7 @@ export function DoctorModal({
                     <Camera size={15} />
                   </button>
                 </>
-              ) : activeDoc.verified ? (
+              ) : activeDoc?.verified ? (
                 <CheckCircle2
                   size={22}
                   color="#00a86b"
@@ -320,7 +329,7 @@ export function DoctorModal({
             </div>
 
             {/* Action Buttons */}
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div className="doctor-modal-actions">
               {isOwnProfile ? (
                 <button
                   onClick={() => {
@@ -436,16 +445,16 @@ export function DoctorModal({
 
           {/* Name & Headline */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: '800', color: '#111827', margin: 0 }}>
-                {activeDoc.name}
+            <div className="doctor-modal-name-row">
+              <h2 className="doctor-modal-name">
+                {activeDoc?.name || doctor.name}
               </h2>
-              {activeDoc.verified && (
+              {activeDoc?.verified && (
                 <span style={{ fontSize: '11px', color: '#065F46', backgroundColor: '#ECFDF5', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
                   Verified Practitioner
                 </span>
               )}
-              {activeDoc.active ? (
+              {activeDoc?.active ? (
                 <span style={{ fontSize: '11px', color: '#065F46', backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', padding: '2px 8px', borderRadius: '9999px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                   <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10B981' }} />
                   Active
@@ -458,30 +467,23 @@ export function DoctorModal({
               )}
             </div>
 
-            <p style={{ fontSize: '14.5px', color: '#003822', fontWeight: '700', margin: '4px 0 2px 0' }}>
-              {activeDoc.specialty}
+            <p className="doctor-modal-specialty">
+              {activeDoc?.specialty || 'Veterinary Practitioner'}
             </p>
 
-            <p style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#64726A', margin: 0 }}>
+            <p className="doctor-modal-location">
               <MapPin size={14} />
-              <span>{activeDoc.clinic || 'Specialty Pet Care'} · {activeDoc.city}, {activeDoc.state}</span>
+              <span>{activeDoc?.clinic || 'Specialty Pet Care'} · {activeDoc?.city || 'Bengaluru'}, {activeDoc?.state || 'India'}</span>
             </p>
 
             {/* Quick Contact Badges */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+            <div className="doctor-modal-contact-row">
               <a
                 href={`tel:${displayPhone.replace(/\s+/g, '')}`}
+                className="doctor-modal-contact-badge"
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  fontSize: '12px',
-                  fontWeight: 600,
                   color: '#065F46',
                   backgroundColor: '#ECFDF5',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  textDecoration: 'none',
                   border: '1px solid #A7F3D0'
                 }}
                 title="Call doctor"
@@ -492,17 +494,10 @@ export function DoctorModal({
 
               <a
                 href={`mailto:${displayEmail}`}
+                className="doctor-modal-contact-badge"
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  fontSize: '12px',
-                  fontWeight: 600,
                   color: '#1E40AF',
                   backgroundColor: '#EFF6FF',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  textDecoration: 'none',
                   border: '1px solid #BFDBFE'
                 }}
                 title="Send email"
@@ -513,30 +508,36 @@ export function DoctorModal({
             </div>
 
             {/* Stats Bar */}
-            <div style={{ display: 'flex', gap: '16px', marginTop: '12px', padding: '10px 14px', backgroundColor: '#F8F9FA', borderRadius: '8px' }}>
-              <div>
-                <span style={{ display: 'block', fontSize: '16px', fontWeight: 800, color: '#111827' }}>
-                  {activeDoc.connectionsCount || 428}
+            <div className="doctor-modal-stats-bar">
+              <div className="doctor-modal-stat-card">
+                <span className="doctor-modal-stat-num">
+                  {displayConnectionsCount}
                 </span>
-                <span style={{ fontSize: '11px', color: '#6B7280' }}>Connections</span>
+                <span className="doctor-modal-stat-label">Network</span>
               </div>
-              <div style={{ borderLeft: '1px solid #E5E7EB', paddingLeft: '16px' }}>
-                <span style={{ display: 'block', fontSize: '16px', fontWeight: 800, color: '#111827' }}>
-                  {doctorCases.length > 0 ? doctorCases.length : (activeDoc.casesCount || 34)}
+              <div className="doctor-modal-stat-card">
+                <span className="doctor-modal-stat-num">
+                  {doctorCases.length}
                 </span>
-                <span style={{ fontSize: '11px', color: '#6B7280' }}>Clinical Cases</span>
+                <span className="doctor-modal-stat-label">Cases</span>
               </div>
-              <div style={{ borderLeft: '1px solid #E5E7EB', paddingLeft: '16px' }}>
-                <span style={{ display: 'block', fontSize: '16px', fontWeight: 800, color: '#111827' }}>
-                  {activeDoc.experienceYears || 8} yrs
+              <div className="doctor-modal-stat-card">
+                <span className="doctor-modal-stat-num">
+                  {displayExperienceText}
                 </span>
-                <span style={{ fontSize: '11px', color: '#6B7280' }}>Experience</span>
+                <span className="doctor-modal-stat-label">Practice</span>
+              </div>
+              <div className="doctor-modal-stat-card">
+                <span className="doctor-modal-stat-num" style={{ color: activeDoc?.verified !== false ? '#059669' : '#D97706' }}>
+                  {displayVciStatus}
+                </span>
+                <span className="doctor-modal-stat-label">VCI Verified</span>
               </div>
             </div>
           </div>
 
           {/* Profile Section Tabs */}
-          <div style={{ display: 'flex', borderBottom: '1px solid #E5E7EB', marginTop: '16px', gap: '16px' }}>
+          <div className="doctor-modal-tabs-bar">
             {[
               { id: 'about', label: 'About & Credentials' },
               { id: 'cases', label: `Cases (${doctorCases.length})` },
@@ -546,15 +547,11 @@ export function DoctorModal({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
+                className="doctor-modal-tab-btn"
                 style={{
-                  padding: '8px 4px',
-                  background: 'none',
-                  border: 'none',
                   borderBottom: activeTab === tab.id ? '2.5px solid #003822' : '2.5px solid transparent',
                   color: activeTab === tab.id ? '#003822' : '#6B7280',
-                  fontWeight: activeTab === tab.id ? 700 : 500,
-                  fontSize: '13px',
-                  cursor: 'pointer'
+                  fontWeight: activeTab === tab.id ? 700 : 500
                 }}
               >
                 {tab.label}
@@ -568,25 +565,45 @@ export function DoctorModal({
               <h4 style={{ fontSize: '12.5px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.6px', color: '#64726A', marginBottom: '6px' }}>
                 Professional Biography
               </h4>
-              <p style={{ fontSize: '13.5px', color: '#374151', lineHeight: '1.6', margin: '0 0 16px 0' }}>
-                {activeDoc.bio || 'Dedicated veterinary practitioner committed to providing high-quality companion and large animal care, advancing evidence-based veterinary clinical medicine.'}
+              <p style={{ fontSize: '13.5px', color: '#374151', lineHeight: '1.6', margin: '0 0 16px 0', backgroundColor: '#F9FAFB', padding: '12px 14px', borderRadius: '8px', border: '1px solid #F3F4F6' }}>
+                {activeDoc?.bio || 'Dedicated veterinary practitioner committed to providing high-quality companion and large animal care, advancing evidence-based veterinary clinical medicine.'}
               </p>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-                <div style={{ padding: '12px', backgroundColor: '#F9FAFB', borderRadius: '8px', border: '1px solid #F3F4F6' }}>
+              <div className="doctor-modal-creds-grid">
+                <div className="doctor-modal-cred-card">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#059669', fontSize: '12px', fontWeight: 600, marginBottom: '2px' }}>
                     <GraduationCap size={15} />
                     <span>Qualifications</span>
                   </div>
-                  <strong style={{ fontSize: '13px', color: '#111827' }}>{activeDoc.qualification || 'BVSc & AH, MVSc'}</strong>
+                  <strong style={{ fontSize: '13px', color: '#111827', display: 'block' }}>{activeDoc?.qualification || 'BVSc & AH (Verified VCI)'}</strong>
+                  <span style={{ fontSize: '11px', color: '#6B7280' }}>State Veterinary Council & VCI</span>
                 </div>
 
-                <div style={{ padding: '12px', backgroundColor: '#F9FAFB', borderRadius: '8px', border: '1px solid #F3F4F6' }}>
+                <div className="doctor-modal-cred-card">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#059669', fontSize: '12px', fontWeight: 600, marginBottom: '2px' }}>
                     <Building size={15} />
                     <span>Practice Center</span>
                   </div>
-                  <strong style={{ fontSize: '13px', color: '#111827' }}>{activeDoc.clinic || 'Specialty Animal Hospital'}</strong>
+                  <strong style={{ fontSize: '13px', color: '#111827', display: 'block' }}>{activeDoc?.clinic || 'Specialty Animal Hospital'}</strong>
+                  <span style={{ fontSize: '11px', color: '#6B7280' }}>{activeDoc?.city || 'Bengaluru'}, {activeDoc?.state || 'Karnataka'}</span>
+                </div>
+
+                <div className="doctor-modal-cred-card">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#059669', fontSize: '12px', fontWeight: 600, marginBottom: '2px' }}>
+                    <ShieldCheck size={15} />
+                    <span>VCI Registration License</span>
+                  </div>
+                  <strong style={{ fontSize: '13px', color: '#111827', display: 'block' }}>{activeDoc?.licenseNumber || 'VCI/REG-2024-VET'}</strong>
+                  <span style={{ fontSize: '11px', color: '#059669', fontWeight: 600 }}>Active & Verified in Good Standing</span>
+                </div>
+
+                <div className="doctor-modal-cred-card">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#059669', fontSize: '12px', fontWeight: 600, marginBottom: '2px' }}>
+                    <Stethoscope size={15} />
+                    <span>Specialty Focus</span>
+                  </div>
+                  <strong style={{ fontSize: '13px', color: '#111827', display: 'block' }}>{activeDoc?.specialty || 'Veterinary Practitioner'}</strong>
+                  <span style={{ fontSize: '11px', color: '#6B7280' }}>Clinical Case Consultations</span>
                 </div>
               </div>
             </div>
@@ -612,9 +629,37 @@ export function DoctorModal({
                       cursor: 'pointer'
                     }}
                   >
-                    <h4 style={{ margin: '0 0 4px 0', fontSize: '13.5px', color: '#003822', fontWeight: 700 }}>
-                      {c.title}
-                    </h4>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                      <h4 style={{ margin: 0, fontSize: '13.5px', color: '#003822', fontWeight: 700 }}>
+                        {c.title}
+                      </h4>
+                      {isOwnProfile && onDeleteCase && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteCase(c.id);
+                          }}
+                          title="Delete clinical case"
+                          style={{
+                            border: '1px solid #fee2e2',
+                            backgroundColor: '#fff5f5',
+                            color: '#dc2626',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            padding: '2px 6px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                            fontSize: '10.5px',
+                            fontWeight: 600
+                          }}
+                        >
+                          <Trash2 size={11} />
+                          <span>Delete</span>
+                        </button>
+                      )}
+                    </div>
                     <p style={{ margin: 0, fontSize: '12px', color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {c.presentingComplaint}
                     </p>
@@ -634,7 +679,32 @@ export function DoctorModal({
               ) : (
                 doctorPosts.map((p) => (
                   <div key={p.id} style={{ padding: '12px 14px', borderRadius: '8px', border: '1px solid #E5E7EB', backgroundColor: '#F9FAFB' }}>
-                    <span style={{ fontSize: '11px', color: '#059669', fontWeight: 700 }}>{p.badgeLabel || 'CLINICAL UPDATE'}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '11px', color: '#059669', fontWeight: 700 }}>{p.badgeLabel || 'CLINICAL UPDATE'}</span>
+                      {isOwnProfile && onDeletePost && (
+                        <button
+                          type="button"
+                          onClick={() => onDeletePost(p.id)}
+                          title="Delete post"
+                          style={{
+                            border: '1px solid #fee2e2',
+                            backgroundColor: '#fff5f5',
+                            color: '#dc2626',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            padding: '2px 6px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                            fontSize: '10.5px',
+                            fontWeight: 600
+                          }}
+                        >
+                          <Trash2 size={11} />
+                          <span>Delete</span>
+                        </button>
+                      )}
+                    </div>
                     <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#1F2937', lineHeight: 1.4 }}>
                       {p.content}
                     </p>

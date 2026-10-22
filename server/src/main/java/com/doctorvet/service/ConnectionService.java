@@ -80,11 +80,11 @@ public class ConnectionService {
             }
 
             doctorRepo.findById(req.getSenderId()).ifPresent(d -> {
-                d.setConnectionsCount(d.getConnectionsCount() + 1);
+                d.setConnectionsCount((int) connectionRepo.countConnectionsForDoctor(req.getSenderId()));
                 doctorRepo.save(d);
             });
             doctorRepo.findById(req.getReceiverId()).ifPresent(d -> {
-                d.setConnectionsCount(d.getConnectionsCount() + 1);
+                d.setConnectionsCount((int) connectionRepo.countConnectionsForDoctor(req.getReceiverId()));
                 doctorRepo.save(d);
             });
 
@@ -133,11 +133,11 @@ public class ConnectionService {
         if (conn.isPresent()) {
             connectionRepo.delete(conn.get());
             doctorRepo.findById(currentDoctorId).ifPresent(d -> {
-                d.setConnectionsCount(Math.max(0, d.getConnectionsCount() - 1));
+                d.setConnectionsCount((int) connectionRepo.countConnectionsForDoctor(currentDoctorId));
                 doctorRepo.save(d);
             });
             doctorRepo.findById(targetDoctorId).ifPresent(d -> {
-                d.setConnectionsCount(Math.max(0, d.getConnectionsCount() - 1));
+                d.setConnectionsCount((int) connectionRepo.countConnectionsForDoctor(targetDoctorId));
                 doctorRepo.save(d);
             });
             return true;

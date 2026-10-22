@@ -304,7 +304,7 @@ export function SearchView({ doctors: initialDoctors = [], onSelectDoctor, onOpe
                     <div style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#111827', fontWeight: '700' }}>
                       <Star size={11} fill="#eab308" color="#eab308" />
                       <span>4.9</span>
-                      <span style={{ color: '#9ca3af', fontWeight: '500' }}>({doctor.connectionsCount || 25}+ peers)</span>
+                      <span style={{ color: '#9ca3af', fontWeight: '500' }}>({doctor.connectionsCount != null ? doctor.connectionsCount : 0} connections)</span>
                     </div>
                   </div>
                 </div>

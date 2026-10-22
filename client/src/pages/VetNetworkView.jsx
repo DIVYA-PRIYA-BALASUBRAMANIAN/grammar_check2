@@ -384,7 +384,11 @@ export function VetNetworkView({
                 </div>
 
                 {/* Avatar with Verified checkmark */}
-                <div style={{ marginTop: '-36px', marginLeft: '16px', position: 'relative', width: '64px', height: '64px' }}>
+                <div 
+                  onClick={() => onSelectDoctor && onSelectDoctor(doc)}
+                  title={`View ${doc.name}'s profile`}
+                  style={{ marginTop: '-36px', marginLeft: '16px', position: 'relative', width: '64px', height: '64px', cursor: 'pointer' }}
+                >
                   <Avatar
                     src={doc.avatar}
                     name={doc.name}
@@ -448,21 +452,23 @@ export function VetNetworkView({
                     {doc.clinic || 'Specialty Veterinary Hospital'} · {doc.state || 'India'}
                   </p>
 
-                  {/* Mutual Connection Tag */}
-                  <div style={{
-                    padding: '4px 8px',
-                    backgroundColor: '#F8FBF9',
-                    borderRadius: '6px',
-                    border: '1px solid #E8F3ED',
-                    fontSize: '10.5px',
-                    color: '#065F46',
-                    marginBottom: '14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}>
-                    <span>✦ 4 mutual peer connections</span>
-                  </div>
+                  {/* Connection Status Tag */}
+                  {isConnected && (
+                    <div style={{
+                      padding: '4px 8px',
+                      backgroundColor: '#F8FBF9',
+                      borderRadius: '6px',
+                      border: '1px solid #E8F3ED',
+                      fontSize: '10.5px',
+                      color: '#065F46',
+                      marginBottom: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      <span>✦ Connected in Professional Network</span>
+                    </div>
+                  )}
 
                   {/* Action Buttons */}
                   <div style={{ marginTop: 'auto', display: 'flex', gap: '8px' }}>

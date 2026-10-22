@@ -276,6 +276,32 @@ export function CommunityView({
     );
   }, [doctors, connectedDoctors, currentUser, inviteSearch]);
 
+  // Dynamically resolve a doctor's latest profile (avatar, name, specialty) from currentUser and doctors catalog
+  const resolveDoctor = (docId, docName) => {
+    if (!docId && !docName) return null;
+    if (currentUser) {
+      if (docId && (docId === currentUser.id || String(docId).replace('doc-', '') === String(currentUser.id).replace('doc-', ''))) {
+        return currentUser;
+      }
+      if (docName && currentUser.name) {
+        const n1 = docName.toLowerCase().replace(/^dr\.?\s*/i, '').trim();
+        const n2 = currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim();
+        if (n1 === n2) return currentUser;
+      }
+    }
+    const cleanId = docId ? String(docId).replace('doc-', '') : '';
+    const cleanName = docName ? docName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() : '';
+
+    return (doctors || []).find(d => {
+      if (cleanId && (String(d.id) === cleanId || String(d.id).replace('doc-', '') === cleanId)) return true;
+      if (cleanName && d.name) {
+        const n = d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim();
+        if (n === cleanName) return true;
+      }
+      return false;
+    }) || null;
+  };
+
   // Connected doctors who are ALREADY members of activeCommunity
   const connectedMembersInGroup = useMemo(() => {
     if (!activeCommunity) return [];
@@ -284,8 +310,11 @@ export function CommunityView({
       const selfId = String(currentUser?.id || '').replace('doc-', '');
       if (selfId && memberCleanId === selfId) return false;
       return connectedDoctors.some(c => String(c.id).replace('doc-', '') === memberCleanId);
+    }).map(m => {
+      const d = resolveDoctor(m.id, m.name);
+      return d ? { ...m, ...d, avatar: d.avatar || m.avatar } : m;
     });
-  }, [activeCommunity, connectedDoctors, currentUser]);
+  }, [activeCommunity, connectedDoctors, currentUser, doctors]);
 
   // Scroll chat to bottom on new messages
   useEffect(() => {
@@ -868,15 +897,18 @@ export function CommunityView({
                 {/* Overlapping Doctor Avatars Row */}
                 <div className="fb-group-member-faces-row">
                   <div className="fb-member-stack">
-                    {(activeCommunity.members || []).slice(0, 5).map((m, idx) => (
-                      <Avatar
-                        key={m.id || idx}
-                        src={m.avatar}
-                        name={m.name}
-                        size={28}
-                        className="fb-stack-avatar"
-                      />
-                    ))}
+                    {(activeCommunity.members || []).slice(0, 5).map((m, idx) => {
+                      const resolvedDoc = resolveDoctor(m.id, m.name);
+                      return (
+                        <Avatar
+                          key={m.id || idx}
+                          src={resolvedDoc?.avatar || m.avatar}
+                          name={resolvedDoc?.name || m.name}
+                          size={28}
+                          className="fb-stack-avatar"
+                        />
+                      );
+                    })}
                   </div>
                   <span className="fb-faces-text">
                     {connectedMembersInGroup.length > 0 ? (
@@ -1446,6 +1478,7 @@ export function CommunityView({
                         currentUser={currentUser}
                         isMember={isMember}
                         isAdmin={isAdmin}
+                        doctors={doctors}
                       />
                     ))
                   ) : (
@@ -1522,28 +1555,31 @@ export function CommunityView({
 
                   {connectedMembersInGroup.length > 0 ? (
                     <div className="fb-connected-preview-list">
-                      {connectedMembersInGroup.slice(0, 4).map((doc) => (
-                        <div key={doc.id} className="fb-connected-doc-row">
-                          <Avatar src={doc.avatar} name={doc.name} size={34} />
-                          <div className="fb-connected-meta">
-                            <strong 
-                              className="fb-connected-name"
-                              onClick={() => onOpenDoctorProfile && onOpenDoctorProfile(doc)}
+                      {connectedMembersInGroup.slice(0, 4).map((doc) => {
+                        const resolved = resolveDoctor(doc.id, doc.name) || doc;
+                        return (
+                          <div key={doc.id} className="fb-connected-doc-row">
+                            <Avatar src={resolved.avatar || doc.avatar} name={resolved.name || doc.name} size={34} />
+                            <div className="fb-connected-meta">
+                              <strong 
+                                className="fb-connected-name"
+                                onClick={() => onOpenDoctorProfile && onOpenDoctorProfile(resolved)}
+                              >
+                                {resolved.name || doc.name}
+                              </strong>
+                              <span>{resolved.specialty || doc.specialty || 'Veterinary Practitioner'}</span>
+                            </div>
+                            <button
+                              type="button"
+                              className="fb-btn-msg-circle"
+                              onClick={() => onOpenDirectChat && onOpenDirectChat(resolved)}
+                              title={`Chat with ${resolved.name || doc.name}`}
                             >
-                              {doc.name}
-                            </strong>
-                            <span>{doc.specialty || 'Veterinary Practitioner'}</span>
+                              <MessageCircle size={14} />
+                            </button>
                           </div>
-                          <button
-                            type="button"
-                            className="fb-btn-msg-circle"
-                            onClick={() => onOpenDirectChat && onOpenDirectChat(doc)}
-                            title={`Chat with ${doc.name}`}
-                          >
-                            <MessageCircle size={14} />
-                          </button>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="fb-widget-empty-note">
@@ -1669,7 +1705,7 @@ export function CommunityView({
                             <span>{c.treatment}</span>
                           </div>
                           <div className="fb-case-footer">
-                            <span>Shared by {c.authorName}</span>
+                            <span>Shared by {resolveDoctor(c.authorId, c.authorName)?.name || c.authorName}</span>
                             <span>{c.timestamp || 'Recent'}</span>
                           </div>
                         </div>
@@ -1763,7 +1799,7 @@ export function CommunityView({
                         <div className="fb-reel-meta">
                           <h4 className="fb-reel-title">{reel.title}</h4>
                           <p className="fb-reel-author">
-                            <span>{reel.authorName}</span>
+                            <span>{resolveDoctor(reel.authorId, reel.authorName)?.name || reel.authorName}</span>
                             <span>·</span>
                             <span>{reel.views || 150} views</span>
                           </p>
@@ -1811,6 +1847,9 @@ export function CommunityView({
                     activeCommunity.chatMessages.map((msg) => {
                       const isMe = msg.senderId === currentUser?.id || 
                         String(msg.senderId).replace('doc-', '') === String(currentUser?.id).replace('doc-', '');
+                      const senderDoc = isMe ? currentUser : resolveDoctor(msg.senderId, msg.senderName);
+                      const sAvatar = isMe ? currentUser?.avatar : (senderDoc?.avatar || msg.senderAvatar);
+                      const sName = isMe ? (currentUser?.name || 'You') : (senderDoc?.name || msg.senderName);
 
                       return (
                         <div
@@ -1819,15 +1858,15 @@ export function CommunityView({
                         >
                           {!isMe && (
                             <Avatar
-                              src={msg.senderAvatar}
-                              name={msg.senderName}
+                              src={sAvatar}
+                              name={sName}
                               size={32}
                               className="fb-chat-avatar"
                             />
                           )}
                           <div className="fb-chat-msg-wrap">
                             {!isMe && (
-                              <span className="fb-chat-author-name">{msg.senderName}</span>
+                              <span className="fb-chat-author-name">{sName}</span>
                             )}
                             <div className={`fb-chat-bubble ${isMe ? 'bubble-me' : 'bubble-other'}`}>
                               <p>{msg.text}</p>
@@ -1924,12 +1963,17 @@ export function CommunityView({
                   const isFounder = member.role?.includes('Founder') || member.role?.includes('Admin');
                   const isCurrentDoc = member.id === currentUser?.id || 
                     String(member.id).replace('doc-', '') === String(currentUser?.id).replace('doc-', '');
+                  const resolved = isCurrentDoc ? currentUser : (resolveDoctor(member.id, member.name) || member);
+                  const mAvatar = resolved.avatar || member.avatar;
+                  const mName = resolved.name || member.name;
+                  const mSpec = resolved.specialty || member.specialty || 'Veterinary Practitioner';
+                  const mCity = resolved.city || member.city || 'India';
 
                   return (
                     <div key={member.id} className="fb-member-card">
                       <Avatar
-                        src={member.avatar}
-                        name={member.name}
+                        src={mAvatar}
+                        name={mName}
                         size={48}
                         className="fb-member-card-avatar"
                       />
@@ -1937,14 +1981,14 @@ export function CommunityView({
                         <div className="fb-member-name-row">
                           <strong 
                             className="fb-member-name"
-                            onClick={() => onOpenDoctorProfile && onOpenDoctorProfile(member)}
+                            onClick={() => onOpenDoctorProfile && onOpenDoctorProfile(resolved)}
                           >
-                            {member.name}
+                            {mName}
                           </strong>
                           {isFounder && <span className="fb-admin-badge">Admin</span>}
                         </div>
-                        <p className="fb-member-spec">{member.specialty || 'Veterinary Practitioner'}</p>
-                        <p className="fb-member-city">{member.city || 'India'}</p>
+                        <p className="fb-member-spec">{mSpec}</p>
+                        <p className="fb-member-city">{mCity}</p>
                       </div>
 
                       {!isCurrentDoc && (
@@ -3106,10 +3150,42 @@ function FacebookGroupPostCard({
   onOpenDoctorProfile,
   currentUser,
   isMember,
-  isAdmin
+  isAdmin,
+  doctors = []
 }) {
   const [commentText, setCommentText] = useState('');
   const [showComments, setShowComments] = useState(false);
+
+  // Dynamic doctor lookup so user avatar & details always stay live
+  const resolveDoc = (docId, docName) => {
+    if (!docId && !docName) return null;
+    const cleanId = String(docId || '').replace('doc-', '');
+    const cleanCurrentId = String(currentUser?.id || '').replace('doc-', '');
+    const cleanName = (docName || '').toLowerCase().replace(/^dr\.?\s*/i, '').trim();
+    const currentName = (currentUser?.name || '').toLowerCase().replace(/^dr\.?\s*/i, '').trim();
+
+    if ((docId && (docId === currentUser?.id || cleanId === cleanCurrentId)) ||
+        (cleanName && currentName && cleanName === currentName)) {
+      return currentUser;
+    }
+
+    if (Array.isArray(doctors)) {
+      const match = doctors.find(d => {
+        if (!d) return false;
+        const dId = String(d.id || '').replace('doc-', '');
+        if (docId && (d.id === docId || dId === cleanId)) return true;
+        const dName = (d.name || '').toLowerCase().replace(/^dr\.?\s*/i, '').trim();
+        return cleanName && dName && cleanName === dName;
+      });
+      if (match) return match;
+    }
+    return null;
+  };
+
+  const resolvedAuthor = resolveDoc(post.authorId, post.authorName);
+  const authorAvatar = resolvedAuthor?.avatar || post.authorAvatar;
+  const authorName = resolvedAuthor?.name || post.authorName;
+  const authorSpecialty = resolvedAuthor?.specialty || post.authorSpecialty || 'Veterinary Practitioner';
 
   const isAuthor = currentUser && (
     post.authorId === currentUser.id ||
@@ -3131,24 +3207,33 @@ function FacebookGroupPostCard({
       {/* Post Top Row: Author, Verification, Timestamp, Privacy */}
       <div className="fb-post-top">
         <Avatar
-          src={post.authorAvatar}
-          name={post.authorName}
+          src={authorAvatar}
+          name={authorName}
           size={42}
           className="fb-post-avatar"
+          onClick={() => {
+            const targetDoc = resolvedAuthor || { name: authorName, id: post.authorId, avatar: authorAvatar, specialty: authorSpecialty };
+            onOpenDoctorProfile && onOpenDoctorProfile(targetDoc);
+          }}
+          style={{ cursor: 'pointer' }}
         />
         <div className="fb-post-author-meta">
           <div className="fb-post-author-line">
             <h4
               className="fb-post-author-name"
-              onClick={() => onOpenDoctorProfile && onOpenDoctorProfile({ name: post.authorName, id: post.authorId })}
+              onClick={() => {
+                const targetDoc = resolvedAuthor || { name: authorName, id: post.authorId, avatar: authorAvatar, specialty: authorSpecialty };
+                onOpenDoctorProfile && onOpenDoctorProfile(targetDoc);
+              }}
+              style={{ cursor: 'pointer' }}
             >
-              {post.authorName}
+              {authorName}
             </h4>
             <CheckCircle2 size={13} color="#059669" className="fb-post-verify-icon" />
             {post.tag && <span className="fb-post-tag-badge">{post.tag}</span>}
           </div>
           <p className="fb-post-sub-line">
-            <span>{post.authorSpecialty || 'Veterinary Practitioner'}</span>
+            <span>{authorSpecialty}</span>
             <span>·</span>
             <span>{post.timestamp || 'Recent'}</span>
             <span>·</span>
@@ -3256,20 +3341,40 @@ function FacebookGroupPostCard({
       {/* Comments Section */}
       {(showComments || (post.comments && post.comments.length > 0)) && (
         <div className="fb-comments-stream">
-          {(post.comments || []).map((comm) => (
-            <div key={comm.id} className="fb-comment-row">
-              <Avatar
-                src={comm.authorAvatar}
-                name={comm.authorName}
-                size={30}
-              />
-              <div className="fb-comment-bubble">
-                <div className="fb-comment-author-name">{comm.authorName}</div>
-                <p className="fb-comment-text">{comm.text}</p>
-                <div className="fb-comment-time">{comm.timestamp || 'Just now'}</div>
+          {(post.comments || []).map((comm) => {
+            const commentDoc = resolveDoc(comm.authorId, comm.authorName);
+            const commAvatar = commentDoc?.avatar || comm.authorAvatar;
+            const commName = commentDoc?.name || comm.authorName;
+
+            return (
+              <div key={comm.id} className="fb-comment-row">
+                <Avatar
+                  src={commAvatar}
+                  name={commName}
+                  size={30}
+                  onClick={() => {
+                    const targetDoc = commentDoc || { name: comm.authorName, id: comm.authorId, avatar: commAvatar };
+                    onOpenDoctorProfile && onOpenDoctorProfile(targetDoc);
+                  }}
+                  style={{ cursor: 'pointer' }}
+                />
+                <div className="fb-comment-bubble">
+                  <div
+                    className="fb-comment-author-name"
+                    onClick={() => {
+                      const targetDoc = commentDoc || { name: comm.authorName, id: comm.authorId, avatar: commAvatar };
+                      onOpenDoctorProfile && onOpenDoctorProfile(targetDoc);
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {commName}
+                  </div>
+                  <p className="fb-comment-text">{comm.text}</p>
+                  <div className="fb-comment-time">{comm.timestamp || 'Just now'}</div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {isMember && (
             <form onSubmit={handleCommentSubmit} className="fb-comment-input-form">

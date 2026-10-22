@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { LeftSidebar } from './components/LeftSidebar';
 import { RightSidebar } from './components/RightSidebar';
+import { MobileBottomNav } from './components/MobileBottomNav';
 
 // Pages
 import { FeedView } from './pages/FeedView';
@@ -244,12 +245,40 @@ export function App() {
         // Load dynamic communities from Spring Boot API
         const liveCommunities = await api.communities.getAll(currentUser?.id);
         if (Array.isArray(liveCommunities)) {
-          setCommunities(liveCommunities);
+          const resolveDoc = (id, name) => {
+            if (currentUser && (id === currentUser.id || String(id).replace('doc-', '') === String(currentUser.id).replace('doc-', '') || (name && currentUser.name && name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim()))) {
+              return currentUser;
+            }
+            return loadedDocs.find(d => d.id === id || String(d.id).replace('doc-', '') === String(id).replace('doc-', '') || (name && d.name && name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim()));
+          };
+
+          const hydratedCommunities = liveCommunities.map(comm => {
+            const updatedMembers = (comm.members || []).map(m => {
+              const d = resolveDoc(m.id, m.name);
+              return d ? { ...m, avatar: d.avatar || m.avatar, name: d.name || m.name, specialty: d.specialty || m.specialty } : m;
+            });
+
+            const updatedPosts = (comm.posts || []).map(p => {
+              const d = resolveDoc(p.authorId, p.authorName);
+              const postAvatar = d?.avatar || p.authorAvatar;
+              const postName = d?.name || p.authorName;
+              const postSpecialty = d?.specialty || p.authorSpecialty;
+              const newComments = (p.comments || []).map(c => {
+                const cd = resolveDoc(c.authorId, c.authorName);
+                return cd ? { ...c, authorAvatar: cd.avatar || c.authorAvatar, authorName: cd.name || c.authorName } : c;
+              });
+              return { ...p, authorAvatar: postAvatar, authorName: postName, authorSpecialty: postSpecialty, comments: newComments };
+            });
+
+            return { ...comm, members: updatedMembers, posts: updatedPosts };
+          });
+
+          setCommunities(hydratedCommunities);
           setSelectedCommunityId(prev => {
-            if (prev && liveCommunities.some(c => c.id === prev || String(c.id) === String(prev))) {
+            if (prev && hydratedCommunities.some(c => c.id === prev || String(c.id) === String(prev))) {
               return prev;
             }
-            return liveCommunities.length > 0 ? liveCommunities[0].id : null;
+            return hydratedCommunities.length > 0 ? hydratedCommunities[0].id : null;
           });
         }
       } catch (e) {
@@ -390,6 +419,14 @@ export function App() {
         stomp.subscribe(`/topic/user/${currentUser.id}/notifications`, () => {
           api.notifications.getNotifications(currentUser.id).then(notifs => {
             if (notifs) setNotifications(notifs);
+          }).catch(() => { });
+          api.connections.getMy(currentUser.id).then(myCons => {
+            if (myCons && Array.isArray(myCons)) {
+              setMyConnections(myCons);
+              const map = {};
+              myCons.forEach(c => { map[c.id] = true; map[`doc-${c.id}`] = true; });
+              setConnectedMap(map);
+            }
           }).catch(() => { });
         });
 
@@ -733,6 +770,16 @@ export function App() {
         setMyConnections(prev => [...prev.filter(p => p.id !== doc.id), doc]);
       }
     }
+    if (currentUser?.id) {
+      api.connections.getMy(currentUser.id).then(cons => {
+        if (cons && Array.isArray(cons)) {
+          setMyConnections(cons);
+          const map = {};
+          cons.forEach(c => { map[c.id] = true; map[`doc-${c.id}`] = true; });
+          setConnectedMap(map);
+        }
+      }).catch(() => { });
+    }
     setPendingRequests(prev => prev.filter(r => r.id !== requestId));
     setNotifications(prev => prev.filter(n => n.targetId !== requestId));
     alert('Connection accepted! Doctor added to your professional network.');
@@ -763,6 +810,16 @@ export function App() {
       return copy;
     });
     setMyConnections(prev => prev.filter(c => c.id !== targetDoctorId && `doc-${c.id}` !== targetDoctorId));
+    if (currentUser?.id) {
+      api.connections.getMy(currentUser.id).then(cons => {
+        if (cons && Array.isArray(cons)) {
+          setMyConnections(cons);
+          const map = {};
+          cons.forEach(c => { map[c.id] = true; map[`doc-${c.id}`] = true; });
+          setConnectedMap(map);
+        }
+      }).catch(() => { });
+    }
     alert('Doctor removed from connections.');
   };
 
@@ -821,12 +878,85 @@ export function App() {
     }));
   };
 
+  // -------------------------------------------------------------
+  // Coordinated Post, Case & Reel Deletion Matching Helpers
+  // -------------------------------------------------------------
+  const isPostMatchingCase = (post, caseId, targetCase) => {
+    if (!post) return false;
+    if (post.caseId && (String(post.caseId) === String(caseId) || String(post.caseId) === String(targetCase?.id))) return true;
+    if (String(post.id) === String(caseId)) return true;
+    if (post.postType === 'CLINICAL_CASE' || (post.badgeLabel && post.badgeLabel.includes('CASE'))) {
+      if (targetCase) {
+        if (targetCase.title && post.content && post.content.includes(targetCase.title.replace(/\.\.\.$/, '').trim())) return true;
+        if (targetCase.presentingComplaint && post.content && (post.content.includes(targetCase.presentingComplaint) || targetCase.presentingComplaint.includes(post.content))) return true;
+        if (targetCase.mediaUrl && post.imageUrl && post.imageUrl === targetCase.mediaUrl) return true;
+      }
+    }
+    return false;
+  };
+
+  const isPostMatchingVideo = (post, videoId, targetVideo) => {
+    if (!post) return false;
+    if (post.videoId && (String(post.videoId) === String(videoId) || String(post.videoId) === String(targetVideo?.id))) return true;
+    if (String(post.id) === String(videoId)) return true;
+    if (targetVideo?.videoUrl && post.videoUrl && post.videoUrl === targetVideo.videoUrl) return true;
+    if (post.postType === 'SHORT_VIDEO' || (post.badgeLabel && post.badgeLabel.includes('REEL'))) {
+      if (targetVideo) {
+        if (targetVideo.title && post.content && post.content.includes(targetVideo.title.trim())) return true;
+        if (targetVideo.thumbnail && post.imageUrl && post.imageUrl === targetVideo.thumbnail) return true;
+      }
+    }
+    return false;
+  };
+
   const handleDeletePost = async (postId) => {
-    if (!window.confirm('Are you sure you want to delete this clinical post?')) return;
+    if (!window.confirm('Are you sure you want to delete this clinical post? It will also be removed from your profile and relevant registries.')) return;
+    const targetPost = posts.find(p => p.id === postId || String(p.id) === String(postId));
+
+    // 1. Delete post from backend feed
     try {
       await api.feed.deletePost(postId);
-    } catch (e) { }
-    setPosts(prev => prev.filter(p => p.id !== postId));
+    } catch (e) {
+      console.warn('Backend deletePost error:', e);
+    }
+
+    // 2. If it is a clinical case, also delete from clinical_cases backend and state
+    if (targetPost && (targetPost.postType === 'CLINICAL_CASE' || (targetPost.badgeLabel && targetPost.badgeLabel.includes('CASE')) || targetPost.caseId)) {
+      const matchingCase = clinicalCases.find(c =>
+        (targetPost.caseId && String(c.id) === String(targetPost.caseId)) ||
+        String(c.id) === String(postId) ||
+        (targetPost.content && c.title && targetPost.content.includes(c.title.replace(/\.\.\.$/, '').trim())) ||
+        (targetPost.content && c.presentingComplaint && (targetPost.content.includes(c.presentingComplaint) || c.presentingComplaint.includes(targetPost.content))) ||
+        (targetPost.imageUrl && c.mediaUrl && targetPost.imageUrl === c.mediaUrl)
+      );
+      if (matchingCase) {
+        try {
+          await api.cases.delete(matchingCase.id);
+        } catch (e) { }
+        setClinicalCases(prev => prev.filter(c => c.id !== matchingCase.id && String(c.id) !== String(matchingCase.id)));
+      }
+    }
+
+    // 3. If it is a short video / reel, also delete from short_videos backend and state
+    if (targetPost && (targetPost.postType === 'SHORT_VIDEO' || targetPost.videoUrl || (targetPost.badgeLabel && targetPost.badgeLabel.includes('REEL')) || targetPost.videoId)) {
+      const matchingVideo = videos.find(v =>
+        (targetPost.videoId && String(v.id) === String(targetPost.videoId)) ||
+        String(v.id) === String(postId) ||
+        (targetPost.videoUrl && v.videoUrl === targetPost.videoUrl) ||
+        (targetPost.content && v.title && targetPost.content.includes(v.title.trim()))
+      );
+      if (matchingVideo) {
+        try {
+          await api.videos.delete(matchingVideo.id);
+        } catch (e) { }
+        setVideos(prev => prev.filter(v => v.id !== matchingVideo.id && String(v.id) !== String(matchingVideo.id)));
+      }
+    }
+
+    // 4. Update posts state (remove from feed)
+    setPosts(prev => prev.filter(p => p.id !== postId && String(p.id) !== String(postId)));
+    // Also remove from stories if matching
+    setStories(prev => prev.filter(s => s.id !== postId && String(s.id) !== String(postId)));
   };
 
   const handleBookmarkPost = async (postId) => {
@@ -888,28 +1018,7 @@ export function App() {
 
       // If user uploaded a video reel, publish it down to the scrollable feed as well!
       if (isVideoMedia) {
-        const reelPostPayload = {
-          authorId: currentUser?.id || 1,
-          authorName,
-          authorSpecialty,
-          authorCity: currentUser?.city || 'Bengaluru',
-          authorAvatar,
-          postType: 'SHORT_VIDEO',
-          badgeLabel: 'CLINICAL REEL · VIDEO',
-          content: content || 'Clinical reel demonstration',
-          imageUrl: (imageUrl && !imageUrl.endsWith('.mp4')) ? imageUrl : null,
-          videoUrl: effectiveVideoUrl,
-          species: species || 'Canine',
-          likes: 1,
-          commentsCount: 0
-        };
-        try {
-          const savedPost = await api.feed.createPost(reelPostPayload);
-          setPosts(prev => [savedPost, ...prev]);
-        } catch (e) {
-          setPosts(prev => [{ ...reelPostPayload, id: `post-${Date.now()}`, comments: [] }, ...prev]);
-        }
-
+        let storyVideoId = `vid-${Date.now()}`;
         const reelVideoPayload = {
           title: content ? content.slice(0, 50) : 'Clinical Technique Reel',
           doctorName: authorName,
@@ -923,10 +1032,35 @@ export function App() {
         };
         try {
           const savedVideo = await api.videos.create(reelVideoPayload);
+          storyVideoId = savedVideo?.id || storyVideoId;
           setVideos(prev => [savedVideo, ...prev]);
         } catch (e) {
-          setVideos(prev => [{ ...reelVideoPayload, id: `vid-${Date.now()}` }, ...prev]);
+          setVideos(prev => [{ ...reelVideoPayload, id: storyVideoId }, ...prev]);
         }
+
+        const reelPostPayload = {
+          authorId: currentUser?.id || 1,
+          authorName,
+          authorSpecialty,
+          authorCity: currentUser?.city || 'Bengaluru',
+          authorAvatar,
+          postType: 'SHORT_VIDEO',
+          videoId: storyVideoId,
+          badgeLabel: 'CLINICAL REEL · VIDEO',
+          content: content || 'Clinical reel demonstration',
+          imageUrl: (imageUrl && !imageUrl.endsWith('.mp4')) ? imageUrl : null,
+          videoUrl: effectiveVideoUrl,
+          species: species || 'Canine',
+          likes: 1,
+          commentsCount: 0
+        };
+        try {
+          const savedPost = await api.feed.createPost(reelPostPayload);
+          setPosts(prev => [{ ...savedPost, videoId: storyVideoId }, ...prev]);
+        } catch (e) {
+          setPosts(prev => [{ ...reelPostPayload, id: `post-${Date.now()}`, comments: [] }, ...prev]);
+        }
+
         alert('Your clinical reel is live in both the community stories and the scrollable feed below!');
       } else {
         alert('Your 24-hour story is now live in the community moments bar!');
@@ -934,7 +1068,11 @@ export function App() {
       return;
     }
 
+    let createdVideoId = null;
+    let createdCaseId = null;
+
     if (postType === 'SHORT_VIDEO') {
+      createdVideoId = `vid-${Date.now()}`;
       const videoPayload = {
         title: videoTitle || (content ? content.slice(0, 50) : 'Clinical Technique Reel'),
         doctorName: authorName,
@@ -948,13 +1086,15 @@ export function App() {
       };
       try {
         const savedVideo = await api.videos.create(videoPayload);
+        createdVideoId = savedVideo?.id || createdVideoId;
         setVideos(prev => [savedVideo, ...prev]);
       } catch (e) {
-        setVideos(prev => [{ ...videoPayload, id: `vid-${Date.now()}` }, ...prev]);
+        setVideos(prev => [{ ...videoPayload, id: createdVideoId }, ...prev]);
       }
     }
 
     if (postType === 'CLINICAL_CASE') {
+      createdCaseId = `case-${Date.now()}`;
       const casePayload = {
         title: (videoTitle || content).slice(0, 50) + '...',
         authorName,
@@ -972,9 +1112,10 @@ export function App() {
       };
       try {
         const savedCase = await api.cases.create(casePayload);
+        createdCaseId = savedCase?.id || createdCaseId;
         setClinicalCases(prev => [savedCase, ...prev]);
       } catch (e) {
-        setClinicalCases(prev => [{ ...casePayload, id: `case-${Date.now()}` }, ...prev]);
+        setClinicalCases(prev => [{ ...casePayload, id: createdCaseId }, ...prev]);
       }
     }
 
@@ -985,6 +1126,8 @@ export function App() {
       authorCity: currentUser?.city || 'Bengaluru',
       authorAvatar,
       postType,
+      caseId: createdCaseId,
+      videoId: createdVideoId,
       badgeLabel: postType === 'CLINICAL_CASE'
         ? 'CLINICAL CASE REPORT'
         : postType === 'SHORT_VIDEO'
@@ -1000,7 +1143,7 @@ export function App() {
 
     try {
       const savedPost = await api.feed.createPost(postPayload);
-      setPosts(prev => [savedPost, ...prev]);
+      setPosts(prev => [{ ...savedPost, caseId: createdCaseId, videoId: createdVideoId }, ...prev]);
     } catch (e) {
       setPosts(prev => [{ ...postPayload, id: `post-${Date.now()}`, comments: [] }, ...prev]);
     }
@@ -1219,6 +1362,12 @@ export function App() {
         return c;
       }));
     }
+    // Also remove from main feed posts and backend feed if present
+    const matchingPosts = posts.filter(p => String(p.id) === String(postId));
+    for (const p of matchingPosts) {
+      try { await api.feed.deletePost(p.id); } catch (_) {}
+    }
+    setPosts(prev => prev.filter(p => String(p.id) !== String(postId)));
   };
 
   const handleDeleteCommunityCase = async (commId, caseId) => {
@@ -1240,6 +1389,12 @@ export function App() {
         return c;
       }));
     }
+    // Also remove from main feed posts and backend feed if present
+    const matchingPosts = posts.filter(p => String(p.caseId) === String(caseId) || String(p.id) === String(caseId));
+    for (const p of matchingPosts) {
+      try { await api.feed.deletePost(p.id); } catch (_) {}
+    }
+    setPosts(prev => prev.filter(p => String(p.caseId) !== String(caseId) && String(p.id) !== String(caseId)));
   };
 
   const handleDeleteCommunityReel = async (commId, reelId) => {
@@ -1261,26 +1416,65 @@ export function App() {
         return c;
       }));
     }
+    // Also remove from main feed posts and backend feed if present
+    const matchingPosts = posts.filter(p => String(p.videoId) !== String(reelId) || String(p.id) !== String(reelId));
+    for (const p of matchingPosts) {
+      try { await api.feed.deletePost(p.id); } catch (_) {}
+    }
+    setPosts(prev => prev.filter(p => String(p.videoId) !== String(reelId) && String(p.id) !== String(reelId)));
   };
 
   const handleDeleteClinicalCase = async (caseId) => {
-    if (!window.confirm('Are you sure you want to delete this clinical case?')) return;
+    if (!window.confirm('Are you sure you want to delete this clinical case? It will also be removed from the feed.')) return;
+    const targetCase = clinicalCases.find(c => c.id === caseId || String(c.id) === String(caseId));
+
+    // 1. Delete matching feed post(s) from backend
+    const matchingFeedPosts = posts.filter(p => isPostMatchingCase(p, caseId, targetCase));
+    for (const p of matchingFeedPosts) {
+      try {
+        await api.feed.deletePost(p.id);
+      } catch (err) {
+        console.warn('Failed to delete feed post for case:', err);
+      }
+    }
+
+    // 2. Delete clinical case from backend
     try {
       await api.cases.delete(caseId);
     } catch (e) {
       console.error('Failed to delete case:', e);
     }
+
+    // 3. Update local state: remove from cases AND from feed posts
     setClinicalCases(prev => prev.filter(c => c.id !== caseId && String(c.id) !== String(caseId)));
+    setPosts(prev => prev.filter(p => !isPostMatchingCase(p, caseId, targetCase)));
   };
 
   const handleDeleteVideo = async (videoId) => {
-    if (!window.confirm('Are you sure you want to delete this short video/reel?')) return;
+    if (!window.confirm('Are you sure you want to delete this short video/reel? It will also be removed from the feed.')) return;
+    const targetVideo = videos.find(v => v.id === videoId || String(v.id) === String(videoId));
+
+    // 1. Delete matching feed post(s) from backend
+    const matchingFeedPosts = posts.filter(p => isPostMatchingVideo(p, videoId, targetVideo));
+    for (const p of matchingFeedPosts) {
+      try {
+        await api.feed.deletePost(p.id);
+      } catch (err) {
+        console.warn('Failed to delete feed post for reel:', err);
+      }
+    }
+
+    // 2. Delete video from backend
     try {
       await api.videos.delete(videoId);
     } catch (e) {
       console.error('Failed to delete video:', e);
     }
+
+    // 3. Update local state: remove from videos, from feed posts, and stories
     setVideos(prev => prev.filter(v => v.id !== videoId && String(v.id) !== String(videoId)));
+    setPosts(prev => !targetVideo ? prev.filter(p => String(p.id) !== String(videoId)) : prev.filter(p => !isPostMatchingVideo(p, videoId, targetVideo)));
+    setStories(prev => prev.filter(s => s.id !== videoId && (!targetVideo || s.videoUrl !== targetVideo.videoUrl)));
   };
 
   const handleSendCommunityMessage = async (commId, text) => {
@@ -1795,6 +1989,89 @@ export function App() {
       }
       return conv;
     }));
+
+    // 9. Communities (members, posts, comments, cases, reels, chat)
+    setCommunities(prev => prev.map(comm => {
+      const updatedMembers = (comm.members || []).map(m => {
+        if (isDocMatch(m.id, m.name)) {
+          return {
+            ...m,
+            avatar: updatedDoc.avatar || m.avatar,
+            name: updatedDoc.name || m.name,
+            specialty: updatedDoc.specialty || m.specialty,
+            city: updatedDoc.city || m.city
+          };
+        }
+        return m;
+      });
+
+      const updatedPosts = (comm.posts || []).map(p => {
+        let postChanged = false;
+        let newP = { ...p };
+        if (isDocMatch(p.authorId, p.authorName)) {
+          newP.authorAvatar = updatedDoc.avatar || p.authorAvatar;
+          newP.authorName = updatedDoc.name || p.authorName;
+          newP.authorSpecialty = updatedDoc.specialty || p.authorSpecialty;
+          postChanged = true;
+        }
+        if (Array.isArray(p.comments) && p.comments.length > 0) {
+          const newComments = p.comments.map(c => {
+            if (isDocMatch(c.authorId, c.authorName)) {
+              return {
+                ...c,
+                authorAvatar: updatedDoc.avatar || c.authorAvatar,
+                authorName: updatedDoc.name || c.authorName
+              };
+            }
+            return c;
+          });
+          newP.comments = newComments;
+          postChanged = true;
+        }
+        return postChanged ? newP : p;
+      });
+
+      const updatedCases = (comm.cases || []).map(c => {
+        if (isDocMatch(c.authorId, c.authorName)) {
+          return {
+            ...c,
+            authorAvatar: updatedDoc.avatar || c.authorAvatar,
+            authorName: updatedDoc.name || c.authorName
+          };
+        }
+        return c;
+      });
+
+      const updatedReels = (comm.reels || []).map(r => {
+        if (isDocMatch(r.authorId, r.authorName)) {
+          return {
+            ...r,
+            authorName: updatedDoc.name || r.authorName
+          };
+        }
+        return r;
+      });
+
+      const updatedMessages = (comm.chatMessages || []).map(msg => {
+        if (isDocMatch(msg.senderId, msg.senderName)) {
+          return {
+            ...msg,
+            senderAvatar: updatedDoc.avatar || msg.senderAvatar,
+            senderName: updatedDoc.name || msg.senderName
+          };
+        }
+        return msg;
+      });
+
+      return {
+        ...comm,
+        members: updatedMembers,
+        posts: updatedPosts,
+        cases: updatedCases,
+        reels: updatedReels,
+        chatMessages: updatedMessages
+      };
+    }));
   };
 
   const handleOpenDoctorProfile = (doc, openAsPage = false) => {
@@ -1811,9 +2088,11 @@ export function App() {
       ? { ...target, ...fresh, avatar: (fresh.avatar && !fresh.avatar.includes('unsplash.com')) ? fresh.avatar : (target.avatar || fresh.avatar) }
       : target;
 
-    setViewedProfileDoctor(merged);
     if (openAsPage) {
-      setProfileReturnTab(activeTab);
+      setViewedProfileDoctor(merged);
+      if (activeTab !== 'profile') {
+        setProfileReturnTab(activeTab);
+      }
       setSelectedDoctor(null);
       setActiveTab('profile');
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1990,6 +2269,7 @@ export function App() {
                   currentUser={currentUser}
                   cases={clinicalCases}
                   posts={posts}
+                  connectedDoctors={myConnections}
                   onEditProfile={() => setIsCreateProfileOpen(true)}
                   onSelectCase={(c) => setSelectedCase(c)}
                   onUpdateAvatar={async (newAvatarUrl) => {
@@ -2044,6 +2324,8 @@ export function App() {
                   onBackToFeed={() => setActiveTab(profileReturnTab || 'feed')}
                   returnTab={profileReturnTab}
                   onOpenCreateCase={handleOpenCreatePost}
+                  onDeleteCase={handleDeleteClinicalCase}
+                  onDeletePost={handleDeletePost}
                 />
               )}
 
@@ -2162,7 +2444,7 @@ export function App() {
               <RightSidebar
                 doctors={doctors}
                 currentUser={currentUser}
-                onSelectDoctor={handleOpenDoctorProfile}
+                onSelectDoctor={(doc) => handleOpenDoctorProfile(doc, false)}
                 onOpenChat={handleOpenDirectChat}
                 onViewAllDoctors={() => setActiveTab('network')}
                 onSendRequest={handleSendRequest}
@@ -2183,46 +2465,51 @@ export function App() {
       </div>
 
       {/* Interactive Modals */}
-      <DoctorModal
-        doctor={selectedDoctor}
-        doctors={doctors}
-        onClose={() => setSelectedDoctor(null)}
-        onOpenChat={handleOpenDirectChat}
-        isConnected={selectedDoctor ? (!!connectedMap[selectedDoctor.id] || !!connectedMap[`doc-${selectedDoctor.id}`]) : false}
-        isPending={selectedDoctor ? sentRequests.some(r => r.receiverId === selectedDoctor.id) : false}
-        onSendRequest={handleSendRequest}
-        onToggleConnect={(docId) => handleDisconnect(docId)}
-        onSelectCase={(c) => setSelectedCase(c)}
-        cases={clinicalCases}
-        posts={posts}
-        currentUser={currentUser}
-        onEditProfile={() => setIsCreateProfileOpen(true)}
-        onUpdateAvatar={async (newAvatarUrl) => {
-          const docId = currentUser?.id || selectedDoctor?.id || 1;
-          try {
-            const updated = await api.doctors.update(docId, { avatar: newAvatarUrl });
-            handleDoctorProfileUpdated(updated);
-            alert('Profile photo updated successfully!');
-          } catch (e) {
-            console.error('Failed to update avatar:', e);
-            const fallback = { ...(currentUser || selectedDoctor), avatar: newAvatarUrl };
-            handleDoctorProfileUpdated(fallback);
-          }
-        }}
-        onUpdateCover={async (newCoverUrl) => {
-          const docId = currentUser?.id || selectedDoctor?.id || 1;
-          try {
-            const updated = await api.doctors.update(docId, { coverImage: newCoverUrl });
-            handleDoctorProfileUpdated(updated);
-            alert('Cover photo updated successfully!');
-          } catch (e) {
-            console.error('Failed to update cover:', e);
-            const fallback = { ...(currentUser || selectedDoctor), coverImage: newCoverUrl };
-            handleDoctorProfileUpdated(fallback);
-          }
-        }}
-        onViewFullPageProfile={(doc) => handleOpenDoctorProfile(doc, true)}
-      />
+      {selectedDoctor && (
+        <DoctorModal
+          doctor={selectedDoctor}
+          doctors={doctors}
+          onClose={() => setSelectedDoctor(null)}
+          onOpenChat={handleOpenDirectChat}
+          isConnected={!!connectedMap[selectedDoctor.id] || !!connectedMap[`doc-${selectedDoctor.id}`]}
+          isPending={sentRequests.some(r => r.receiverId === selectedDoctor.id)}
+          onSendRequest={handleSendRequest}
+          onToggleConnect={(docId) => handleDisconnect(docId)}
+          onSelectCase={(c) => setSelectedCase(c)}
+          cases={clinicalCases}
+          posts={posts}
+          connectedDoctors={myConnections}
+          currentUser={currentUser}
+          onEditProfile={() => setIsCreateProfileOpen(true)}
+          onUpdateAvatar={async (newAvatarUrl) => {
+            const docId = currentUser?.id || selectedDoctor?.id || 1;
+            try {
+              const updated = await api.doctors.update(docId, { avatar: newAvatarUrl });
+              handleDoctorProfileUpdated(updated);
+              alert('Profile photo updated successfully!');
+            } catch (e) {
+              console.error('Failed to update avatar:', e);
+              const fallback = { ...(currentUser || selectedDoctor), avatar: newAvatarUrl };
+              handleDoctorProfileUpdated(fallback);
+            }
+          }}
+          onUpdateCover={async (newCoverUrl) => {
+            const docId = currentUser?.id || selectedDoctor?.id || 1;
+            try {
+              const updated = await api.doctors.update(docId, { coverImage: newCoverUrl });
+              handleDoctorProfileUpdated(updated);
+              alert('Cover photo updated successfully!');
+            } catch (e) {
+              console.error('Failed to update cover:', e);
+              const fallback = { ...(currentUser || selectedDoctor), coverImage: newCoverUrl };
+              handleDoctorProfileUpdated(fallback);
+            }
+          }}
+          onViewFullPageProfile={(doc) => handleOpenDoctorProfile(doc, true)}
+          onDeleteCase={handleDeleteClinicalCase}
+          onDeletePost={handleDeletePost}
+        />
+      )}
 
       <CreateProfileModal
         isOpen={isCreateProfileOpen}
@@ -2272,6 +2559,15 @@ export function App() {
           setTermsInitialSection(null);
         }}
         initialSectionId={termsInitialSection}
+      />
+
+      {/* 4. Mobile Bottom Navigation Bar (Screens <= 768px) */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        onTabSelect={handleTabNavigation}
+        unreadMessagesCount={conversations.reduce((acc, c) => acc + (c.unread || 0), 0)}
+        pendingRequestsCount={pendingRequests.length}
+        onOpenCreatePost={handleOpenCreatePost}
       />
     </div>
   );

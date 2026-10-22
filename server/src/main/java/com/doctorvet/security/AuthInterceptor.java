@@ -15,7 +15,8 @@ public class AuthInterceptor implements HandlerInterceptor {
     }
 
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
+            throws Exception {
         // Allow CORS preflight requests
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
@@ -56,7 +57,8 @@ public class AuthInterceptor implements HandlerInterceptor {
                             "Access denied: You cannot view or modify another doctor's private records.");
                     return false;
                 }
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException ignored) {
+            }
         }
 
         // Check if query parameter "currentDoctorId" is passed
@@ -69,7 +71,8 @@ public class AuthInterceptor implements HandlerInterceptor {
                             "Access denied: Invalid credentials for action.");
                     return false;
                 }
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException ignored) {
+            }
         }
 
         return true;

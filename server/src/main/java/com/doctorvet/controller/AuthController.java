@@ -200,7 +200,6 @@ public class AuthController {
         return ResponseEntity.ok(toAuthResponse(token, saved));
     }
 
-
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest req) {
         if (req.identifier() == null || req.identifier().isBlank()) {
@@ -550,8 +549,7 @@ public class AuthController {
                 "status", "DISPATCHED",
                 "recipient", to,
                 "sender", "no-reply@zenvevet.com",
-                "message", "Welcome email queued for " + to + " from no-reply@zenvevet.com"
-        ));
+                "message", "Welcome email queued for " + to + " from no-reply@zenvevet.com"));
     }
 
     @GetMapping("/me")
@@ -565,7 +563,7 @@ public class AuthController {
         Long doctorId = tokenService.getDoctorIdFromToken(token);
         if (doctorId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Unauthorized", "message", "Session expired or invalid token"));
+                    .body(Map.of("error", "Unauthorized", "message", "invalid token"));
         }
 
         Optional<DoctorProfile> profileOpt = doctorRepo.findById(doctorId);

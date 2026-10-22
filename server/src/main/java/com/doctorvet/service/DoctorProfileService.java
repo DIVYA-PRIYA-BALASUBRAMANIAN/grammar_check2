@@ -65,9 +65,6 @@ public class DoctorProfileService {
 
     @Transactional
     public DoctorProfile createProfile(DoctorProfile profile) {
-        if (profile.getConnectionsCount() == 0) {
-            profile.setConnectionsCount(1);
-        }
         return repository.save(profile);
     }
 

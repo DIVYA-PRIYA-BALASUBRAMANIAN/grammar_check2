@@ -1,5 +1,8 @@
 package com.doctorvet.config;
 
+import com.doctorvet.model.DoctorProfile;
+import com.doctorvet.repository.DoctorConnectionRepository;
+import com.doctorvet.repository.DoctorProfileRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -8,10 +11,15 @@ import org.springframework.context.annotation.Configuration;
 public class DataInitializer {
 
     @Bean
-    CommandLineRunner initDatabase() {
+    CommandLineRunner initDatabase(DoctorProfileRepository docRepo, DoctorConnectionRepository connRepo) {
         return args -> {
-            // Pure dynamic operation: zero mock data.
-            // All doctors, cases, posts, videos, and stories are exclusively user-created.
+            for (DoctorProfile d : docRepo.findAll()) {
+                long c = connRepo.countConnectionsForDoctor(d.getId());
+                if (d.getConnectionsCount() != (int) c) {
+                    d.setConnectionsCount((int) c);
+                    docRepo.save(d);
+                }
+            }
         };
     }
 }
