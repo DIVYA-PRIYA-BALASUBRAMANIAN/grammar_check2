@@ -7,8 +7,8 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "advertisers", indexes = {
-    @Index(name = "idx_advertiser_email", columnList = "businessEmail", unique = true),
-    @Index(name = "idx_advertiser_access_key", columnList = "accessKey", unique = true)
+        @Index(name = "idx_advertiser_email", columnList = "businessEmail", unique = true),
+        @Index(name = "idx_advertiser_access_key", columnList = "accessKey", unique = true)
 })
 public class Advertiser {
 
@@ -33,10 +33,11 @@ public class Advertiser {
     private String mobileNumber;
 
     @Column(nullable = false)
-    private String passwordHash;
+    private String password;
 
     @Column(nullable = false)
-    private String accountType; // "Pharmaceutical", "Medical Device / Equipment", "Pet Nutrition", "Veterinary Hospital", "CME / Education", "Other"
+    private String accountType; // "Pharmaceutical", "Medical Device / Equipment", "Pet Nutrition", "Veterinary
+                                // Hospital", "CME / Education", "Other"
 
     private String website;
 
@@ -55,15 +56,16 @@ public class Advertiser {
 
     private LocalDateTime updatedAt = LocalDateTime.now();
 
-    public Advertiser() {}
+    public Advertiser() {
+    }
 
     public Advertiser(String fullName, String companyName, String businessEmail, String mobileNumber,
-                      String passwordHash, String accountType, String website, String logoUrl, String accessKey) {
+            String password, String accountType, String website, String logoUrl, String accessKey) {
         this.fullName = fullName;
         this.companyName = companyName;
         this.businessEmail = businessEmail;
         this.mobileNumber = mobileNumber;
-        this.passwordHash = passwordHash;
+        this.password = password;
         this.accountType = accountType;
         this.website = website;
         this.logoUrl = logoUrl;
@@ -119,12 +121,12 @@ public class Advertiser {
         this.mobileNumber = mobileNumber;
     }
 
-    public String getPasswordHash() {
-        return passwordHash;
+    public String getPassword() {
+        return password;
     }
 
-    public void setPasswordHash(String passwordHash) {
-        this.passwordHash = passwordHash;
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public String getAccountType() {

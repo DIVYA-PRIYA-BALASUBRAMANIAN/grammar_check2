@@ -29,6 +29,7 @@ import { TermsAndConditionsModal } from './components/TermsAndConditionsModal';
 
 // API Service
 import { api } from './services/api';
+import { createStompClient } from './services/websocket';
 // Dynamic Communities backed by Spring Boot API
 
 

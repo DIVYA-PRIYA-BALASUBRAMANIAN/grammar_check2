@@ -35,13 +35,13 @@ public class AdvertiserService {
             String accountType,
             String website,
             String logoUrl,
-            boolean termsAccepted
-    ) {}
+            boolean termsAccepted) {
+    }
 
     public record AuthResult(
             String token,
-            Advertiser advertiser
-    ) {}
+            Advertiser advertiser) {
+    }
 
     public AuthResult register(RegisterDto dto) {
         if (dto.fullName() == null || dto.fullName().isBlank()) {
@@ -64,19 +64,18 @@ public class AdvertiserService {
         }
 
         String accessKey = "zenve_adv_live_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
-        String passwordHash = hashPassword(dto.password());
+        String password = hashPassword(dto.password());
 
         Advertiser adv = new Advertiser(
                 dto.fullName().trim(),
                 dto.companyName().trim(),
                 dto.businessEmail().trim().toLowerCase(),
                 dto.mobileNumber().trim(),
-                passwordHash,
+                password,
                 dto.accountType() != null ? dto.accountType() : "Pharmaceutical",
                 dto.website(),
                 dto.logoUrl(),
-                accessKey
-        );
+                accessKey);
         adv.setTermsAccepted(dto.termsAccepted());
 
         Advertiser saved = advertiserRepo.save(adv);
@@ -99,7 +98,7 @@ public class AdvertiserService {
         Advertiser adv = advertiserRepo.findByBusinessEmailIgnoreCase(email.trim())
                 .orElseThrow(() -> new IllegalArgumentException("No advertiser account found with this email"));
 
-        if (!verifyPassword(password, adv.getPasswordHash())) {
+        if (!verifyPassword(password, adv.getPassword())) {
             throw new IllegalArgumentException("Invalid password. Please check your credentials.");
         }
 

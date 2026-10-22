@@ -7,4 +7,13 @@ export default defineConfig({
   define: {
     global: 'window',
   },
+  server: {
+    proxy: {
+      '/apitxt-proxy': {
+        target: 'https://apitxt.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/apitxt-proxy/, '')
+      }
+    }
+  }
 })
