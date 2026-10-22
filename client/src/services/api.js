@@ -144,20 +144,27 @@ export const api = {
         body: JSON.stringify(userData)
       }),
     verifyOtp: async (email, otp) => {
+      const target = email ? String(email).trim() : '';
+      const cleanOtp = otp ? String(otp).trim() : '';
       try {
         return await fetchJson('/auth/verify-otp', {
           method: 'POST',
-          body: JSON.stringify({ email, otp })
+          body: JSON.stringify({
+            email: target,
+            identifier: target,
+            otp: cleanOtp,
+            code: cleanOtp
+          })
         });
       } catch (err) {
-        return await api.auth.verifyResetCode(email, otp);
+        return await api.auth.verifyResetCode(target, cleanOtp);
       }
     },
     forgotPassword: async (identifier) => {
       try {
         return await fetchJson('/auth/forgot-password', {
           method: 'POST',
-          body: JSON.stringify({ identifier })
+          body: JSON.stringify({ identifier: identifier ? String(identifier).trim() : '' })
         });
       } catch (err) {
         // If the backend actively rejected with an intentional business validation message (not a 404 endpoint missing), rethrow it
@@ -215,10 +222,17 @@ export const api = {
       }
     },
     verifyResetCode: async (identifier, code) => {
+      const target = identifier ? String(identifier).trim() : '';
+      const cleanCode = code ? String(code).trim() : '';
       try {
         return await fetchJson('/auth/verify-code', {
           method: 'POST',
-          body: JSON.stringify({ identifier, code })
+          body: JSON.stringify({
+            identifier: target,
+            email: target,
+            code: cleanCode,
+            otp: cleanCode
+          })
         });
       } catch (err) {
         if (err.message && !err.message.includes('404') && !err.message.includes('Not Found') && !err.message.includes('Failed to fetch')) {
@@ -236,10 +250,19 @@ export const api = {
       }
     },
     resetPassword: async (identifier, code, newPassword) => {
+      const target = identifier ? String(identifier).trim() : '';
+      const cleanCode = code ? String(code).trim() : '';
+      const pwd = newPassword ? String(newPassword).trim() : '';
       try {
         return await fetchJson('/auth/reset-password', {
           method: 'POST',
-          body: JSON.stringify({ identifier, code, newPassword })
+          body: JSON.stringify({
+            identifier: target,
+            email: target,
+            code: cleanCode,
+            otp: cleanCode,
+            newPassword: pwd
+          })
         });
       } catch (err) {
         if (err.message && !err.message.includes('404') && !err.message.includes('Not Found') && !err.message.includes('Failed to fetch')) {

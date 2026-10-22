@@ -64,6 +64,8 @@ export function LoginPage({ onLoginSuccess, onCancel, onOpenTerms }) {
   const [forgotSuccessMsg, setForgotSuccessMsg] = useState('');
   const [targetDoctorName, setTargetDoctorName] = useState('');
   const [maskedPhone, setMaskedPhone] = useState('');
+  const [forgotTargetEmail, setForgotTargetEmail] = useState('');
+  const [maskedEmail, setMaskedEmail] = useState('');
 
   // Mobile OTP Sign In States
   const [signInMethod, setSignInMethod] = useState('password'); // 'password' | 'otp'
@@ -196,6 +198,8 @@ export function LoginPage({ onLoginSuccess, onCancel, onOpenTerms }) {
       const res = await api.auth.forgotPassword(forgotIdentifier.trim());
       setTargetDoctorName(res.doctorName || forgotIdentifier);
       setMaskedPhone(res.registeredPhoneMasked || '');
+      setMaskedEmail(res.maskedEmail || res.email || '');
+      setForgotTargetEmail(res.email || res.targetEmail || forgotIdentifier.trim());
       setForgotStep(2);
     } catch (err) {
       setForgotError(err.message || 'Unable to locate a doctor account matching that identifier.');
@@ -222,12 +226,13 @@ export function LoginPage({ onLoginSuccess, onCancel, onOpenTerms }) {
 
     setForgotLoading(true);
     try {
-      const res = await api.auth.resetPassword(forgotIdentifier.trim(), forgotCode.trim(), newPassword);
+      const target = forgotTargetEmail || forgotIdentifier.trim();
+      const res = await api.auth.resetPassword(target, forgotCode.trim(), newPassword);
       setForgotSuccessMsg(res.message || 'Password reset successfully!');
       setForgotStep(3);
       setFormData(prev => ({
         ...prev,
-        identifier: forgotIdentifier,
+        identifier: target,
         password: newPassword
       }));
     } catch (err) {
@@ -954,8 +959,9 @@ export function LoginPage({ onLoginSuccess, onCancel, onOpenTerms }) {
                   }}>
                     <KeyRound size={16} color="#059669" style={{ flexShrink: 0 }} />
                     <span>
-                      A 6-digit verification code has been dispatched via <strong>APITXT</strong> to your registered mobile number{maskedPhone ? ': ' : '.'}
-                      {maskedPhone && <strong style={{ color: '#047857', letterSpacing: '0.5px' }}>{maskedPhone}</strong>}
+                      A 6-digit verification code has been dispatched from <strong>no-reply@zenvevet.com</strong> to your registered email{maskedEmail ? `: ` : '.'}
+                      {maskedEmail && <strong style={{ color: '#047857' }}>{maskedEmail}</strong>}
+                      {maskedPhone && <span style={{ display: 'block', marginTop: '2px', fontSize: '11.5px', color: '#047857' }}>SMS alert also dispatched to: {maskedPhone}</span>}
                     </span>
                   </div>
 

@@ -358,10 +358,33 @@ public class AuthController {
         }
 
         String search = identifier.trim().toLowerCase();
+        String cleanPhone = search.replaceAll("[^0-9]", "");
         String cleanCode = inputOtp.trim();
 
+        // Resolve doctor email if identifier is doctor name or phone number
+        String tempOtpEmail = search.contains("@") ? search : null;
+        if (tempOtpEmail == null) {
+            Optional<DoctorProfile> docMatch = doctorRepo.findAll().stream()
+                    .filter(d -> (d.getEmail() != null && d.getEmail().toLowerCase().equals(search))
+                            || (d.getPhone() != null && !cleanPhone.isBlank()
+                                    && d.getPhone().replaceAll("[^0-9]", "").contains(cleanPhone))
+                            || (d.getName() != null && d.getName().toLowerCase().contains(search)))
+                    .findFirst();
+            if (docMatch.isPresent() && docMatch.get().getEmail() != null) {
+                tempOtpEmail = docMatch.get().getEmail().toLowerCase().trim();
+            }
+        }
+        final String resolvedEmail = tempOtpEmail;
+
         // 1. Try DB-backed email OTP record
-        Optional<PasswordResetOtp> otpOpt = otpRepo.findTopByEmailIgnoreCaseAndUsedFalseOrderByCreatedAtDesc(search);
+        Optional<PasswordResetOtp> otpOpt = Optional.empty();
+        if (resolvedEmail != null) {
+            otpOpt = otpRepo.findTopByEmailIgnoreCaseAndUsedFalseOrderByCreatedAtDesc(resolvedEmail);
+        }
+        if (otpOpt.isEmpty()) {
+            otpOpt = otpRepo.findTopByEmailIgnoreCaseAndUsedFalseOrderByCreatedAtDesc(search);
+        }
+
         if (otpOpt.isPresent()) {
             PasswordResetOtp otpRecord = otpOpt.get();
             if (otpRecord.isExpired()) {
@@ -382,13 +405,14 @@ public class AuthController {
 
         // 2. Check memory map fallback (for mobile OTP)
         ResetCodeInfo info = resetCodes.get(search);
-        if (info == null) {
-            String cleanPhone = search.replaceAll("[^0-9]", "");
-            if (!cleanPhone.isBlank()) info = resetCodes.get(cleanPhone);
-        }
+        if (info == null && resolvedEmail != null) info = resetCodes.get(resolvedEmail);
+        if (info == null && !cleanPhone.isBlank()) info = resetCodes.get(cleanPhone);
+
         if (info != null) {
             if (info.expiry().isBefore(LocalDateTime.now())) {
                 resetCodes.remove(search);
+                if (resolvedEmail != null) resetCodes.remove(resolvedEmail);
+                if (!cleanPhone.isBlank()) resetCodes.remove(cleanPhone);
                 return ResponseEntity.badRequest().body(Map.of("message", "Verification code has expired. Please request a new code."));
             }
             if (info.code().equals(cleanCode)) {
@@ -419,11 +443,34 @@ public class AuthController {
         }
 
         String search = identifier.trim().toLowerCase();
+        String cleanPhone = search.replaceAll("[^0-9]", "");
         String cleanCode = inputOtp.trim();
+
+        // Resolve doctor email if identifier is doctor name or phone number
+        String tempResetEmail = search.contains("@") ? search : null;
+        if (tempResetEmail == null) {
+            Optional<DoctorProfile> docMatch = doctorRepo.findAll().stream()
+                    .filter(d -> (d.getEmail() != null && d.getEmail().toLowerCase().equals(search))
+                            || (d.getPhone() != null && !cleanPhone.isBlank()
+                                    && d.getPhone().replaceAll("[^0-9]", "").contains(cleanPhone))
+                            || (d.getName() != null && d.getName().toLowerCase().contains(search)))
+                    .findFirst();
+            if (docMatch.isPresent() && docMatch.get().getEmail() != null) {
+                tempResetEmail = docMatch.get().getEmail().toLowerCase().trim();
+            }
+        }
+        final String resolvedEmail = tempResetEmail;
 
         // 1. Verify OTP in DB
         boolean otpVerified = false;
-        Optional<PasswordResetOtp> otpOpt = otpRepo.findTopByEmailIgnoreCaseAndUsedFalseOrderByCreatedAtDesc(search);
+        Optional<PasswordResetOtp> otpOpt = Optional.empty();
+        if (resolvedEmail != null) {
+            otpOpt = otpRepo.findTopByEmailIgnoreCaseAndUsedFalseOrderByCreatedAtDesc(resolvedEmail);
+        }
+        if (otpOpt.isEmpty()) {
+            otpOpt = otpRepo.findTopByEmailIgnoreCaseAndUsedFalseOrderByCreatedAtDesc(search);
+        }
+
         if (otpOpt.isPresent()) {
             PasswordResetOtp otpRecord = otpOpt.get();
             if (!otpRecord.isExpired() && otpRecord.getOtp().equals(cleanCode)) {
@@ -436,12 +483,13 @@ public class AuthController {
         // 2. Or check memory map fallback
         if (!otpVerified) {
             ResetCodeInfo info = resetCodes.get(search);
-            if (info == null) {
-                String cleanPhone = search.replaceAll("[^0-9]", "");
-                if (!cleanPhone.isBlank()) info = resetCodes.get(cleanPhone);
-            }
+            if (info == null && resolvedEmail != null) info = resetCodes.get(resolvedEmail);
+            if (info == null && !cleanPhone.isBlank()) info = resetCodes.get(cleanPhone);
+
             if (info != null && !info.expiry().isBefore(LocalDateTime.now()) && info.code().equals(cleanCode)) {
                 resetCodes.remove(search);
+                if (resolvedEmail != null) resetCodes.remove(resolvedEmail);
+                if (!cleanPhone.isBlank()) resetCodes.remove(cleanPhone);
                 otpVerified = true;
             }
         }
@@ -457,9 +505,8 @@ public class AuthController {
         DoctorProfile savedDoctor = null;
 
         // Update Doctor account
-        String cleanPhone = search.replaceAll("[^0-9]", "");
         Optional<DoctorProfile> docOpt = doctorRepo.findAll().stream()
-                .filter(d -> (d.getEmail() != null && d.getEmail().toLowerCase().equals(search))
+                .filter(d -> (d.getEmail() != null && (d.getEmail().toLowerCase().equals(search) || (resolvedEmail != null && d.getEmail().toLowerCase().equals(resolvedEmail))))
                         || (d.getPhone() != null && !cleanPhone.isBlank()
                                 && d.getPhone().replaceAll("[^0-9]", "").contains(cleanPhone))
                         || (d.getName() != null && d.getName().toLowerCase().contains(search)))
@@ -476,10 +523,10 @@ public class AuthController {
         }
 
         // Update Advertiser account if present
-        var advOpt = advertiserRepo.findByBusinessEmailIgnoreCase(search);
+        var advOpt = advertiserRepo.findByBusinessEmailIgnoreCase(resolvedEmail != null ? resolvedEmail : search);
         if (advOpt.isPresent()) {
             var adv = advOpt.get();
-            adv.setPasswordHash(newPasswordHash);
+            adv.setPassword(newPasswordHash);
             advertiserRepo.save(adv);
             if (!accountUpdated) {
                 userName = adv.getFullName() != null ? adv.getFullName() : adv.getCompanyName();

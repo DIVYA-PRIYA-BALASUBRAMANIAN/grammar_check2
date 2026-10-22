@@ -129,6 +129,14 @@ public class Advertiser {
         this.password = password;
     }
 
+    public String getPasswordHash() {
+        return password;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.password = passwordHash;
+    }
+
     public String getAccountType() {
         return accountType;
     }
