@@ -24,8 +24,22 @@ async function fetchJson(endpoint, options = {}) {
     }
   }
 
+function getDeviceId() {
+  try {
+    let id = localStorage.getItem('zenve_device_id');
+    if (!id) {
+      id = 'dev_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now().toString(36);
+      localStorage.setItem('zenve_device_id', id);
+    }
+    return id;
+  } catch (_) {
+    return 'dev_client_default';
+  }
+}
+
   const headers = {
     'Content-Type': 'application/json',
+    'X-Device-Id': getDeviceId(),
     ...(authHeader ? { 'Authorization': authHeader } : {}),
     ...(options.headers || {})
   };

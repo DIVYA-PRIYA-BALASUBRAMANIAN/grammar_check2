@@ -138,6 +138,36 @@ public class EmailService {
   }
 
   /**
+   * Asynchronously sends a security alert email from no-reply@zenvevet.com
+   * when a user logs in from a new or different device.
+   */
+  @Async
+  public void sendNewDeviceLoginAlertEmail(String toEmail, String recipientName, String deviceName, String ipAddress, LocalDateTime loginTime) {
+    if (toEmail == null || toEmail.isBlank() || !toEmail.contains("@")) {
+      log.warn("[Zenve Mail] Skipping new device login alert: invalid recipient email '{}'", toEmail);
+      return;
+    }
+
+    String displayName = (recipientName != null && !recipientName.isBlank()) ? recipientName : "Doctor / Member";
+    String displayDevice = (deviceName != null && !deviceName.isBlank()) ? deviceName : "Unrecognized Device / Browser";
+    String displayIp = (ipAddress != null && !ipAddress.isBlank()) ? ipAddress : "Not available";
+    LocalDateTime time = (loginTime != null) ? loginTime : LocalDateTime.now();
+    String formattedTime = time.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy 'at' hh:mm a 'IST'"));
+
+    String subject = "🚨 Security Alert: New sign-in to your Zenve Vet account from another device";
+    String htmlBody = buildNewDeviceLoginAlertHtml(displayName, toEmail, displayDevice, displayIp, formattedTime);
+    String plainText = buildNewDeviceLoginAlertPlainText(displayName, toEmail, displayDevice, displayIp, formattedTime);
+
+    log.info("==========================================================================");
+    log.info("[Zenve Security] NEW DEVICE LOGIN ALERT EMAIL");
+    log.info("Recipient: {} | Name: {} | Device: {} | IP: {} | Sender: {}",
+        toEmail, displayName, displayDevice, displayIp, fromEmail);
+    log.info("==========================================================================");
+
+    sendEmail(toEmail, subject, htmlBody, plainText);
+  }
+
+  /**
    * Dispatches an email with HTML & plain text multipart support.
    * Guaranteed to never throw unhandled exceptions to calling methods.
    */
@@ -398,6 +428,129 @@ public class EmailService {
         Zenve Pets Healthcare Pvt. Ltd.
         """
         .formatted(recipientName, timestamp, appUrl);
+  }
+
+  private String buildNewDeviceLoginAlertHtml(String recipientName, String email, String deviceName, String ipAddress, String formattedTime) {
+    String resetUrl = appUrl.endsWith("/") ? (appUrl + "login?forgot=true") : (appUrl + "/login?forgot=true");
+    return """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Security Alert: New Sign-In from Another Device</title>
+          <style>
+            body { margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B; }
+            .wrapper { width: 100%%; max-width: 600px; margin: 0 auto; background-color: #FFFFFF; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06); border: 1px solid #E2E8F0; }
+            .header { background: linear-gradient(135deg, #7C2D12 0%%, #C2410C 50%%, #D97706 100%%); padding: 34px 30px; text-align: center; color: #FFFFFF; }
+            .brand-badge { display: inline-block; background: rgba(255, 255, 255, 0.22); border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 20px; padding: 4px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
+            .brand-title { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
+            .content { padding: 34px 30px; line-height: 1.6; }
+            .alert-pill { display: inline-flex; align-items: center; background: #FFFBEB; border: 1px solid #FDE68A; color: #92400E; font-size: 12.5px; font-weight: 700; border-radius: 20px; padding: 6px 16px; margin-bottom: 16px; }
+            .greeting { font-size: 19px; font-weight: 700; color: #0F172A; margin-bottom: 12px; }
+            .intro { font-size: 14.5px; color: #475569; margin-bottom: 20px; }
+            .device-card { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 18px 20px; margin: 20px 0; }
+            .details-table { width: 100%%; border-collapse: collapse; font-size: 13.5px; }
+            .details-table td { padding: 8px 0; border-bottom: 1px solid #F1F5F9; }
+            .details-table tr:last-child td { border-bottom: none; }
+            .details-table .label { color: #64748B; font-weight: 600; width: 34%%; }
+            .details-table .value { color: #0F172A; font-weight: 600; }
+            .cta-container { text-align: center; margin: 26px 0 20px 0; }
+            .cta-btn { display: inline-block; background-color: #DC2626; color: #FFFFFF !important; text-decoration: none; font-weight: 700; font-size: 14.5px; padding: 13px 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25); }
+            .safe-note { background: #ECFDF5; border-left: 4px solid #10B981; border-radius: 6px; padding: 12px 16px; margin: 20px 0 12px 0; font-size: 13px; color: #065F46; }
+            .danger-box { background: #FEF2F2; border-left: 4px solid #EF4444; border-radius: 6px; padding: 14px 16px; margin: 14px 0 10px 0; font-size: 13px; color: #991B1B; }
+            .footer { background-color: #0F172A; padding: 24px 30px; text-align: center; color: #94A3B8; font-size: 12px; line-height: 1.6; }
+          </style>
+        </head>
+        <body>
+          <div style="padding: 24px 16px;">
+            <div class="wrapper">
+              <div class="header">
+                <div class="brand-badge">Zenve Vet Security</div>
+                <h1 class="brand-title">New Device Sign-In Detected</h1>
+                <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.9;">Company Mail Notification • no-reply@zenvevet.com</p>
+              </div>
+              <div class="content">
+                <div class="alert-pill">⚠️ Login from Another Device</div>
+                <div class="greeting">Dear %s,</div>
+                <p class="intro">
+                  We noticed a new sign-in to your Zenve Vet account (<strong>%s</strong>) from another device or browser session.
+                </p>
+
+                <div class="device-card">
+                  <table class="details-table">
+                    <tr>
+                      <td class="label">Device / Browser</td>
+                      <td class="value">%s</td>
+                    </tr>
+                    <tr>
+                      <td class="label">IP Address</td>
+                      <td class="value">%s</td>
+                    </tr>
+                    <tr>
+                      <td class="label">Date & Time</td>
+                      <td class="value">%s</td>
+                    </tr>
+                    <tr>
+                      <td class="label">Dispatched From</td>
+                      <td class="value" style="color: #0D9488;">no-reply@zenvevet.com</td>
+                    </tr>
+                  </table>
+                </div>
+
+                <div class="safe-note">
+                  <strong>Was this you?</strong> If you recently signed in from this device, you can safely ignore this notification. This device has been recorded on your authorized profile.
+                </div>
+
+                <div class="danger-box">
+                  <strong>Don't recognize this sign-in?</strong><br>
+                  If you did not sign in from this device, an unauthorized party may have accessed your credentials. We urge you to immediately reset your password and secure your clinical account:
+                </div>
+
+                <div class="cta-container">
+                  <a href="%s" class="cta-btn" target="_blank">Reset Password & Secure Account →</a>
+                </div>
+              </div>
+              <div class="footer">
+                <p style="margin: 0 0 6px 0; font-weight: 600; color: #E2E8F0;">Zenve Pets Healthcare Pvt. Ltd.</p>
+                <p style="margin: 0 0 10px 0;">Bengaluru, Karnataka, India • <a href="https://zenvevet.com" style="color: #14B8A6; text-decoration: none;">www.zenvevet.com</a></p>
+                <p style="margin: 0; font-size: 11px; color: #64748B;">
+                  This automated security alert was dispatched to %s from <strong>no-reply@zenvevet.com</strong>.
+                  <br>Please do not reply directly to this email address.
+                </p>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+        """
+        .formatted(recipientName, email, deviceName, ipAddress, formattedTime, resetUrl, email);
+  }
+
+  private String buildNewDeviceLoginAlertPlainText(String recipientName, String email, String deviceName, String ipAddress, String formattedTime) {
+    String resetUrl = appUrl.endsWith("/") ? (appUrl + "login?forgot=true") : (appUrl + "/login?forgot=true");
+    return """
+        Dear %s,
+
+        SECURITY ALERT: A new sign-in to your Zenve Vet account was detected from another device.
+
+        Sign-In Details:
+        - Account Email: %s
+        - Device / Browser: %s
+        - IP Address: %s
+        - Date & Time: %s
+        - Sender: no-reply@zenvevet.com
+
+        If this was you, you can safely disregard this email.
+
+        If you DID NOT sign in from this device, please secure your account immediately by resetting your password:
+        %s
+
+        Zenve Vet Security Team
+        Zenve Pets Healthcare Pvt. Ltd.
+        Bengaluru, Karnataka, India
+        """
+        .formatted(recipientName, email, deviceName, ipAddress, formattedTime, resetUrl);
   }
 
   private String buildDoctorWelcomeHtml(String doctorName, String email, String specialty) {

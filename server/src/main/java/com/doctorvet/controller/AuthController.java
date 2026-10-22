@@ -31,6 +31,7 @@ public class AuthController {
     private final PasswordResetOtpRepository otpRepo;
     private final PasswordSecurityService passwordSecurityService;
     private final AdvertiserRepository advertiserRepo;
+    private final com.doctorvet.service.DeviceSecurityService deviceSecurityService;
 
     @Value("${apitxt.api-key:${APITXT_API_KEY:}}")
     private String apitxtApiKey;
@@ -44,13 +45,15 @@ public class AuthController {
             EmailService emailService,
             PasswordResetOtpRepository otpRepo,
             PasswordSecurityService passwordSecurityService,
-            AdvertiserRepository advertiserRepo) {
+            AdvertiserRepository advertiserRepo,
+            com.doctorvet.service.DeviceSecurityService deviceSecurityService) {
         this.doctorRepo = doctorRepo;
         this.tokenService = tokenService;
         this.emailService = emailService;
         this.otpRepo = otpRepo;
         this.passwordSecurityService = passwordSecurityService;
         this.advertiserRepo = advertiserRepo;
+        this.deviceSecurityService = deviceSecurityService;
     }
 
     private final Map<String, ResetCodeInfo> resetCodes = new ConcurrentHashMap<>();
@@ -118,7 +121,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest req) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest req, jakarta.servlet.http.HttpServletRequest request) {
         if (req.identifier() == null || req.identifier().isBlank()) {
             return ResponseEntity.badRequest()
                     .body(Map.of("message", "Email, phone number, or doctor name is required"));
@@ -192,6 +195,11 @@ public class AuthController {
 
         // Generate signed token
         String token = tokenService.generateToken(profile.getId(), profile.getName(), profile.getEmail());
+
+        // Check if login is from another device and dispatch security alert email from no-reply@zenvevet.com
+        if (profile.getEmail() != null && !profile.getEmail().isBlank()) {
+            deviceSecurityService.checkAndRecordDevice(profile.getEmail(), profile.getName(), "DOCTOR", profile.getId(), request);
+        }
 
         return ResponseEntity.ok(toAuthResponse(token, profile));
     }
@@ -632,7 +640,7 @@ public class AuthController {
     }
 
     @PostMapping("/login-with-otp")
-    public ResponseEntity<?> loginWithOtp(@RequestBody LoginWithOtpRequest req) {
+    public ResponseEntity<?> loginWithOtp(@RequestBody LoginWithOtpRequest req, jakarta.servlet.http.HttpServletRequest request) {
         if (req.phone() == null || req.code() == null || req.code().isBlank()) {
             return ResponseEntity.badRequest()
                     .body(Map.of("message", "Mobile number and 6-digit OTP code are required."));
@@ -674,6 +682,12 @@ public class AuthController {
         DoctorProfile saved = doctorRepo.save(profile);
 
         String token = tokenService.generateToken(saved.getId(), saved.getName(), saved.getEmail());
+
+        // Check if login is from another device and dispatch security alert email from no-reply@zenvevet.com
+        if (saved.getEmail() != null && !saved.getEmail().isBlank()) {
+            deviceSecurityService.checkAndRecordDevice(saved.getEmail(), saved.getName(), "DOCTOR", saved.getId(), request);
+        }
+
         return ResponseEntity.ok(toAuthResponse(token, saved));
     }
 
