@@ -16,10 +16,12 @@ public class AdvertiserController {
 
     private final AdvertiserService advertiserService;
     private final TokenService tokenService;
+    private final com.doctorvet.service.DeviceSecurityService deviceSecurityService;
 
-    public AdvertiserController(AdvertiserService advertiserService, TokenService tokenService) {
+    public AdvertiserController(AdvertiserService advertiserService, TokenService tokenService, com.doctorvet.service.DeviceSecurityService deviceSecurityService) {
         this.advertiserService = advertiserService;
         this.tokenService = tokenService;
+        this.deviceSecurityService = deviceSecurityService;
     }
 
     public record LoginReq(String email, String businessEmail, String password) {
@@ -47,9 +49,18 @@ public class AdvertiserController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginReq req) {
+    public ResponseEntity<?> login(@RequestBody LoginReq req, jakarta.servlet.http.HttpServletRequest request) {
         try {
             AdvertiserService.AuthResult result = advertiserService.login(req.effectiveEmail(), req.password());
+            if (result.advertiser() != null && result.advertiser().getBusinessEmail() != null) {
+                deviceSecurityService.checkAndRecordDevice(
+                        result.advertiser().getBusinessEmail(),
+                        result.advertiser().getFullName() != null ? result.advertiser().getFullName() : result.advertiser().getCompanyName(),
+                        "ADVERTISER",
+                        result.advertiser().getId(),
+                        request
+                );
+            }
             return ResponseEntity.ok(Map.of(
                     "token", result.token(),
                     "advertiser", result.advertiser()

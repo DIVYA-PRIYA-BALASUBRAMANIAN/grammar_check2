@@ -24,8 +24,22 @@ async function fetchJson(endpoint, options = {}) {
     }
   }
 
+function getDeviceId() {
+  try {
+    let id = localStorage.getItem('zenve_device_id');
+    if (!id) {
+      id = 'dev_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now().toString(36);
+      localStorage.setItem('zenve_device_id', id);
+    }
+    return id;
+  } catch (_) {
+    return 'dev_client_default';
+  }
+}
+
   const headers = {
     'Content-Type': 'application/json',
+    'X-Device-Id': getDeviceId(),
     ...(authHeader ? { 'Authorization': authHeader } : {}),
     ...(options.headers || {})
   };
@@ -44,10 +58,12 @@ async function fetchJson(endpoint, options = {}) {
         window.dispatchEvent(new CustomEvent('advertiser:unauthorized', { detail: { endpoint } }));
         throw new Error('Unauthorized: Advertiser session expired or invalid credentials');
       } else {
-        const isAuthPublic = endpoint.startsWith('/auth/login') ||
+        const isAuthPublic =
+          endpoint.startsWith('/auth/login') ||
           endpoint.startsWith('/auth/register') ||
           endpoint.startsWith('/auth/forgot-password') ||
           endpoint.startsWith('/auth/verify-code') ||
+          endpoint.startsWith('/auth/verify-otp') ||
           endpoint.startsWith('/auth/reset-password') ||
           endpoint.startsWith('/auth/send-login-otp') ||
           endpoint.startsWith('/auth/login-with-otp');
@@ -141,11 +157,28 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(userData)
       }),
+    verifyOtp: async (email, otp) => {
+      const target = email ? String(email).trim() : '';
+      const cleanOtp = otp ? String(otp).trim() : '';
+      try {
+        return await fetchJson('/auth/verify-otp', {
+          method: 'POST',
+          body: JSON.stringify({
+            email: target,
+            identifier: target,
+            otp: cleanOtp,
+            code: cleanOtp
+          })
+        });
+      } catch (err) {
+        return await api.auth.verifyResetCode(target, cleanOtp);
+      }
+    },
     forgotPassword: async (identifier) => {
       try {
         return await fetchJson('/auth/forgot-password', {
           method: 'POST',
-          body: JSON.stringify({ identifier })
+          body: JSON.stringify({ identifier: identifier ? String(identifier).trim() : '' })
         });
       } catch (err) {
         // If the backend actively rejected with an intentional business validation message (not a 404 endpoint missing), rethrow it
@@ -203,10 +236,17 @@ export const api = {
       }
     },
     verifyResetCode: async (identifier, code) => {
+      const target = identifier ? String(identifier).trim() : '';
+      const cleanCode = code ? String(code).trim() : '';
       try {
         return await fetchJson('/auth/verify-code', {
           method: 'POST',
-          body: JSON.stringify({ identifier, code })
+          body: JSON.stringify({
+            identifier: target,
+            email: target,
+            code: cleanCode,
+            otp: cleanCode
+          })
         });
       } catch (err) {
         if (err.message && !err.message.includes('404') && !err.message.includes('Not Found') && !err.message.includes('Failed to fetch')) {
@@ -224,10 +264,19 @@ export const api = {
       }
     },
     resetPassword: async (identifier, code, newPassword) => {
+      const target = identifier ? String(identifier).trim() : '';
+      const cleanCode = code ? String(code).trim() : '';
+      const pwd = newPassword ? String(newPassword).trim() : '';
       try {
         return await fetchJson('/auth/reset-password', {
           method: 'POST',
-          body: JSON.stringify({ identifier, code, newPassword })
+          body: JSON.stringify({
+            identifier: target,
+            email: target,
+            code: cleanCode,
+            otp: cleanCode,
+            newPassword: pwd
+          })
         });
       } catch (err) {
         if (err.message && !err.message.includes('404') && !err.message.includes('Not Found') && !err.message.includes('Failed to fetch')) {
