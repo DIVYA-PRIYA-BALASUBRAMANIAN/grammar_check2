@@ -20,7 +20,11 @@ import {
   MoreHorizontal,
   Megaphone,
   ExternalLink,
-  Clock
+  Clock,
+  Copy,
+  Check,
+  X,
+  CornerDownRight
 } from 'lucide-react';
 import heroVetImg from '../assets/hero_vet_dog.jpg';
 import { SPECIALTIES, STATES_INDIA } from '../data/mockData';
@@ -55,7 +59,8 @@ export function FeedView({
   onBookmarkPost,
   onReportPost,
   currentUser,
-  onOpenDoctorProfile
+  onOpenDoctorProfile,
+  onSendMessage
 }) {
   const [activeTab, setActiveTab] = useState('for_you');
   const [selectedSpecialty, setSelectedSpecialty] = useState('All specialties');
@@ -68,6 +73,135 @@ export function FeedView({
   const [fetchedCommentsMap, setFetchedCommentsMap] = useState({});
   const loggedViewsRef = useRef({});
   const [, setTimerTick] = useState(0);
+
+  // Instagram-style social interaction states
+  const lastTapMap = useRef({});
+  const [doubleTapHearts, setDoubleTapHearts] = useState({});
+  const [animatingLikes, setAnimatingLikes] = useState({});
+  const [sharingPost, setSharingPost] = useState(null);
+  const [copiedShareLink, setCopiedShareLink] = useState(false);
+  const [sentShareDoctors, setSentShareDoctors] = useState({});
+  const [feedToast, setFeedToast] = useState('');
+
+  const triggerLikeWithAnim = (postId) => {
+    setAnimatingLikes(prev => ({ ...prev, [postId]: true }));
+    setTimeout(() => {
+      setAnimatingLikes(prev => ({ ...prev, [postId]: false }));
+    }, 450);
+    if (onLikePost) onLikePost(postId);
+  };
+
+  const handleMediaDoubleTap = (e, post) => {
+    const now = Date.now();
+    const last = lastTapMap.current[post.id] || 0;
+    if (now - last < 320) {
+      // Double tap triggered
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX ? ((e.clientX - rect.left) / rect.width) * 100 : 50;
+      const y = e.clientY ? ((e.clientY - rect.top) / rect.height) * 100 : 50;
+
+      setDoubleTapHearts(prev => ({
+        ...prev,
+        [post.id]: { id: now, x, y }
+      }));
+
+      setTimeout(() => {
+        setDoubleTapHearts(prev => {
+          const next = { ...prev };
+          delete next[post.id];
+          return next;
+        });
+      }, 900);
+
+      if (!post.isLiked) {
+        triggerLikeWithAnim(post.id);
+      }
+    }
+    lastTapMap.current[post.id] = now;
+  };
+
+  const handleDeleteComment = async (postId, commentId) => {
+    try {
+      await api.feed.deleteComment(postId, commentId, currentUser?.id || 1);
+    } catch (e) {}
+    setFetchedCommentsMap(prev => ({
+      ...prev,
+      [postId]: (prev[postId] || []).filter(c => c.id !== commentId)
+    }));
+  };
+
+  const handleReplyToComment = (postId, authorName) => {
+    setOpenComments(prev => ({ ...prev, [postId]: true }));
+    const cleanDocName = authorName ? authorName.replace(/^dr\.?\s*/i, 'Dr. ') : 'Doctor';
+    setCommentInputs(prev => ({
+      ...prev,
+      [postId]: `@${cleanDocName} `
+    }));
+  };
+
+  const handleOpenShare = (post) => {
+    setSharingPost(post);
+    setCopiedShareLink(false);
+    setSentShareDoctors({});
+  };
+
+  const handleCopyPostLink = (post) => {
+    const url = `${window.location.origin}/#post-${post.id}`;
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(url).catch(() => {});
+    }
+    setCopiedShareLink(true);
+    api.feed.recordShare(post.id).catch(() => {});
+    setFeedToast('Post link copied to clipboard!');
+    setTimeout(() => {
+      setCopiedShareLink(false);
+      setFeedToast('');
+    }, 2500);
+  };
+
+  const handleNativePostShare = async (post) => {
+    const url = `${window.location.origin}/#post-${post.id}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Dr. ${post.authorName}'s Clinical Post on Zenve Vet`,
+          text: post.content || 'Check out this veterinary clinical case on Zenve Vet',
+          url
+        });
+        api.feed.recordShare(post.id).catch(() => {});
+      } catch (e) {}
+    } else {
+      handleCopyPostLink(post);
+    }
+  };
+
+  const handleShareToStory = (post) => {
+    setSharingPost(null);
+    if (onOpenCreatePost) {
+      onOpenCreatePost('STORY');
+    }
+  };
+
+  const handleSendPostToDoctor = (doc, post) => {
+    if (sentShareDoctors[doc.id]) return;
+    setSentShareDoctors(prev => ({ ...prev, [doc.id]: true }));
+
+    const postUrl = `${window.location.origin}/#post-${post.id}`;
+    const shareText = `Shared Dr. ${post.authorName}'s post:\n"${post.content?.slice(0, 80)}..."\n${postUrl}`;
+
+    if (onSendMessage) {
+      onSendMessage({
+        receiverId: doc.id ? Number(String(doc.id).replace('doc-', '')) : null,
+        text: shareText,
+        attachmentUrl: post.imageUrl || post.videoUrl,
+        attachmentType: post.videoUrl ? 'VIDEO' : 'IMAGE'
+      });
+    }
+
+    api.feed.recordShare(post.id).catch(() => {});
+    setFeedToast(`Sent to Dr. ${doc.name.replace(/^dr\.?\s*/i, '')}!`);
+    setTimeout(() => setFeedToast(''), 3000);
+  };
 
   // Auto-record views for active live campaigns in feed
   useEffect(() => {
@@ -724,19 +858,23 @@ export function FeedView({
 
                   if (videoSrc) {
                     return (
-                      <div style={{
-                        borderRadius: '14px',
-                        overflow: 'hidden',
-                        backgroundColor: '#0a0a0a',
-                        maxHeight: '440px',
-                        width: '100%',
-                        marginBottom: '14px',
-                        position: 'relative',
-                        boxShadow: '0 4px 18px rgba(0,0,0,0.14)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}>
+                      <div
+                        style={{
+                          borderRadius: '14px',
+                          overflow: 'hidden',
+                          backgroundColor: '#0a0a0a',
+                          maxHeight: '440px',
+                          width: '100%',
+                          marginBottom: '14px',
+                          position: 'relative',
+                          boxShadow: '0 4px 18px rgba(0,0,0,0.14)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer'
+                        }}
+                        onClick={(e) => handleMediaDoubleTap(e, post)}
+                      >
                         <video
                           src={videoSrc}
                           controls
@@ -750,6 +888,20 @@ export function FeedView({
                             backgroundColor: '#000'
                           }}
                         />
+                        {doubleTapHearts[post.id] && (
+                          <div style={{
+                            position: 'absolute',
+                            top: `${doubleTapHearts[post.id].y}%`,
+                            left: `${doubleTapHearts[post.id].x}%`,
+                            transform: 'translate(-50%, -50%)',
+                            pointerEvents: 'none',
+                            zIndex: 30,
+                            animation: 'feedHeartBurst 0.85s ease-out forwards',
+                            filter: 'drop-shadow(0 6px 22px rgba(239, 68, 68, 0.8))'
+                          }}>
+                            <Heart size={84} fill="#EF4444" color="#FFFFFF" strokeWidth={1.5} />
+                          </div>
+                        )}
                       </div>
                     );
                   }
@@ -758,23 +910,48 @@ export function FeedView({
                     return (
                       <div
                         className="post-image-preview-container"
-                        onClick={() => onOpenClinicalCase && onOpenClinicalCase({
-                          title: post.badgeLabel || "Clinical Case Finding",
-                          authorName: post.authorName,
-                          authorSpecialty: post.authorSpecialty,
-                          species: post.species || "Canine",
-                          presentingComplaint: post.content,
-                          clinicalFindings: "Presented for routine follow-up and specialized examination.",
-                          diagnostics: "Microscopic cytology and diagnostic imaging evaluated.",
-                          diagnosis: "Presumptive / Confirmed Clinical Case",
-                          treatmentProtocol: "Medical management with targeted therapeutics.",
-                          outcome: "Full clinical remission observed at follow-up.",
-                          mediaUrl: post.imageUrl
-                        })}
-                        style={{ cursor: 'pointer' }}
-                        title="Click to review clinical details"
+                        style={{ cursor: 'pointer', position: 'relative' }}
+                        title="Double-tap to like, or click to review clinical details"
+                        onClick={(e) => {
+                          const now = Date.now();
+                          const last = lastTapMap.current[post.id] || 0;
+                          if (now - last < 320) {
+                            handleMediaDoubleTap(e, post);
+                          } else {
+                            lastTapMap.current[post.id] = now;
+                            if (onOpenClinicalCase) {
+                              onOpenClinicalCase({
+                                title: post.badgeLabel || "Clinical Case Finding",
+                                authorName: post.authorName,
+                                authorSpecialty: post.authorSpecialty,
+                                species: post.species || "Canine",
+                                presentingComplaint: post.content,
+                                clinicalFindings: "Presented for routine follow-up and specialized examination.",
+                                diagnostics: "Microscopic cytology and diagnostic imaging evaluated.",
+                                diagnosis: "Presumptive / Confirmed Clinical Case",
+                                treatmentProtocol: "Medical management with targeted therapeutics.",
+                                outcome: "Full clinical remission observed at follow-up.",
+                                mediaUrl: post.imageUrl
+                              });
+                            }
+                          }
+                        }}
                       >
                         <img src={post.imageUrl} alt="Clinical case" className="post-image-preview" loading="lazy" />
+                        {doubleTapHearts[post.id] && (
+                          <div style={{
+                            position: 'absolute',
+                            top: `${doubleTapHearts[post.id].y}%`,
+                            left: `${doubleTapHearts[post.id].x}%`,
+                            transform: 'translate(-50%, -50%)',
+                            pointerEvents: 'none',
+                            zIndex: 30,
+                            animation: 'feedHeartBurst 0.85s ease-out forwards',
+                            filter: 'drop-shadow(0 6px 22px rgba(239, 68, 68, 0.8))'
+                          }}>
+                            <Heart size={84} fill="#EF4444" color="#FFFFFF" strokeWidth={1.5} />
+                          </div>
+                        )}
                       </div>
                     );
                   }
@@ -787,29 +964,36 @@ export function FeedView({
                   <div className="post-actions-group">
                     <button
                       className={`post-action-btn ${post.isLiked ? 'liked' : ''}`}
-                      onClick={() => onLikePost(post.id)}
+                      onClick={() => triggerLikeWithAnim(post.id)}
+                      style={{
+                        animation: animatingLikes[post.id] ? 'feedLikeBounce 0.4s ease' : 'none'
+                      }}
+                      title={post.isLiked ? 'Unlike' : 'Like post'}
                     >
-                      <Heart size={17} fill={post.isLiked ? '#ef4444' : 'none'} color={post.isLiked ? '#ef4444' : '#6b7280'} />
-                      <span>{post.likes}</span>
+                      <Heart
+                        size={18}
+                        fill={post.isLiked ? '#ef4444' : 'none'}
+                        color={post.isLiked ? '#ef4444' : '#6b7280'}
+                      />
+                      <span>{post.likes || 0}</span>
                     </button>
 
                     <button
                       className="post-action-btn"
                       onClick={() => toggleComments(post.id)}
+                      title="View discussion"
                     >
                       <MessageSquare size={17} color={openComments[post.id] ? '#059669' : '#6b7280'} />
-                      <span>{post.commentsCount || (post.comments ? post.comments.length : 0)} comments</span>
+                      <span>{post.commentsCount || (post.comments ? post.comments.length : 0)}</span>
                     </button>
 
                     <button
                       className="post-action-btn"
-                      onClick={() => {
-                        navigator.clipboard?.writeText(window.location.href);
-                        alert('Post link copied to clipboard!');
-                      }}
+                      onClick={() => handleOpenShare(post)}
+                      title="Share post"
                     >
                       <Share2 size={17} />
-                      <span>Share</span>
+                      <span>{post.shares > 0 ? post.shares : 'Share'}</span>
                     </button>
                   </div>
 
@@ -845,7 +1029,7 @@ export function FeedView({
                           const commentAvatar = (isOwnComment && currentUser?.avatar) ? currentUser.avatar : (commentDoc?.avatar || c.authorAvatar);
 
                           return (
-                            <div key={c.id || idx} style={{ display: 'flex', gap: '8px', fontSize: '12.5px' }}>
+                            <div key={c.id || idx} style={{ display: 'flex', gap: '8px', fontSize: '12.5px', alignItems: 'flex-start' }}>
                               <Avatar
                                 src={commentAvatar}
                                 name={c.authorName}
@@ -854,12 +1038,65 @@ export function FeedView({
                               />
                               <div style={{
                                 backgroundColor: '#F9FAFB',
-                                borderRadius: '8px',
-                                padding: '6px 12px',
-                                flex: 1
+                                borderRadius: '10px',
+                                padding: '7px 12px',
+                                flex: 1,
+                                border: '1px solid #F3F4F6'
                               }}>
-                                <strong style={{ color: '#111827', display: 'block', fontSize: '12px' }}>{c.authorName}</strong>
-                                <span style={{ color: '#4B5563', lineHeight: 1.35 }}>{c.content}</span>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                                  <strong style={{ color: '#111827', fontSize: '12px' }}>{c.authorName}</strong>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleReplyToComment(post.id, c.authorName)}
+                                      style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: '#059669',
+                                        fontSize: '11px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 2,
+                                        padding: 0
+                                      }}
+                                    >
+                                      <CornerDownRight size={11} />
+                                      <span>Reply</span>
+                                    </button>
+                                    {isOwnComment && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteComment(post.id, c.id)}
+                                        style={{
+                                          background: 'none',
+                                          border: 'none',
+                                          color: '#9CA3AF',
+                                          cursor: 'pointer',
+                                          padding: 0,
+                                          display: 'flex',
+                                          alignItems: 'center'
+                                        }}
+                                        title="Delete comment"
+                                      >
+                                        <Trash2 size={12} color="#EF4444" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                                <span style={{ color: '#374151', lineHeight: 1.4 }}>
+                                  {c.content?.split(' ').map((word, wIdx) => {
+                                    if (word.startsWith('@')) {
+                                      return (
+                                        <span key={wIdx} style={{ color: '#059669', fontWeight: 700 }}>
+                                          {word}{' '}
+                                        </span>
+                                      );
+                                    }
+                                    return word + ' ';
+                                  })}
+                                </span>
                               </div>
                             </div>
                           );
@@ -893,15 +1130,16 @@ export function FeedView({
                       />
                       <button
                         type="submit"
+                        disabled={!commentInputs[post.id]?.trim()}
                         style={{
-                          backgroundColor: '#003822',
-                          color: '#FFFFFF',
+                          backgroundColor: commentInputs[post.id]?.trim() ? '#003822' : '#E5E7EB',
+                          color: commentInputs[post.id]?.trim() ? '#FFFFFF' : '#9CA3AF',
                           border: 'none',
                           borderRadius: '9999px',
                           padding: '6px 14px',
                           fontSize: '12px',
                           fontWeight: 700,
-                          cursor: 'pointer',
+                          cursor: commentInputs[post.id]?.trim() ? 'pointer' : 'default',
                           display: 'flex',
                           alignItems: 'center',
                           gap: '4px'
@@ -918,6 +1156,276 @@ export function FeedView({
           })
         )}
       </div>
+
+      {/* Global CSS for Animations */}
+      <style>{`
+        @keyframes feedHeartBurst {
+          0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+          50% { opacity: 1; transform: translate(-50%, -50%) scale(1.25); }
+          75% { opacity: 0.95; transform: translate(-50%, -50%) scale(1.05); }
+          100% { opacity: 0; transform: translate(-50%, -50%) scale(1.4); }
+        }
+        @keyframes feedLikeBounce {
+          0% { transform: scale(1); }
+          40% { transform: scale(1.35); }
+          75% { transform: scale(0.9); }
+          100% { transform: scale(1); }
+        }
+        @keyframes feedToastSlide {
+          0% { opacity: 0; transform: translate(-50%, 20px); }
+          15% { opacity: 1; transform: translate(-50%, 0); }
+          85% { opacity: 1; transform: translate(-50%, 0); }
+          100% { opacity: 0; transform: translate(-50%, -10px); }
+        }
+      `}</style>
+
+      {/* Floating Toast Notification */}
+      {feedToast && (
+        <div style={{
+          position: 'fixed',
+          bottom: 24,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: '#0F172A',
+          color: '#FFFFFF',
+          padding: '9px 18px',
+          borderRadius: '24px',
+          fontSize: '13px',
+          fontWeight: 600,
+          boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          zIndex: 15000,
+          animation: 'feedToastSlide 2.8s ease forwards'
+        }}>
+          <Sparkles size={15} color="#10B981" />
+          <span>{feedToast}</span>
+        </div>
+      )}
+
+      {/* Instagram-Style Post Share Modal */}
+      {sharingPost && (
+        <div className="modal-overlay" onClick={() => setSharingPost(null)} style={{ zIndex: 14000 }}>
+          <div
+            style={{
+              width: '440px',
+              maxWidth: '92vw',
+              backgroundColor: '#FFFFFF',
+              borderRadius: '20px',
+              padding: '20px',
+              boxShadow: '0 25px 60px rgba(0,0,0,0.3)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+              animation: 'modalPop 0.22s ease'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Share2 size={18} color="#059669" />
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#111827' }}>
+                  Share Post
+                </h3>
+              </div>
+              <button
+                onClick={() => setSharingPost(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#6B7280',
+                  cursor: 'pointer',
+                  padding: 4
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Post Preview Card */}
+            <div style={{
+              display: 'flex',
+              gap: 12,
+              padding: '10px 12px',
+              borderRadius: '12px',
+              backgroundColor: '#F9FAFB',
+              border: '1px solid #E5E7EB',
+              alignItems: 'center'
+            }}>
+              {sharingPost.imageUrl && (
+                <img
+                  src={sharingPost.imageUrl}
+                  alt="Post preview"
+                  style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover' }}
+                />
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: '0 0 2px 0', fontSize: '13px', fontWeight: 700, color: '#111827' }}>
+                  {sharingPost.authorName}
+                </p>
+                <p style={{ margin: 0, fontSize: '12px', color: '#4B5563', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {sharingPost.content}
+                </p>
+              </div>
+            </div>
+
+            {/* Action Buttons: Add to Story, Copy Link, Native Share */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* Add to Story */}
+              <button
+                onClick={() => handleShareToStory(sharingPost)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '11px 14px',
+                  borderRadius: '12px',
+                  backgroundColor: '#ECFDF5',
+                  border: '1px solid #A7F3D0',
+                  color: '#065F46',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'background-color 0.15s ease'
+                }}
+              >
+                <Plus size={16} color="#059669" />
+                <span>Add Post to Your Story</span>
+              </button>
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                {/* Copy Link */}
+                <button
+                  onClick={() => handleCopyPostLink(sharingPost)}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    padding: '10px 12px',
+                    borderRadius: '12px',
+                    backgroundColor: copiedShareLink ? '#ECFDF5' : '#F3F4F6',
+                    border: `1px solid ${copiedShareLink ? '#10B981' : '#E5E7EB'}`,
+                    color: copiedShareLink ? '#059669' : '#374151',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {copiedShareLink ? <Check size={15} color="#059669" /> : <Copy size={15} />}
+                  <span>{copiedShareLink ? 'Link Copied!' : 'Copy Link'}</span>
+                </button>
+
+                {/* Device Share */}
+                <button
+                  onClick={() => handleNativePostShare(sharingPost)}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    padding: '10px 12px',
+                    borderRadius: '12px',
+                    backgroundColor: '#003822',
+                    border: 'none',
+                    color: '#FFFFFF',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Share2 size={15} />
+                  <span>Share Via...</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Direct Message Colleague Doctors */}
+            <div>
+              <span style={{
+                fontSize: '11.5px',
+                fontWeight: 700,
+                color: '#6B7280',
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+                display: 'block',
+                marginBottom: 8
+              }}>
+                Send to Veterinarian Colleagues
+              </span>
+
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                maxHeight: 180,
+                overflowY: 'auto'
+              }}>
+                {doctors.slice(0, 6).map(doc => {
+                  const isSent = !!sentShareDoctors[doc.id];
+                  return (
+                    <div
+                      key={doc.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '6px 10px',
+                        borderRadius: '10px',
+                        backgroundColor: '#F9FAFB',
+                        border: '1px solid #F3F4F6'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                        <Avatar src={doc.avatar} name={doc.name} size={32} />
+                        <div>
+                          <p style={{ fontSize: '12.5px', fontWeight: 700, color: '#111827', margin: 0 }}>
+                            {doc.name}
+                          </p>
+                          <span style={{ fontSize: '11px', color: '#6B7280' }}>
+                            {doc.specialty || 'Veterinary Practitioner'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleSendPostToDoctor(doc, sharingPost)}
+                        disabled={isSent}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: '8px',
+                          backgroundColor: isSent ? '#ECFDF5' : '#003822',
+                          border: `1px solid ${isSent ? '#10B981' : 'transparent'}`,
+                          color: isSent ? '#059669' : '#FFFFFF',
+                          fontSize: '11.5px',
+                          fontWeight: 700,
+                          cursor: isSent ? 'default' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4
+                        }}
+                      >
+                        {isSent ? (
+                          <>
+                            <Check size={12} />
+                            <span>Sent</span>
+                          </>
+                        ) : (
+                          <span>Send</span>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,0 +1,146 @@
+# ==============================================================================
+# Zenve Vet Kubernetes Production Cluster Manifest (300,000 Users Scale)
+# Includes Auto-Scaling Deployment, Service, HPA, and Ingress Controller
+# ==============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zenve-vet-backend
+  namespace: default
+  labels:
+    app: zenve-vet-backend
+spec:
+  replicas: 4
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: zenve-vet-backend
+  template:
+    metadata:
+      labels:
+        app: zenve-vet-backend
+    spec:
+      containers:
+      - name: backend
+        image: zenve-vet-backend:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+        env:
+        - name: DB_HOST
+          value: "mysql-cluster-service"
+        - name: DB_PORT
+          value: "3306"
+        - name: DB_NAME
+          value: "zenvevet"
+        - name: DB_USER
+          value: "root"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: zenve-secrets
+              key: db-password
+        - name: TOMCAT_MAX_THREADS
+          value: "400"
+        - name: HIKARI_MAX_POOL_SIZE
+          value: "40"
+        resources:
+          requests:
+            cpu: "1000m"
+            memory: "2048Mi"
+          limits:
+            cpu: "2500m"
+            memory: "4096Mi"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+          initialDelaySeconds: 40
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+          initialDelaySeconds: 25
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+---
+# Service for Internal Load Balancing (Round-Robin kube-proxy)
+apiVersion: v1
+kind: Service
+metadata:
+  name: zenve-vet-backend-svc
+  namespace: default
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http
+  selector:
+    app: zenve-vet-backend
+---
+# Horizontal Pod Autoscaler (HPA) for Surging Peak Traffic
+# Automatically scales from 4 pods up to 25 pods when CPU exceeds 70%
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: zenve-vet-backend-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: zenve-vet-backend
+  minReplicas: 4
+  maxReplicas: 25
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+---
+# Ingress Controller with SSL Termination and Sticky Sessions
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: zenve-vet-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/proxy-body-size: "60m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "15"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/websocket-services: "zenve-vet-backend-svc"
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/affinity-mode: "persistent"
+    nginx.ingress.kubernetes.io/session-cookie-name: "ZENVE_AFFINITY"
+spec:
+  rules:
+  - host: api.zenvevet.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: zenve-vet-backend-svc
+            port:
+              number: 8080

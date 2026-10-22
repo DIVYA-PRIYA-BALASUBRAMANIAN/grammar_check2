@@ -89,4 +89,34 @@ public class FeedController {
         return ResponseEntity
                 .ok(Map.of("message", "Post reported to moderators. Thank you for keeping the community safe."));
     }
+
+    @DeleteMapping("/posts/{id}/comments/{commentId}")
+    public ResponseEntity<?> deleteComment(
+            @PathVariable Long id,
+            @PathVariable Long commentId,
+            @RequestParam(required = false) Long doctorId) {
+        if (feedService.deleteComment(id, commentId, doctorId)) {
+            return ResponseEntity.ok(Map.of("message", "Comment deleted successfully"));
+        }
+        return ResponseEntity.badRequest().body(Map.of("message", "Unable to delete comment"));
+    }
+
+    @PutMapping("/posts/{id}/comments/{commentId}")
+    public ResponseEntity<?> editComment(
+            @PathVariable Long id,
+            @PathVariable Long commentId,
+            @RequestParam(required = false) Long doctorId,
+            @RequestBody Map<String, String> body) {
+        String newContent = body.getOrDefault("content", "");
+        return feedService.editComment(commentId, doctorId, newContent)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/posts/{id}/share")
+    public ResponseEntity<?> recordSharePost(@PathVariable Long id) {
+        return feedService.recordShare(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
 }

@@ -28,6 +28,13 @@ public class Story {
     @Column(length = 1000)
     private String caption;
 
+    private Integer likes = 0;
+    private Integer shares = 0;
+    private Integer views = 0;
+
+    @Transient
+    private Boolean isLiked = false;
+
     private LocalDateTime expiresAt;
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -71,6 +78,18 @@ public class Story {
 
     public String getCaption() { return caption; }
     public void setCaption(String caption) { this.caption = caption; }
+
+    public Integer getLikes() { return likes != null ? likes : 0; }
+    public void setLikes(Integer likes) { this.likes = likes != null ? likes : 0; }
+
+    public Integer getShares() { return shares != null ? shares : 0; }
+    public void setShares(Integer shares) { this.shares = shares != null ? shares : 0; }
+
+    public Integer getViews() { return views != null ? views : 0; }
+    public void setViews(Integer views) { this.views = views != null ? views : 0; }
+
+    public Boolean getIsLiked() { return isLiked != null ? isLiked : false; }
+    public void setIsLiked(Boolean isLiked) { this.isLiked = isLiked != null ? isLiked : false; }
 
     public LocalDateTime getExpiresAt() { return expiresAt; }
     public void setExpiresAt(LocalDateTime expiresAt) { this.expiresAt = expiresAt; }

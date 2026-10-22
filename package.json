@@ -1,0 +1,11 @@
+{
+  "name": "zenve-vet",
+  "version": "1.0.0",
+  "description": "Zenve Vet Clinical Social Media Platform - High Scale Architecture",
+  "scripts": {
+    "lb": "node scripts/load-balancer.js",
+    "benchmark": "powershell -ExecutionPolicy Bypass -File scripts/benchmark-load.ps1 -TargetUrl http://localhost:8000/api/v1/stories -TotalRequests 300 -Concurrency 20",
+    "client": "npm run dev --prefix client",
+    "build:client": "npm run build --prefix client"
+  }
+}

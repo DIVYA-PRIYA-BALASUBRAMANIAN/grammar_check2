@@ -183,7 +183,8 @@ export function App() {
 
       try {
         // Load active 24h stories
-        const backendStories = await api.stories.getAll();
+        const docIdForStories = currentUser?.id ? Number(String(currentUser.id).replace('doc-', '')) : null;
+        const backendStories = await api.stories.getAll(docIdForStories);
         if (backendStories && backendStories.length > 0) {
           setStories(backendStories.map(s => {
             const freshDoc = loadedDocs.find(d =>
@@ -200,7 +201,10 @@ export function App() {
               image: s.mediaUrl || 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?auto=format&fit=crop&w=800&q=80',
               videoUrl: s.mediaType === 'VIDEO' ? s.mediaUrl : null,
               caption: s.caption || 'Moments from clinical practice',
-              time: 'Active'
+              time: 'Active',
+              likes: s.likes || 0,
+              shares: s.shares || 0,
+              isLiked: !!s.isLiked
             };
           }));
         }
@@ -1009,7 +1013,10 @@ export function App() {
           image: savedStory.mediaUrl || imageUrl,
           videoUrl: savedStory.mediaType === 'VIDEO' ? savedStory.mediaUrl : null,
           caption: savedStory.caption || content,
-          time: 'Just now'
+          time: 'Just now',
+          likes: 0,
+          shares: 0,
+          isLiked: false
         };
         setStories(prev => [formattedStory, ...prev]);
       } catch (e) {
@@ -2259,6 +2266,7 @@ export function App() {
                   onReportPost={handleReportPost}
                   currentUser={currentUser}
                   onOpenDoctorProfile={handleOpenDoctorProfile}
+                  onSendMessage={handleSendMessage}
                 />
               )}
 
@@ -2526,10 +2534,20 @@ export function App() {
         onInsertCase={(text) => handleCreatePost({ content: text, postType: 'CLINICAL_CASE' })}
       />
 
-      <StoryModal
-        story={selectedStory}
-        onClose={() => setSelectedStory(null)}
-      />
+      {selectedStory && (
+        <StoryModal
+          story={selectedStory}
+          stories={stories}
+          onSelectStory={setSelectedStory}
+          onClose={() => setSelectedStory(null)}
+          currentUser={currentUser}
+          doctors={doctors}
+          onSendMessage={handleSendMessage}
+          onUpdateStory={(updated) => {
+            setStories(prev => prev.map(s => s.id === updated.id ? { ...s, ...updated } : s));
+          }}
+        />
+      )}
 
       <VideoPlayerModal
         video={selectedVideo}

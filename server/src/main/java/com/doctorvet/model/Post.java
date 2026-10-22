@@ -28,6 +28,11 @@ public class Post {
     private String species;
     private Integer likes = 0;
     private Integer commentsCount = 0;
+    private Integer shares = 0;
+
+    @Transient
+    private Boolean isLiked = false;
+
     private LocalDateTime createdAt = LocalDateTime.now();
 
     public Post() {
@@ -158,6 +163,22 @@ public class Post {
 
     public void setCommentsCount(Integer commentsCount) {
         this.commentsCount = commentsCount != null ? commentsCount : 0;
+    }
+
+    public int getShares() {
+        return shares != null ? shares : 0;
+    }
+
+    public void setShares(Integer shares) {
+        this.shares = shares != null ? shares : 0;
+    }
+
+    public Boolean getIsLiked() {
+        return isLiked != null ? isLiked : false;
+    }
+
+    public void setIsLiked(Boolean isLiked) {
+        this.isLiked = isLiked != null ? isLiked : false;
     }
 
     public LocalDateTime getCreatedAt() {

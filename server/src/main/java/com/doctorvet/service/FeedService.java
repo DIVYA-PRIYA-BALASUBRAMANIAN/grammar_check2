@@ -156,4 +156,42 @@ public class FeedService {
     public void reportPost(Long postId, Long reporterId, String reason) {
         reportRepo.save(new Report(reporterId, postId, reason));
     }
+
+    @Transactional
+    public boolean deleteComment(Long postId, Long commentId, Long doctorId) {
+        return commentRepo.findById(commentId).map(comment -> {
+            if (comment.getAuthorId() != null && doctorId != null && !comment.getAuthorId().equals(doctorId)) {
+                return false;
+            }
+            commentRepo.delete(comment);
+            postRepo.findById(postId).ifPresent(p -> {
+                p.setCommentsCount(Math.max(0, p.getCommentsCount() - 1));
+                postRepo.save(p);
+            });
+            return true;
+        }).orElse(false);
+    }
+
+    @Transactional
+    public Optional<Comment> editComment(Long commentId, Long doctorId, String newContent) {
+        return commentRepo.findById(commentId).map(comment -> {
+            if (comment.getAuthorId() != null && doctorId != null && !comment.getAuthorId().equals(doctorId)) {
+                return comment;
+            }
+            comment.setContent(newContent);
+            return commentRepo.save(comment);
+        });
+    }
+
+    @Transactional
+    public Optional<Map<String, Object>> recordShare(Long postId) {
+        return postRepo.findById(postId).map(post -> {
+            post.setShares(post.getShares() + 1);
+            Post saved = postRepo.save(post);
+            Map<String, Object> res = new HashMap<>();
+            res.put("postId", saved.getId());
+            res.put("shares", saved.getShares());
+            return res;
+        });
+    }
 }

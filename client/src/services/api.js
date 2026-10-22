@@ -505,6 +505,19 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(comment)
       }),
+    deleteComment: (postId, commentId, doctorId = 1) =>
+      fetchJson(`/feed/posts/${postId}/comments/${commentId}?doctorId=${doctorId}`, {
+        method: 'DELETE'
+      }),
+    editComment: (postId, commentId, content, doctorId = 1) =>
+      fetchJson(`/feed/posts/${postId}/comments/${commentId}?doctorId=${doctorId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ content })
+      }),
+    recordShare: (postId) =>
+      fetchJson(`/feed/posts/${postId}/share`, {
+        method: 'POST'
+      }),
     toggleBookmark: (postId, doctorId = 1) =>
       fetchJson(`/feed/posts/${postId}/bookmark?doctorId=${doctorId}`, {
         method: 'POST'
@@ -519,11 +532,33 @@ export const api = {
 
   // Stories (24h ephemeral)
   stories: {
-    getAll: () => fetchJson('/stories'),
+    getAll: (doctorId) => fetchJson(`/stories${doctorId ? `?doctorId=${doctorId}` : ''}`),
     create: (story) => fetchJson('/stories', {
       method: 'POST',
       body: JSON.stringify(story)
-    })
+    }),
+    toggleLike: (storyId, doctorId, doctorName) => {
+      const q = new URLSearchParams();
+      if (doctorId) q.append('doctorId', doctorId);
+      if (doctorName) q.append('doctorName', doctorName);
+      return fetchJson(`/stories/${storyId}/like?${q.toString()}`, {
+        method: 'POST'
+      });
+    },
+    recordShare: (storyId) => fetchJson(`/stories/${storyId}/share`, {
+      method: 'POST'
+    }),
+    recordView: (storyId, viewerDoctorId, viewerDoctorName, viewerDoctorAvatar, viewerSpecialty) => {
+      const q = new URLSearchParams();
+      if (viewerDoctorId) q.append('viewerDoctorId', viewerDoctorId);
+      if (viewerDoctorName) q.append('viewerDoctorName', viewerDoctorName);
+      if (viewerDoctorAvatar) q.append('viewerDoctorAvatar', viewerDoctorAvatar);
+      if (viewerSpecialty) q.append('viewerSpecialty', viewerSpecialty);
+      return fetchJson(`/stories/${storyId}/view?${q.toString()}`, {
+        method: 'POST'
+      });
+    },
+    getViewers: (storyId) => fetchJson(`/stories/${storyId}/viewers`)
   },
 
   // Media File Upload

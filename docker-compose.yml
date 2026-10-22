@@ -1,0 +1,195 @@
+# ==============================================================================
+# Zenve Vet High-Availability Load-Balanced Cluster
+# Scaled for 300,000 Users (Nginx Load Balancer + 3x Spring Boot + Redis + MySQL)
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  # ----------------------------------------------------------------------------
+  # Layer 1: Production Nginx Load Balancer (Port 80)
+  # Directs traffic to backend-1, backend-2, backend-3 using least_conn
+  # Offloads /uploads/ media directly without touching JVM
+  # ----------------------------------------------------------------------------
+  loadbalancer:
+    image: nginx:1.27-alpine
+    container_name: zenve_loadbalancer
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./uploads:/var/www/uploads:ro
+      - ./client/dist:/var/www/client/dist:ro
+    depends_on:
+      backend-1:
+        condition: service_healthy
+      backend-2:
+        condition: service_healthy
+      backend-3:
+        condition: service_healthy
+    networks:
+      - zenve_cluster_net
+
+  # ----------------------------------------------------------------------------
+  # Layer 2: Clustered Spring Boot Worker Instances (Stateless Micro-Cluster)
+  # ----------------------------------------------------------------------------
+  backend-1:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: zenve_backend_node_1
+    restart: always
+    environment:
+      - SERVER_PORT=8080
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=zenvevet
+      - DB_USER=root
+      - DB_PASSWORD=Vasanth@zenve
+      - SPRING_CACHE_TYPE=redis
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - HIKARI_MAX_POOL_SIZE=35
+      - TOMCAT_MAX_THREADS=350
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - zenve_cluster_net
+
+  backend-2:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: zenve_backend_node_2
+    restart: always
+    environment:
+      - SERVER_PORT=8080
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=zenvevet
+      - DB_USER=root
+      - DB_PASSWORD=Vasanth@zenve
+      - SPRING_CACHE_TYPE=redis
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - HIKARI_MAX_POOL_SIZE=35
+      - TOMCAT_MAX_THREADS=350
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - zenve_cluster_net
+
+  backend-3:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: zenve_backend_node_3
+    restart: always
+    environment:
+      - SERVER_PORT=8080
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=zenvevet
+      - DB_USER=root
+      - DB_PASSWORD=Vasanth@zenve
+      - SPRING_CACHE_TYPE=redis
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - HIKARI_MAX_POOL_SIZE=35
+      - TOMCAT_MAX_THREADS=350
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - zenve_cluster_net
+
+  # ----------------------------------------------------------------------------
+  # Layer 3: Redis Distributed Cache & Session Store
+  # ----------------------------------------------------------------------------
+  redis:
+    image: redis:7.2-alpine
+    container_name: zenve_redis_cache
+    restart: always
+    command: redis-server --save 60 1 --loglevel warning --maxmemory 1024mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_cluster_data:/data
+    networks:
+      - zenve_cluster_net
+
+  # ----------------------------------------------------------------------------
+  # Layer 4: MySQL 8.0 High-Performance Database
+  # Tuned for 1,000 Concurrent Connections & Fast Indexing
+  # ----------------------------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    container_name: zenve_mysql_master
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: Vasanth@zenve
+      MYSQL_DATABASE: zenvevet
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --max_connections=1000
+      --innodb_buffer_pool_size=1536M
+      --innodb_log_file_size=256M
+      --innodb_flush_log_at_trx_commit=2
+      --innodb_flush_method=O_DIRECT
+      --thread_cache_size=128
+      --table_open_cache=4000
+      --open_files_limit=65535
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_cluster_data:/var/lib/mysql
+      - ./server/src/main/resources/schema-optimizations.sql:/docker-entrypoint-initdb.d/01-optimizations.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pVasanth@zenve"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+    networks:
+      - zenve_cluster_net
+
+networks:
+  zenve_cluster_net:
+    driver: bridge
+
+volumes:
+  mysql_cluster_data:
+  redis_cluster_data:

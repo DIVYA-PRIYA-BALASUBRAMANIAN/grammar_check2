@@ -26,16 +26,15 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry registry) {
-        java.nio.file.Path uploadDir = java.nio.file.Paths.get("uploads").toAbsolutePath().normalize();
-        java.nio.file.Path rootUploadDir = java.nio.file.Paths.get("..", "uploads").toAbsolutePath().normalize();
-        java.nio.file.Path serverUploadDir = java.nio.file.Paths.get("server", "uploads").toAbsolutePath().normalize();
+        String u1 = java.nio.file.Paths.get("uploads").toAbsolutePath().normalize().toUri().toString();
+        if (!u1.endsWith("/")) u1 += "/";
+        String u2 = java.nio.file.Paths.get("..", "uploads").toAbsolutePath().normalize().toUri().toString();
+        if (!u2.endsWith("/")) u2 += "/";
+        String u3 = java.nio.file.Paths.get("server", "uploads").toAbsolutePath().normalize().toUri().toString();
+        if (!u3.endsWith("/")) u3 += "/";
 
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations(
-                        uploadDir.toUri().toString(),
-                        rootUploadDir.toUri().toString(),
-                        serverUploadDir.toUri().toString()
-                );
+                .addResourceLocations(u1, u2, u3);
     }
 
     @Override
