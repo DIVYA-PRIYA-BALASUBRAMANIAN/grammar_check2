@@ -81,7 +81,7 @@ public class EmailService {
 
     String subject = "Welcome to Zenve Vet Ads & Partnerships — " + company;
     String htmlBody = buildAdvertiserWelcomeHtml(contactName, company, toEmail);
-    String plainText = "Welcome to Zenve Vet Partner Network, " + contactName + " (" + company + ")!";
+    String plainText = buildAdvertiserWelcomePlainText(contactName, company);
 
     sendEmail(toEmail, subject, htmlBody, plainText);
   }
@@ -142,7 +142,8 @@ public class EmailService {
    * when a user logs in from a new or different device.
    */
   @Async
-  public void sendNewDeviceLoginAlertEmail(String toEmail, String recipientName, String deviceName, String ipAddress, LocalDateTime loginTime) {
+  public void sendNewDeviceLoginAlertEmail(String toEmail, String recipientName, String deviceName, String ipAddress,
+      LocalDateTime loginTime) {
     if (toEmail == null || toEmail.isBlank() || !toEmail.contains("@")) {
       log.warn("[Zenve Mail] Skipping new device login alert: invalid recipient email '{}'", toEmail);
       return;
@@ -225,6 +226,7 @@ public class EmailService {
             .header { background: linear-gradient(135deg, #003822 0%%, #0D9488 60%%, #059669 100%%); padding: 34px 30px; text-align: center; color: #FFFFFF; }
             .brand-badge { display: inline-block; background: rgba(255, 255, 255, 0.18); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 20px; padding: 4px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
             .brand-title { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+            .brand-title a { color: #FFFFFF; text-decoration: none; }
             .brand-subtitle { margin: 6px 0 0 0; font-size: 13px; opacity: 0.92; font-weight: 400; }
             .content { padding: 34px 30px; line-height: 1.6; }
             .greeting { font-size: 19px; font-weight: 700; color: #0F172A; margin-bottom: 12px; }
@@ -238,8 +240,11 @@ public class EmailService {
             .details-table tr:last-child td { border-bottom: none; }
             .details-table .label { color: #64748B; font-weight: 600; width: 35%%; }
             .details-table .value { color: #0F172A; font-weight: 500; }
+            .cta-container { text-align: center; margin: 24px 0 16px 0; }
+            .cta-btn { display: inline-block; background-color: #003822; color: #FFFFFF !important; text-decoration: none; font-weight: 700; font-size: 14.5px; padding: 13px 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 56, 34, 0.25); }
             .alert-box { background: #FFFBEB; border-left: 4px solid #F59E0B; border-radius: 6px; padding: 14px 16px; margin: 22px 0; font-size: 13px; color: #92400E; }
             .footer { background-color: #0F172A; padding: 24px 30px; text-align: center; color: #94A3B8; font-size: 12px; line-height: 1.6; }
+            .footer a { color: #14B8A6; text-decoration: none; }
           </style>
         </head>
         <body>
@@ -247,7 +252,7 @@ public class EmailService {
             <div class="wrapper">
               <div class="header">
                 <span class="brand-badge">Security Verification</span>
-                <h1 class="brand-title">ZENVE VET</h1>
+                <h1 class="brand-title"><a href="https://zenvevet.com" target="_blank">ZENVE VET</a></h1>
                 <p class="brand-subtitle">The Professional Network for Animal Healthcare</p>
               </div>
               <div class="content">
@@ -263,7 +268,15 @@ public class EmailService {
                   <span class="otp-meta">⏱ Valid for %d minutes • Single-use only</span>
                 </div>
 
+                <div class="cta-container">
+                  <a href="%s" class="cta-btn" target="_blank">Open Zenve Vet (%s) →</a>
+                </div>
+
                 <table class="details-table">
+                  <tr>
+                    <td class="label">Website</td>
+                    <td class="value"><a href="https://zenvevet.com" target="_blank" style="color: #0D9488; text-decoration: none; font-weight: 600;">https://zenvevet.com</a></td>
+                  </tr>
                   <tr>
                     <td class="label">Registered Email</td>
                     <td class="value">%s</td>
@@ -284,7 +297,7 @@ public class EmailService {
               </div>
               <div class="footer">
                 <p style="margin: 0 0 6px 0; font-weight: 600; color: #E2E8F0;">Zenve Pets Healthcare Pvt. Ltd.</p>
-                <p style="margin: 0 0 10px 0;">Bengaluru, Karnataka, India • <a href="https://zenvevet.com" style="color: #14B8A6; text-decoration: none;">www.zenvevet.com</a></p>
+                <p style="margin: 0 0 10px 0;">Bengaluru, Karnataka, India • <a href="https://zenvevet.com" target="_blank">https://zenvevet.com</a></p>
                 <p style="margin: 0; font-size: 11px; color: #64748B;">
                   This automated security message was sent to %s from <strong>no-reply@zenvevet.com</strong>.
                   <br>Please do not reply directly to this email address.
@@ -295,7 +308,7 @@ public class EmailService {
         </body>
         </html>
         """
-        .formatted(recipientName, otpCode, expiryMinutes, email, email);
+        .formatted(recipientName, otpCode, expiryMinutes, appUrl, appUrl, email, email);
   }
 
   private String buildPasswordResetOtpPlainText(String recipientName, String otpCode, int expiryMinutes) {
@@ -311,13 +324,17 @@ public class EmailService {
 
         This OTP is valid for %d minutes.
 
+        Enter this code on: %s
+        Official Website: https://zenvevet.com
+
         Never share this OTP with anyone. If you did not request this password reset, please ignore this email.
 
         Best regards,
         Zenve Vet Security Team
         Zenve Pets Healthcare Pvt. Ltd.
+        Website: https://zenvevet.com
         Sent from: no-reply@zenvevet.com
-        """.formatted(recipientName, otpCode, expiryMinutes);
+        """.formatted(recipientName, otpCode, expiryMinutes, appUrl);
   }
 
   private String buildPasswordChangedSuccessHtml(String recipientName, String email, String timestamp) {
@@ -334,6 +351,7 @@ public class EmailService {
             .header { background: linear-gradient(135deg, #003822 0%%, #0D9488 60%%, #059669 100%%); padding: 34px 30px; text-align: center; color: #FFFFFF; }
             .brand-badge { display: inline-block; background: rgba(255, 255, 255, 0.18); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 20px; padding: 4px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
             .brand-title { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+            .brand-title a { color: #FFFFFF; text-decoration: none; }
             .content { padding: 34px 30px; line-height: 1.6; }
             .status-badge { display: inline-flex; align-items: center; background: #ECFDF5; border: 1px solid #A7F3D0; color: #047857; font-size: 13px; font-weight: 700; border-radius: 20px; padding: 6px 16px; margin-bottom: 16px; }
             .greeting { font-size: 19px; font-weight: 700; color: #0F172A; margin-bottom: 12px; }
@@ -347,6 +365,7 @@ public class EmailService {
             .cta-btn { display: inline-block; background-color: #003822; color: #FFFFFF !important; text-decoration: none; font-weight: 700; font-size: 15px; padding: 13px 32px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 56, 34, 0.25); }
             .danger-box { background: #FEF2F2; border-left: 4px solid #EF4444; border-radius: 6px; padding: 14px 16px; margin: 24px 0 10px 0; font-size: 13px; color: #991B1B; }
             .footer { background-color: #0F172A; padding: 24px 30px; text-align: center; color: #94A3B8; font-size: 12px; line-height: 1.6; }
+            .footer a { color: #14B8A6; text-decoration: none; }
           </style>
         </head>
         <body>
@@ -354,7 +373,7 @@ public class EmailService {
             <div class="wrapper">
               <div class="header">
                 <span class="brand-badge">Security Confirmation</span>
-                <h1 class="brand-title">ZENVE VET</h1>
+                <h1 class="brand-title"><a href="https://zenvevet.com" target="_blank">ZENVE VET</a></h1>
                 <p style="margin: 6px 0 0 0; font-size: 13px; opacity: 0.92;">The Professional Network for Animal Healthcare</p>
               </div>
               <div class="content">
@@ -365,6 +384,10 @@ public class EmailService {
                 </p>
 
                 <table class="details-table">
+                  <tr>
+                    <td class="label">Website</td>
+                    <td class="value"><a href="https://zenvevet.com" target="_blank" style="color: #047857; text-decoration: none; font-weight: 600;">https://zenvevet.com</a></td>
+                  </tr>
                   <tr>
                     <td class="label">Account Email</td>
                     <td class="value">%s</td>
@@ -394,7 +417,7 @@ public class EmailService {
               </div>
               <div class="footer">
                 <p style="margin: 0 0 6px 0; font-weight: 600; color: #E2E8F0;">Zenve Pets Healthcare Pvt. Ltd.</p>
-                <p style="margin: 0 0 10px 0;">Bengaluru, Karnataka, India • <a href="https://zenvevet.com" style="color: #14B8A6; text-decoration: none;">www.zenvevet.com</a></p>
+                <p style="margin: 0 0 10px 0;">Bengaluru, Karnataka, India • <a href="https://zenvevet.com" target="_blank">https://zenvevet.com</a></p>
                 <p style="margin: 0; font-size: 11px; color: #64748B;">
                   This automated security communication was sent to %s from <strong>no-reply@zenvevet.com</strong>.
                   <br>Please do not reply directly to this email address.
@@ -418,6 +441,7 @@ public class EmailService {
         - Timestamp: %s
         - Status: Password Changed Successfully
         - Sender: no-reply@zenvevet.com
+        - Official Website: https://zenvevet.com
 
         Sign in to Zenve Vet: %s
 
@@ -426,11 +450,13 @@ public class EmailService {
         Best regards,
         Zenve Vet Security Team
         Zenve Pets Healthcare Pvt. Ltd.
+        Website: https://zenvevet.com
         """
         .formatted(recipientName, timestamp, appUrl);
   }
 
-  private String buildNewDeviceLoginAlertHtml(String recipientName, String email, String deviceName, String ipAddress, String formattedTime) {
+  private String buildNewDeviceLoginAlertHtml(String recipientName, String email, String deviceName, String ipAddress,
+      String formattedTime) {
     String resetUrl = appUrl.endsWith("/") ? (appUrl + "login?forgot=true") : (appUrl + "/login?forgot=true");
     return """
         <!DOCTYPE html>
@@ -445,6 +471,7 @@ public class EmailService {
             .header { background: linear-gradient(135deg, #7C2D12 0%%, #C2410C 50%%, #D97706 100%%); padding: 34px 30px; text-align: center; color: #FFFFFF; }
             .brand-badge { display: inline-block; background: rgba(255, 255, 255, 0.22); border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 20px; padding: 4px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
             .brand-title { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
+            .brand-title a { color: #FFFFFF; text-decoration: none; }
             .content { padding: 34px 30px; line-height: 1.6; }
             .alert-pill { display: inline-flex; align-items: center; background: #FFFBEB; border: 1px solid #FDE68A; color: #92400E; font-size: 12.5px; font-weight: 700; border-radius: 20px; padding: 6px 16px; margin-bottom: 16px; }
             .greeting { font-size: 19px; font-weight: 700; color: #0F172A; margin-bottom: 12px; }
@@ -460,6 +487,7 @@ public class EmailService {
             .safe-note { background: #ECFDF5; border-left: 4px solid #10B981; border-radius: 6px; padding: 12px 16px; margin: 20px 0 12px 0; font-size: 13px; color: #065F46; }
             .danger-box { background: #FEF2F2; border-left: 4px solid #EF4444; border-radius: 6px; padding: 14px 16px; margin: 14px 0 10px 0; font-size: 13px; color: #991B1B; }
             .footer { background-color: #0F172A; padding: 24px 30px; text-align: center; color: #94A3B8; font-size: 12px; line-height: 1.6; }
+            .footer a { color: #14B8A6; text-decoration: none; }
           </style>
         </head>
         <body>
@@ -467,7 +495,7 @@ public class EmailService {
             <div class="wrapper">
               <div class="header">
                 <div class="brand-badge">Zenve Vet Security</div>
-                <h1 class="brand-title">New Device Sign-In Detected</h1>
+                <h1 class="brand-title"><a href="https://zenvevet.com" target="_blank">New Device Sign-In Detected</a></h1>
                 <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.9;">Company Mail Notification • no-reply@zenvevet.com</p>
               </div>
               <div class="content">
@@ -479,6 +507,10 @@ public class EmailService {
 
                 <div class="device-card">
                   <table class="details-table">
+                    <tr>
+                      <td class="label">Website</td>
+                      <td class="value"><a href="https://zenvevet.com" target="_blank" style="color: #0D9488; text-decoration: none; font-weight: 600;">https://zenvevet.com</a></td>
+                    </tr>
                     <tr>
                       <td class="label">Device / Browser</td>
                       <td class="value">%s</td>
@@ -513,7 +545,7 @@ public class EmailService {
               </div>
               <div class="footer">
                 <p style="margin: 0 0 6px 0; font-weight: 600; color: #E2E8F0;">Zenve Pets Healthcare Pvt. Ltd.</p>
-                <p style="margin: 0 0 10px 0;">Bengaluru, Karnataka, India • <a href="https://zenvevet.com" style="color: #14B8A6; text-decoration: none;">www.zenvevet.com</a></p>
+                <p style="margin: 0 0 10px 0;">Bengaluru, Karnataka, India • <a href="https://zenvevet.com" target="_blank">https://zenvevet.com</a></p>
                 <p style="margin: 0; font-size: 11px; color: #64748B;">
                   This automated security alert was dispatched to %s from <strong>no-reply@zenvevet.com</strong>.
                   <br>Please do not reply directly to this email address.
@@ -527,7 +559,8 @@ public class EmailService {
         .formatted(recipientName, email, deviceName, ipAddress, formattedTime, resetUrl, email);
   }
 
-  private String buildNewDeviceLoginAlertPlainText(String recipientName, String email, String deviceName, String ipAddress, String formattedTime) {
+  private String buildNewDeviceLoginAlertPlainText(String recipientName, String email, String deviceName,
+      String ipAddress, String formattedTime) {
     String resetUrl = appUrl.endsWith("/") ? (appUrl + "login?forgot=true") : (appUrl + "/login?forgot=true");
     return """
         Dear %s,
@@ -540,11 +573,14 @@ public class EmailService {
         - IP Address: %s
         - Date & Time: %s
         - Sender: no-reply@zenvevet.com
+        - Official Website: https://zenvevet.com
 
         If this was you, you can safely disregard this email.
 
         If you DID NOT sign in from this device, please secure your account immediately by resetting your password:
         %s
+
+        Zenve Vet Platform: https://zenvevet.com
 
         Zenve Vet Security Team
         Zenve Pets Healthcare Pvt. Ltd.
@@ -567,6 +603,7 @@ public class EmailService {
             .header { background: linear-gradient(135deg, #0F766E 0%%, #0D9488 50%%, #059669 100%%); padding: 36px 32px; text-align: center; color: #FFFFFF; }
             .brand-badge { display: inline-block; background: rgba(255, 255, 255, 0.18); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 20px; padding: 4px 14px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
             .brand-title { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+            .brand-title a { color: #FFFFFF; text-decoration: none; }
             .brand-subtitle { margin: 6px 0 0 0; font-size: 14px; opacity: 0.92; font-weight: 400; }
             .content { padding: 36px 32px; line-height: 1.6; }
             .greeting { font-size: 20px; font-weight: 700; color: #0F172A; margin-bottom: 12px; }
@@ -592,7 +629,7 @@ public class EmailService {
             <div class="wrapper">
               <div class="header">
                 <span class="brand-badge">Official Welcome</span>
-                <h1 class="brand-title">Zenve Vet 🐾</h1>
+                <h1 class="brand-title"><a href="https://zenvevet.com" target="_blank">Zenve Vet 🐾</a></h1>
                 <p class="brand-subtitle">India's Premier Veterinary Clinical Community & Network</p>
               </div>
               <div class="content">
@@ -602,6 +639,10 @@ public class EmailService {
                 </p>
 
                 <table class="details-table">
+                  <tr>
+                    <td class="label">Website</td>
+                    <td class="value"><a href="https://zenvevet.com" target="_blank" style="color: #0D9488; text-decoration: none; font-weight: 600;">https://zenvevet.com</a></td>
+                  </tr>
                   <tr>
                     <td class="label">Registered Name</td>
                     <td class="value">%s</td>
@@ -636,7 +677,7 @@ public class EmailService {
               </div>
               <div class="footer">
                 <p style="margin: 0 0 8px 0; font-weight: 600; color: #E2E8F0;">Zenve Pets Healthcare Pvt. Ltd.</p>
-                <p style="margin: 0 0 12px 0;">Bengaluru, Karnataka, India • <a href="https://zenvevet.com">www.zenvevet.com</a></p>
+                <p style="margin: 0 0 12px 0;">Bengaluru, Karnataka, India • <a href="https://zenvevet.com" target="_blank">https://zenvevet.com</a></p>
                 <p style="margin: 0; font-size: 11px; color: #64748B;">
                   This automated welcome message was sent to %s from <strong>no-reply@zenvevet.com</strong>.
                   <br>Please do not reply directly to this email address.
@@ -660,6 +701,7 @@ public class EmailService {
         Account Details:
         - Name: %s
         - Specialty: %s
+        - Official Website: https://zenvevet.com
         - Sender: no-reply@zenvevet.com
 
         Platform Highlights:
@@ -669,6 +711,7 @@ public class EmailService {
         4. Clinical Feeds: Stay up to date with evidence-based medicine.
 
         Visit Zenve Vet: %s
+        Platform Link: https://zenvevet.com
 
         If you have questions, contact support@zenvevet.com.
 
@@ -678,6 +721,25 @@ public class EmailService {
         Bengaluru, Karnataka, India
         """
         .formatted(doctorName, doctorName, specialty, appUrl);
+  }
+
+  private String buildAdvertiserWelcomePlainText(String contactName, String company) {
+    return """
+        Dear %s,
+
+        Welcome to Zenve Vet Partner Network (%s)!
+        Your advertiser account is active and you can now launch targeted educational campaigns, sponsor clinical updates, and reach verified veterinary practitioners.
+
+        Access Partner Portal: %s
+        Official Website: https://zenvevet.com
+
+        For partnership inquiries and enterprise billing, reach us at ads@zenvevet.com.
+
+        Best regards,
+        Zenve Vet Partnerships Team
+        Zenve Pets Healthcare Pvt. Ltd.
+        Bengaluru, Karnataka, India
+        """.formatted(contactName, company, appUrl);
   }
 
   private String buildAdvertiserWelcomeHtml(String contactName, String companyName, String email) {
@@ -691,28 +753,31 @@ public class EmailService {
             body { margin: 0; padding: 0; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1E293B; }
             .wrapper { width: 100%%; max-width: 600px; margin: 0 auto; background: #FFF; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 18px rgba(0,0,0,0.06); }
             .header { background: #0F172A; padding: 32px; text-align: center; color: #FFF; }
+            .header a { color: #14B8A6; text-decoration: none; }
             .content { padding: 32px; line-height: 1.6; }
             .cta { display: inline-block; background: #0D9488; color: #FFF !important; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 700; margin: 20px 0; }
             .footer { background: #F1F5F9; padding: 20px; text-align: center; font-size: 12px; color: #64748B; }
+            .footer a { color: #0D9488; text-decoration: none; }
           </style>
         </head>
         <body>
           <div style="padding: 24px 16px;">
             <div class="wrapper">
               <div class="header">
-                <h2 style="margin: 0; color: #14B8A6;">Zenve Vet Ads & Partnerships</h2>
+                <h2 style="margin: 0;"><a href="https://zenvevet.com" target="_blank">Zenve Vet Ads & Partnerships</a></h2>
                 <p style="margin: 6px 0 0; font-size: 13px; color: #94A3B8;">Connecting animal healthcare brands with verified veterinarians</p>
               </div>
               <div class="content">
                 <p>Dear <strong>%s</strong>,</p>
                 <p>Thank you for registering <strong>%s</strong> on the Zenve Vet Partner Portal. Your advertiser account is active and you can now launch targeted educational campaigns, sponsor clinical updates, and reach verified veterinary practitioners.</p>
                 <div style="text-align: center;">
-                  <a href="%s" class="cta">Launch Partner Portal →</a>
+                  <a href="%s" class="cta" target="_blank">Launch Partner Portal →</a>
                 </div>
+                <p style="font-size: 13.5px; color: #475569;">Official Website: <a href="https://zenvevet.com" target="_blank" style="color: #0D9488; text-decoration: none; font-weight: 600;">https://zenvevet.com</a></p>
                 <p style="font-size: 13px; color: #64748B;">For partnership inquiries and enterprise billing, reach us at ads@zenvevet.com.</p>
               </div>
               <div class="footer">
-                Sent automatically by <strong>no-reply@zenvevet.com</strong> • Zenve Pets Healthcare Pvt. Ltd.
+                Sent automatically by <strong>no-reply@zenvevet.com</strong> • Zenve Pets Healthcare Pvt. Ltd. • <a href="https://zenvevet.com" target="_blank">https://zenvevet.com</a>
               </div>
             </div>
           </div>

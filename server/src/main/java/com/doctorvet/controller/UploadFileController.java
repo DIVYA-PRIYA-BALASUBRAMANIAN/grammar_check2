@@ -16,17 +16,25 @@ import java.nio.file.Paths;
 @CrossOrigin(originPatterns = "*")
 public class UploadFileController {
 
+    private final com.doctorvet.service.MediaStorageService mediaStorageService;
+
+    public UploadFileController(@org.springframework.beans.factory.annotation.Autowired(required = false) com.doctorvet.service.MediaStorageService mediaStorageService) {
+        this.mediaStorageService = mediaStorageService;
+    }
+
     @GetMapping("/uploads/{fileName:.+}")
     public ResponseEntity<Resource> serveUploadFile(@PathVariable String fileName) {
-        Path[] searchPaths = new Path[] {
-            Paths.get("uploads", fileName),
-            Paths.get("server", "uploads", fileName),
-            Paths.get("..", "uploads", fileName),
-            Paths.get("D:/zenve-vet/uploads", fileName),
-            Paths.get("D:/zenve-vet/server/uploads", fileName)
-        };
+        java.util.List<Path> searchList = new java.util.ArrayList<>();
+        if (mediaStorageService != null) {
+            searchList.add(mediaStorageService.getFilePath(fileName));
+        }
+        searchList.add(Paths.get("uploads", fileName));
+        searchList.add(Paths.get("server", "uploads", fileName));
+        searchList.add(Paths.get("..", "uploads", fileName));
+        searchList.add(Paths.get("D:/zenve-vet/uploads", fileName));
+        searchList.add(Paths.get("D:/zenve-vet/server/uploads", fileName));
 
-        for (Path p : searchPaths) {
+        for (Path p : searchList) {
             Path norm = p.toAbsolutePath().normalize();
             if (Files.exists(norm) && Files.isReadable(norm) && !Files.isDirectory(norm)) {
                 Resource resource = new FileSystemResource(norm);

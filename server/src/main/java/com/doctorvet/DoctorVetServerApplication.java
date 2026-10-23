@@ -20,9 +20,9 @@ public class DoctorVetServerApplication {
 
 	private static void loadDotEnv() {
 		File[] candidates = new File[] {
-			new File(".env"),
-			new File("../.env"),
-			new File("server/.env")
+				new File(".env"),
+				new File("../.env"),
+				new File("server/.env")
 		};
 		for (File f : candidates) {
 			if (f.exists() && f.isFile()) {
@@ -30,14 +30,13 @@ public class DoctorVetServerApplication {
 					List<String> lines = Files.readAllLines(f.toPath());
 					for (String line : lines) {
 						String trimmed = line.trim();
-						if (trimmed.isEmpty() || trimmed.startsWith("#")) continue;
+						if (trimmed.isEmpty() || trimmed.startsWith("#"))
+							continue;
 						int eq = trimmed.indexOf('=');
 						if (eq > 0) {
 							String key = trimmed.substring(0, eq).trim();
 							String val = trimmed.substring(eq + 1).trim();
-							if (System.getProperty(key) == null && System.getenv(key) == null) {
-								System.setProperty(key, val);
-							}
+							System.setProperty(key, val);
 						}
 					}
 					System.out.println("[Zenve-Vet] Successfully loaded environment from: " + f.getAbsolutePath());
@@ -46,6 +45,12 @@ public class DoctorVetServerApplication {
 					System.err.println("[Zenve-Vet] Failed to read .env file: " + e.getMessage());
 				}
 			}
+		}
+
+		// Safeguard against conflicting global OS environment variable from other projects
+		String envPass = System.getenv("DB_PASSWORD");
+		if ("NewPassword@123".equals(envPass) || System.getProperty("DB_PASSWORD") == null) {
+			System.setProperty("DB_PASSWORD", "Vasanth@zenve");
 		}
 	}
 

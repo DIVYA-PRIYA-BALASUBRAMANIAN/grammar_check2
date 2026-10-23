@@ -13,16 +13,68 @@ import java.util.UUID;
 @Service
 public class MediaStorageService {
 
-    private final Path uploadDir = Paths.get("uploads").toAbsolutePath().normalize();
+    private final Path uploadDir;
 
     public MediaStorageService() {
+        this.uploadDir = resolveUploadDir();
         try {
             if (!Files.exists(uploadDir)) {
                 Files.createDirectories(uploadDir);
             }
         } catch (IOException e) {
-            throw new RuntimeException("Could not initialize upload directory", e);
+            throw new RuntimeException("Could not initialize upload directory at " + uploadDir, e);
         }
+    }
+
+    private static Path resolveUploadDir() {
+        // 1. Explicit system property or env var
+        String customPath = System.getProperty("app.upload.dir", System.getenv("UPLOAD_DIR"));
+        if (customPath != null && !customPath.isBlank()) {
+            return Paths.get(customPath).toAbsolutePath().normalize();
+        }
+
+        // 2. Discover uploads folder based on code source (project directory)
+        try {
+            var codeSource = MediaStorageService.class.getProtectionDomain().getCodeSource();
+            if (codeSource != null && codeSource.getLocation() != null) {
+                Path cur = Paths.get(codeSource.getLocation().toURI());
+                while (cur != null && cur.getParent() != null) {
+                    Path testUploads = cur.resolve("uploads");
+                    if (Files.exists(testUploads) && Files.isWritable(testUploads)) {
+                        return testUploads.toAbsolutePath().normalize();
+                    }
+                    Path testServerUploads = cur.resolve("server").resolve("uploads");
+                    if (Files.exists(testServerUploads) && Files.isWritable(testServerUploads)) {
+                        return testServerUploads.toAbsolutePath().normalize();
+                    }
+                    cur = cur.getParent();
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // 3. Current working directory candidates (excluding protected system folders like System32)
+        Path[] candidates = new Path[] {
+            Paths.get("uploads"),
+            Paths.get("server", "uploads"),
+            Paths.get("..", "uploads")
+        };
+
+        for (Path c : candidates) {
+            try {
+                Path abs = c.toAbsolutePath().normalize();
+                String pathLower = abs.toString().toLowerCase();
+                if (pathLower.contains("windows\\system32") || pathLower.contains("winnt\\system32")) {
+                    continue;
+                }
+                if (Files.exists(abs) && Files.isWritable(abs)) {
+                    return abs;
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // 4. Safe user-home directory fallback
+        Path fallback = Paths.get(System.getProperty("user.home"), ".zenvevet", "uploads").toAbsolutePath().normalize();
+        return fallback;
     }
 
     public String storeFile(MultipartFile file) {
