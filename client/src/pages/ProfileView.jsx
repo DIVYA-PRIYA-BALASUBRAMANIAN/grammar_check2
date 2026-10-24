@@ -107,8 +107,8 @@ export function ProfileView({
   }, [targetDoc, doctors, isOwnProfile, currentUser]);
 
   const activeDoc = resolvedDoctor || targetDoc || {};
-  const displayPhone = activeDoc.phone || (isOwnProfile && currentUser?.phone) || '+91 98401 23456';
-  const displayEmail = activeDoc.email || (isOwnProfile && currentUser?.email) || (activeDoc.name ? `${activeDoc.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@zenvevet.com` : 'doctor@zenvevet.com');
+  const displayPhone = activeDoc.phone || (isOwnProfile && currentUser?.phone) || '';
+  const displayEmail = activeDoc.email || (isOwnProfile && currentUser?.email) || '';
 
   // Helper to match items authored by this practitioner
   const isDocItem = (authorId, authorName) => {
@@ -138,9 +138,11 @@ export function ProfileView({
     ? (Array.isArray(connectedDoctors) ? connectedDoctors.length : 0)
     : (activeDoc.connectionsCount != null ? Number(activeDoc.connectionsCount) : (isConnected ? 1 : 0));
 
-  const displayExperienceYears = activeDoc.experienceYears != null ? activeDoc.experienceYears : (activeDoc.experience || 0);
-  const displayExperienceText = `${displayExperienceYears} ${Number(displayExperienceYears) === 1 ? 'yr' : 'yrs'}`;
-  const displayVciStatus = activeDoc.verified !== false ? 'Verified' : 'Pending';
+  const displayExperienceYears = (activeDoc.experienceYears != null && activeDoc.experienceYears > 0)
+    ? activeDoc.experienceYears
+    : (activeDoc.experience && activeDoc.experience > 0 ? activeDoc.experience : 0);
+  const displayExperienceText = displayExperienceYears > 0 ? `${displayExperienceYears} ${Number(displayExperienceYears) === 1 ? 'yr' : 'yrs'}` : '0 yrs';
+  const displayVciStatus = activeDoc.verified ? 'Verified' : 'Pending';
 
   const displayAvatar = (activeDoc.avatar && !activeDoc.avatar.includes('unsplash.com'))
     ? activeDoc.avatar
@@ -514,7 +516,7 @@ export function ProfileView({
 
             <p style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13.5px', color: '#64726A', margin: 0 }}>
               <MapPin size={15} />
-              <span>{activeDoc.clinic || 'Veterinary Practice Center'} · {activeDoc.city || 'Bengaluru'}, {activeDoc.state || 'Karnataka'}</span>
+              <span>{[activeDoc.clinic, activeDoc.city, activeDoc.state].filter(Boolean).join(' · ') || (isOwnProfile ? 'Add clinic & location details (Edit Profile)' : 'Location not specified')}</span>
             </p>
 
             {/* Contact Badges: Phone Number & Email Address */}
@@ -643,7 +645,7 @@ export function ProfileView({
                   Professional Biography
                 </h4>
                 <p style={{ fontSize: '14.5px', color: '#374151', lineHeight: '1.65', margin: 0, backgroundColor: '#F9FAFB', padding: '16px', borderRadius: '10px', border: '1px solid #F3F4F6' }}>
-                  {activeDoc.bio || 'Dedicated veterinary practitioner committed to providing high-quality companion and large animal care, advancing evidence-based veterinary clinical medicine and community case collaboration.'}
+                  {activeDoc.bio || (isOwnProfile ? 'No biography added yet. Click "Edit Profile" to share your background, clinical interests, and specializations.' : 'No biography provided.')}
                 </p>
               </div>
 
@@ -656,8 +658,8 @@ export function ProfileView({
                     <GraduationCap size={17} />
                     <span>Degrees & Qualifications</span>
                   </div>
-                  <strong style={{ fontSize: '14px', color: '#111827', display: 'block' }}>{activeDoc.qualification || 'BVSc & AH (Verified VCI)'}</strong>
-                  <span style={{ fontSize: '12px', color: '#6B7280' }}>Registered with State Veterinary Council & VCI</span>
+                  <strong style={{ fontSize: '14px', color: '#111827', display: 'block' }}>{activeDoc.qualification || (isOwnProfile ? 'Not added yet (Edit Profile)' : 'Not specified')}</strong>
+                  <span style={{ fontSize: '12px', color: '#6B7280' }}>State Veterinary Council & VCI Registry</span>
                 </div>
 
                 <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '10px', border: '1px solid #F3F4F6' }}>
@@ -665,8 +667,8 @@ export function ProfileView({
                     <Building size={17} />
                     <span>Practice Center / Hospital</span>
                   </div>
-                  <strong style={{ fontSize: '14px', color: '#111827', display: 'block' }}>{activeDoc.clinic || 'Clinical Practice Hospital'}</strong>
-                  <span style={{ fontSize: '12px', color: '#6B7280' }}>{activeDoc.city || 'Bengaluru'}, {activeDoc.state || 'Karnataka'}</span>
+                  <strong style={{ fontSize: '14px', color: '#111827', display: 'block' }}>{activeDoc.clinic || (isOwnProfile ? 'Not added yet (Edit Profile)' : 'Not specified')}</strong>
+                  <span style={{ fontSize: '12px', color: '#6B7280' }}>{[activeDoc.city, activeDoc.state].filter(Boolean).join(', ') || 'Location not specified'}</span>
                 </div>
 
                 <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '10px', border: '1px solid #F3F4F6' }}>
@@ -674,8 +676,8 @@ export function ProfileView({
                     <ShieldCheck size={17} />
                     <span>VCI License Status</span>
                   </div>
-                  <strong style={{ fontSize: '14px', color: '#111827', display: 'block' }}>{activeDoc.licenseNumber || 'VCI/REG-2024-VET'}</strong>
-                  <span style={{ fontSize: '12px', color: '#059669', fontWeight: 600 }}>Active & Verified in Good Standing</span>
+                  <strong style={{ fontSize: '14px', color: '#111827', display: 'block' }}>{activeDoc.licenseNumber || (isOwnProfile ? 'Not registered (Edit Profile)' : 'Not registered')}</strong>
+                  <span style={{ fontSize: '12px', color: activeDoc.verified ? '#059669' : '#D97706', fontWeight: 600 }}>{activeDoc.verified ? 'Active & Verified in Good Standing' : 'Pending Verification'}</span>
                 </div>
 
                 <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '10px', border: '1px solid #F3F4F6' }}>
@@ -683,8 +685,8 @@ export function ProfileView({
                     <Calendar size={17} />
                     <span>Experience in Practice</span>
                   </div>
-                  <strong style={{ fontSize: '14px', color: '#111827', display: 'block' }}>{activeDoc.experienceYears || 8} Years</strong>
-                  <span style={{ fontSize: '12px', color: '#6B7280' }}>Companion Animal, Equine & Large Animal Care</span>
+                  <strong style={{ fontSize: '14px', color: '#111827', display: 'block' }}>{displayExperienceYears > 0 ? `${displayExperienceYears} Years` : (isOwnProfile ? 'Not specified (Edit Profile)' : '0 Years')}</strong>
+                  <span style={{ fontSize: '12px', color: '#6B7280' }}>Companion & Large Animal Care</span>
                 </div>
 
                 <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '10px', border: '1px solid #F3F4F6' }}>
@@ -692,7 +694,7 @@ export function ProfileView({
                     <Phone size={17} />
                     <span>Clinic Desk & Phone</span>
                   </div>
-                  <strong style={{ fontSize: '14px', color: '#111827', display: 'block' }}>{displayPhone}</strong>
+                  <strong style={{ fontSize: '14px', color: '#111827', display: 'block' }}>{displayPhone || (isOwnProfile ? 'Not added (Edit Profile)' : 'Not specified')}</strong>
                   <span style={{ fontSize: '12px', color: '#6B7280' }}>Direct Patient & Peer Inquiries</span>
                 </div>
 
@@ -701,7 +703,7 @@ export function ProfileView({
                     <Mail size={17} />
                     <span>Professional Email</span>
                   </div>
-                  <strong style={{ fontSize: '14px', color: '#111827', display: 'block', wordBreak: 'break-all' }}>{displayEmail}</strong>
+                  <strong style={{ fontSize: '14px', color: '#111827', display: 'block', wordBreak: 'break-all' }}>{displayEmail || (isOwnProfile ? 'Not added' : 'Not specified')}</strong>
                   <span style={{ fontSize: '12px', color: '#6B7280' }}>Official Registry & Consultation</span>
                 </div>
               </div>
@@ -871,9 +873,13 @@ export function ProfileView({
                 <Phone size={18} color="#059669" />
                 <div>
                   <span style={{ display: 'block', fontSize: '11.5px', color: '#6B7280', fontWeight: 600 }}>CLINIC DESK TELEPHONE</span>
-                  <a href={`tel:${displayPhone.replace(/\s+/g, '')}`} style={{ fontSize: '14px', color: '#111827', textDecoration: 'none', fontWeight: 700 }}>
-                    {displayPhone}
-                  </a>
+                  {displayPhone ? (
+                    <a href={`tel:${displayPhone.replace(/\s+/g, '')}`} style={{ fontSize: '14px', color: '#111827', textDecoration: 'none', fontWeight: 700 }}>
+                      {displayPhone}
+                    </a>
+                  ) : (
+                    <span style={{ fontSize: '13px', color: '#9CA3AF' }}>Not provided</span>
+                  )}
                 </div>
               </div>
 
@@ -881,9 +887,13 @@ export function ProfileView({
                 <Mail size={18} color="#059669" />
                 <div>
                   <span style={{ display: 'block', fontSize: '11.5px', color: '#6B7280', fontWeight: 600 }}>PROFESSIONAL EMAIL</span>
-                  <a href={`mailto:${displayEmail}`} style={{ fontSize: '14px', color: '#111827', textDecoration: 'none', fontWeight: 700 }}>
-                    {displayEmail}
-                  </a>
+                  {displayEmail ? (
+                    <a href={`mailto:${displayEmail}`} style={{ fontSize: '14px', color: '#111827', textDecoration: 'none', fontWeight: 700 }}>
+                      {displayEmail}
+                    </a>
+                  ) : (
+                    <span style={{ fontSize: '13px', color: '#9CA3AF' }}>Not provided</span>
+                  )}
                 </div>
               </div>
 
@@ -892,7 +902,7 @@ export function ProfileView({
                 <div>
                   <span style={{ display: 'block', fontSize: '11.5px', color: '#6B7280', fontWeight: 600 }}>HOSPITAL LOCATION</span>
                   <strong style={{ fontSize: '14px', color: '#111827' }}>
-                    {activeDoc.clinic || 'Practice Clinic'}, {activeDoc.city || 'Bengaluru'}, {activeDoc.state || 'Karnataka'}, India
+                    {[activeDoc.clinic, activeDoc.city, activeDoc.state].filter(Boolean).join(', ') || (isOwnProfile ? 'Not added (Edit Profile)' : 'Location not specified')}
                   </strong>
                 </div>
               </div>

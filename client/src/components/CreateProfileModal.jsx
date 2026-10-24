@@ -58,16 +58,17 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentU
   const [formData, setFormData] = useState({
     name: 'Dr. ',
     specialty: 'Small Animal Medicine',
-    qualification: 'BVSc & AH',
-    city: 'Bengaluru',
-    state: 'Karnataka',
+    qualification: '',
+    city: '',
+    state: '',
     clinic: '',
     registrationNo: '',
     phone: '',
     email: '',
     bio: '',
     avatar: '',
-    coverImage: ''
+    coverImage: '',
+    experienceYears: ''
   });
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const avatarInputRef = React.useRef(null);
@@ -79,19 +80,20 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentU
       setFormData({
         name: src.name || 'Dr. ',
         specialty: src.specialty || 'Small Animal Medicine',
-        qualification: src.qualification || 'BVSc & AH',
-        city: src.city || 'Bengaluru',
-        state: src.state || 'Karnataka',
+        qualification: src.qualification || '',
+        city: src.city || '',
+        state: src.state || '',
         clinic: src.clinic || '',
         registrationNo: src.licenseNumber || '',
         phone: src.phone || '',
         email: src.email || '',
         bio: src.bio || '',
         avatar: src.avatar || '',
-        coverImage: src.coverImage || ''
+        coverImage: src.coverImage || '',
+        experienceYears: (src.experienceYears != null && src.experienceYears > 0) ? String(src.experienceYears) : ''
       });
     }
-  }, [isOpen]);
+  }, [isOpen, currentUser]);
 
   if (!isOpen) return null;
 
@@ -190,6 +192,10 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentU
       return;
     }
 
+    const expYears = (formData.experienceYears !== undefined && formData.experienceYears !== '')
+      ? (parseInt(formData.experienceYears, 10) || 0)
+      : (currentUser?.experienceYears || 0);
+
     const payload = {
       name: formData.name,
       specialty: formData.specialty,
@@ -199,13 +205,13 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentU
       coverImage: formData.coverImage,
       phone: formData.phone,
       email: formData.email,
-      verified: true,
-      qualification: formData.qualification,
-      clinic: formData.clinic || `${formData.city} Veterinary Clinic`,
-      experienceYears: currentUser?.experienceYears || 5,
-      casesCount: currentUser?.casesCount || 1,
-      bio: formData.bio || 'Practicing veterinary surgeon and clinical care professional.',
-      licenseNumber: formData.registrationNo
+      verified: Boolean((formData.registrationNo && formData.registrationNo.trim().length > 3) || currentUser?.verified),
+      qualification: formData.qualification || '',
+      clinic: formData.clinic || '',
+      experienceYears: expYears,
+      casesCount: currentUser?.casesCount || 0,
+      bio: formData.bio || '',
+      licenseNumber: formData.registrationNo || ''
     };
 
     try {
@@ -493,6 +499,7 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentU
                   onChange={(e) => setFormData({ ...formData, qualification: e.target.value })}
                   className="cp-select-input"
                 >
+                  <option value="">Select Qualification (Optional)</option>
                   {QUALIFICATIONS.map((q) => (
                     <option key={q} value={q}>{q}</option>
                   ))}
@@ -575,25 +582,50 @@ export function CreateProfileModal({ isOpen, onClose, onProfileCreated, currentU
             </div>
           </div>
 
-          {/* 7. State Veterinary Council Reg. No. */}
-          <div className="cp-form-group">
-            <label className="cp-label-row">
-              <span className="cp-label-badge badge-blue">
-                <FileText size={14} strokeWidth={2.2} />
-              </span>
-              <span className="cp-label-text">
-                State Veterinary Council Reg. No.
-              </span>
-            </label>
-            <div className="cp-input-wrap">
-              <CreditCard size={17} className="cp-input-icon icon-blue" />
-              <input
-                type="text"
-                value={formData.registrationNo}
-                onChange={(e) => setFormData({ ...formData, registrationNo: e.target.value })}
-                placeholder="e.g. KVC-84920 (for verified tick badge)"
-                className="cp-text-input"
-              />
+          {/* 7. State Veterinary Council Reg. No. & Experience Years */}
+          <div className="cp-grid-two-col">
+            <div className="cp-form-group">
+              <label className="cp-label-row">
+                <span className="cp-label-badge badge-blue">
+                  <FileText size={14} strokeWidth={2.2} />
+                </span>
+                <span className="cp-label-text">
+                  State Council Reg. No.
+                </span>
+              </label>
+              <div className="cp-input-wrap">
+                <CreditCard size={17} className="cp-input-icon icon-blue" />
+                <input
+                  type="text"
+                  value={formData.registrationNo}
+                  onChange={(e) => setFormData({ ...formData, registrationNo: e.target.value })}
+                  placeholder="e.g. KVC-84920"
+                  className="cp-text-input"
+                />
+              </div>
+            </div>
+
+            <div className="cp-form-group">
+              <label className="cp-label-row">
+                <span className="cp-label-badge badge-teal">
+                  <Award size={14} strokeWidth={2.2} />
+                </span>
+                <span className="cp-label-text">
+                  Experience (Years)
+                </span>
+              </label>
+              <div className="cp-input-wrap">
+                <Award size={17} className="cp-input-icon icon-teal" />
+                <input
+                  type="number"
+                  min="0"
+                  max="60"
+                  value={formData.experienceYears}
+                  onChange={(e) => setFormData({ ...formData, experienceYears: e.target.value })}
+                  placeholder="e.g. 5"
+                  className="cp-text-input"
+                />
+              </div>
             </div>
           </div>
 

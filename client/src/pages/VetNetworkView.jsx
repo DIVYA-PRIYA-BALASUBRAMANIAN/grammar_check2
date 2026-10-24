@@ -449,7 +449,7 @@ export function VetNetworkView({
                   </p>
 
                   <p style={{ margin: '0 0 8px 0', fontSize: '11.5px', color: '#6B7280', lineHeight: 1.3 }}>
-                    {doc.clinic || 'Specialty Veterinary Hospital'} · {doc.state || 'India'}
+                    {[doc.clinic, doc.city, doc.state].filter(Boolean).join(' · ') || 'Veterinary Practitioner · India'}
                   </p>
 
                   {/* Connection Status Tag */}

@@ -160,8 +160,8 @@ export function DoctorModal({
   }, [doctor, doctors, liveDoctor, isOwnProfile, currentUser]);
 
   const activeDoc = resolvedDoctor || liveDoctor || doctor || {};
-  const displayPhone = activeDoc?.phone || (isOwnProfile && currentUser?.phone) || '+91 98401 23456';
-  const displayEmail = activeDoc?.email || (isOwnProfile && currentUser?.email) || (activeDoc?.name ? `${activeDoc.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@zenvevet.com` : 'doctor@zenvevet.com');
+  const displayPhone = activeDoc?.phone || (isOwnProfile && currentUser?.phone) || '';
+  const displayEmail = activeDoc?.email || (isOwnProfile && currentUser?.email) || '';
 
   // Helper to match items authored by this practitioner
   const isDocItem = (authorId, authorName) => {
@@ -191,9 +191,11 @@ export function DoctorModal({
     ? (Array.isArray(connectedDoctors) ? connectedDoctors.length : 0)
     : (activeDoc?.connectionsCount != null ? Number(activeDoc.connectionsCount) : (isConnected ? 1 : 0));
 
-  const displayExperienceYears = activeDoc?.experienceYears != null ? activeDoc.experienceYears : (activeDoc?.experience || 0);
-  const displayExperienceText = `${displayExperienceYears} ${Number(displayExperienceYears) === 1 ? 'yr' : 'yrs'}`;
-  const displayVciStatus = activeDoc?.verified !== false ? '100%' : 'Pending';
+  const displayExperienceYears = (activeDoc?.experienceYears != null && activeDoc.experienceYears > 0)
+    ? activeDoc.experienceYears
+    : (activeDoc?.experience && activeDoc.experience > 0 ? activeDoc.experience : 0);
+  const displayExperienceText = displayExperienceYears > 0 ? `${displayExperienceYears} ${Number(displayExperienceYears) === 1 ? 'yr' : 'yrs'}` : '0 yrs';
+  const displayVciStatus = activeDoc?.verified ? 'Verified' : 'Pending';
 
   const displayAvatar = (activeDoc?.avatar && !activeDoc.avatar.includes('unsplash.com'))
     ? activeDoc.avatar
@@ -473,39 +475,45 @@ export function DoctorModal({
 
             <p className="doctor-modal-location">
               <MapPin size={14} />
-              <span>{activeDoc?.clinic || 'Specialty Pet Care'} · {activeDoc?.city || 'Bengaluru'}, {activeDoc?.state || 'India'}</span>
+              <span>{[activeDoc?.clinic, activeDoc?.city, activeDoc?.state].filter(Boolean).join(' · ') || (isOwnProfile ? 'Add clinic & location details' : 'Location not specified')}</span>
             </p>
 
             {/* Quick Contact Badges */}
-            <div className="doctor-modal-contact-row">
-              <a
-                href={`tel:${displayPhone.replace(/\s+/g, '')}`}
-                className="doctor-modal-contact-badge"
-                style={{
-                  color: '#065F46',
-                  backgroundColor: '#ECFDF5',
-                  border: '1px solid #A7F3D0'
-                }}
-                title="Call doctor"
-              >
-                <Phone size={12} color="#059669" />
-                <span>{displayPhone}</span>
-              </a>
+            {(displayPhone || displayEmail) && (
+              <div className="doctor-modal-contact-row">
+                {displayPhone && (
+                  <a
+                    href={`tel:${displayPhone.replace(/\s+/g, '')}`}
+                    className="doctor-modal-contact-badge"
+                    style={{
+                      color: '#065F46',
+                      backgroundColor: '#ECFDF5',
+                      border: '1px solid #A7F3D0'
+                    }}
+                    title="Call doctor"
+                  >
+                    <Phone size={12} color="#059669" />
+                    <span>{displayPhone}</span>
+                  </a>
+                )}
 
-              <a
-                href={`mailto:${displayEmail}`}
-                className="doctor-modal-contact-badge"
-                style={{
-                  color: '#1E40AF',
-                  backgroundColor: '#EFF6FF',
-                  border: '1px solid #BFDBFE'
-                }}
-                title="Send email"
-              >
-                <Mail size={12} color="#2563EB" />
-                <span>{displayEmail}</span>
-              </a>
-            </div>
+                {displayEmail && (
+                  <a
+                    href={`mailto:${displayEmail}`}
+                    className="doctor-modal-contact-badge"
+                    style={{
+                      color: '#1E40AF',
+                      backgroundColor: '#EFF6FF',
+                      border: '1px solid #BFDBFE'
+                    }}
+                    title="Send email"
+                  >
+                    <Mail size={12} color="#2563EB" />
+                    <span>{displayEmail}</span>
+                  </a>
+                )}
+              </div>
+            )}
 
             {/* Stats Bar */}
             <div className="doctor-modal-stats-bar">
@@ -566,7 +574,7 @@ export function DoctorModal({
                 Professional Biography
               </h4>
               <p style={{ fontSize: '13.5px', color: '#374151', lineHeight: '1.6', margin: '0 0 16px 0', backgroundColor: '#F9FAFB', padding: '12px 14px', borderRadius: '8px', border: '1px solid #F3F4F6' }}>
-                {activeDoc?.bio || 'Dedicated veterinary practitioner committed to providing high-quality companion and large animal care, advancing evidence-based veterinary clinical medicine.'}
+                {activeDoc?.bio || (isOwnProfile ? 'No biography added yet. Click "Edit Profile" to add your professional bio.' : 'No biography provided.')}
               </p>
 
               <div className="doctor-modal-creds-grid">
@@ -575,7 +583,7 @@ export function DoctorModal({
                     <GraduationCap size={15} />
                     <span>Qualifications</span>
                   </div>
-                  <strong style={{ fontSize: '13px', color: '#111827', display: 'block' }}>{activeDoc?.qualification || 'BVSc & AH (Verified VCI)'}</strong>
+                  <strong style={{ fontSize: '13px', color: '#111827', display: 'block' }}>{activeDoc?.qualification || (isOwnProfile ? 'Not added yet (Edit Profile)' : 'Not specified')}</strong>
                   <span style={{ fontSize: '11px', color: '#6B7280' }}>State Veterinary Council & VCI</span>
                 </div>
 
@@ -584,8 +592,8 @@ export function DoctorModal({
                     <Building size={15} />
                     <span>Practice Center</span>
                   </div>
-                  <strong style={{ fontSize: '13px', color: '#111827', display: 'block' }}>{activeDoc?.clinic || 'Specialty Animal Hospital'}</strong>
-                  <span style={{ fontSize: '11px', color: '#6B7280' }}>{activeDoc?.city || 'Bengaluru'}, {activeDoc?.state || 'Karnataka'}</span>
+                  <strong style={{ fontSize: '13px', color: '#111827', display: 'block' }}>{activeDoc?.clinic || (isOwnProfile ? 'Not added yet (Edit Profile)' : 'Not specified')}</strong>
+                  <span style={{ fontSize: '11px', color: '#6B7280' }}>{[activeDoc?.city, activeDoc?.state].filter(Boolean).join(', ') || 'Location not specified'}</span>
                 </div>
 
                 <div className="doctor-modal-cred-card">
@@ -593,8 +601,8 @@ export function DoctorModal({
                     <ShieldCheck size={15} />
                     <span>VCI Registration License</span>
                   </div>
-                  <strong style={{ fontSize: '13px', color: '#111827', display: 'block' }}>{activeDoc?.licenseNumber || 'VCI/REG-2024-VET'}</strong>
-                  <span style={{ fontSize: '11px', color: '#059669', fontWeight: 600 }}>Active & Verified in Good Standing</span>
+                  <strong style={{ fontSize: '13px', color: '#111827', display: 'block' }}>{activeDoc?.licenseNumber || (isOwnProfile ? 'Not registered (Edit Profile)' : 'Not registered')}</strong>
+                  <span style={{ fontSize: '11px', color: activeDoc?.verified ? '#059669' : '#D97706', fontWeight: 600 }}>{activeDoc?.verified ? 'Active & Verified in Good Standing' : 'Pending Verification'}</span>
                 </div>
 
                 <div className="doctor-modal-cred-card">
@@ -602,7 +610,7 @@ export function DoctorModal({
                     <Stethoscope size={15} />
                     <span>Specialty Focus</span>
                   </div>
-                  <strong style={{ fontSize: '13px', color: '#111827', display: 'block' }}>{activeDoc?.specialty || 'Veterinary Practitioner'}</strong>
+                  <strong style={{ fontSize: '13px', color: '#111827', display: 'block' }}>{activeDoc?.specialty || (isOwnProfile ? 'General Practice' : 'Not specified')}</strong>
                   <span style={{ fontSize: '11px', color: '#6B7280' }}>Clinical Case Consultations</span>
                 </div>
               </div>
@@ -719,15 +727,15 @@ export function DoctorModal({
             <div style={{ paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#374151' }}>
                 <Phone size={16} color="#059669" />
-                <span>Clinic Desk: <a href={`tel:${displayPhone.replace(/\s+/g, '')}`} style={{ color: '#111827', textDecoration: 'none', fontWeight: 600 }}>{displayPhone}</a></span>
+                <span>Clinic Desk: {displayPhone ? <a href={`tel:${displayPhone.replace(/\s+/g, '')}`} style={{ color: '#111827', textDecoration: 'none', fontWeight: 600 }}>{displayPhone}</a> : <span style={{ color: '#9CA3AF' }}>Not provided</span>}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#374151' }}>
                 <Mail size={16} color="#059669" />
-                <span>Professional Email: <a href={`mailto:${displayEmail}`} style={{ color: '#111827', textDecoration: 'none', fontWeight: 600 }}>{displayEmail}</a></span>
+                <span>Professional Email: {displayEmail ? <a href={`mailto:${displayEmail}`} style={{ color: '#111827', textDecoration: 'none', fontWeight: 600 }}>{displayEmail}</a> : <span style={{ color: '#9CA3AF' }}>Not provided</span>}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#374151' }}>
                 <MapPin size={16} color="#059669" />
-                <span>Location: {activeDoc.clinic || 'Clinic'}, {activeDoc.city}, {activeDoc.state || 'Karnataka'}, India</span>
+                <span>Location: {[activeDoc?.clinic, activeDoc?.city, activeDoc?.state].filter(Boolean).join(', ') || (isOwnProfile ? 'Not added (Edit Profile)' : 'Location not specified')}</span>
               </div>
             </div>
           )}

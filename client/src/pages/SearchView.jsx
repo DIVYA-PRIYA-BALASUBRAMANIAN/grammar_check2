@@ -291,7 +291,7 @@ export function SearchView({ doctors: initialDoctors = [], onSelectDoctor, onOpe
                   {/* Location */}
                   <div className="doctor-dir-location-text">
                     <MapPin size={11} color="#6b7280" />
-                    <span>{doctor.city}, {doctor.state}</span>
+                    <span>{[doctor.city, doctor.state].filter(Boolean).join(', ') || 'India'}</span>
                   </div>
 
                   {/* Meta Stats Row (Experience & Rating) */}

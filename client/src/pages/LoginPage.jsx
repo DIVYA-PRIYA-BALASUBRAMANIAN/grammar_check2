@@ -24,7 +24,8 @@ import {
   CheckCircle2,
   AlertCircle,
   X,
-  RefreshCw
+  RefreshCw,
+  MapPin
 } from 'lucide-react';
 import zenveLogo from '../assets/zenve_logo.png';
 import loginBgVet from '../assets/login_bg_vet.jpg';
@@ -42,8 +43,8 @@ export function LoginPage({ onLoginSuccess, onCancel, onOpenTerms }) {
     name: '',
     phone: '',
     specialty: 'Small Animal Medicine',
-    state: 'Karnataka',
-    city: 'Bengaluru',
+    state: '',
+    city: '',
     rememberMe: true,
     termsAccepted: true
   });
@@ -381,32 +382,48 @@ export function LoginPage({ onLoginSuccess, onCancel, onOpenTerms }) {
                     </div>
                   </div>
 
-                  {/* Row 2: Specialty & State */}
+                  {/* Row 2: Specialty */}
+                  <div className="auth-field-group">
+                    <label className="auth-field-label">Specialty *</label>
+                    <select
+                      value={formData.specialty}
+                      onChange={(e) => setFormData({ ...formData, specialty: e.target.value })}
+                      className="auth-select-input"
+                    >
+                      {SPECIALTIES.filter(s => s !== 'All specialties').map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Row 3: State & City */}
                   <div className="auth-two-col-grid">
                     <div className="auth-field-group">
-                      <label className="auth-field-label">Specialty *</label>
+                      <label className="auth-field-label">State</label>
                       <select
-                        value={formData.specialty}
-                        onChange={(e) => setFormData({ ...formData, specialty: e.target.value })}
+                        value={formData.state}
+                        onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                         className="auth-select-input"
                       >
-                        {SPECIALTIES.filter(s => s !== 'All specialties').map(s => (
+                        <option value="">Select State (Optional)</option>
+                        {STATES_INDIA.filter(s => s !== 'All states').map(s => (
                           <option key={s} value={s}>{s}</option>
                         ))}
                       </select>
                     </div>
 
                     <div className="auth-field-group">
-                      <label className="auth-field-label">State *</label>
-                      <select
-                        value={formData.state}
-                        onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                        className="auth-select-input"
-                      >
-                        {STATES_INDIA.filter(s => s !== 'All states').map(s => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
+                      <label className="auth-field-label">City / Town</label>
+                      <div className="auth-input-container">
+                        <MapPin size={15} className="auth-input-lead-icon" />
+                        <input
+                          type="text"
+                          placeholder="e.g. Pune, Mumbai, Delhi"
+                          value={formData.city}
+                          onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                          className="auth-text-input"
+                        />
+                      </div>
                     </div>
                   </div>
 

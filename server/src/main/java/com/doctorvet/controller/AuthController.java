@@ -155,34 +155,10 @@ public class AuthController {
             }
         }
 
-        // 3. If still not found, create new doctor profile
+        // 3. If still not found, return unauthorized
         if (profile == null) {
-            String cleanName = req.identifier().contains("@")
-                    ? "Dr. " + capitalize(req.identifier().split("@")[0])
-                    : (req.identifier().startsWith("Dr.") ? req.identifier() : "Dr. " + req.identifier());
-
-            DoctorProfile newDoc = new DoctorProfile(
-                    cleanName,
-                    "Veterinary Medicine",
-                    "BVSc & AH (Verified)",
-                    "Companion Animal Hospital",
-                    "Bengaluru",
-                    "Karnataka",
-                    "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=300&q=80",
-                    true,
-                    5,
-                    12,
-                    "Veterinary practitioner registered on Zenve Vet.");
-            newDoc.setEmail(req.identifier().contains("@") ? req.identifier().trim() : null);
-            if (req.password() != null && !req.password().isBlank()) {
-                newDoc.setPasswordHash(passwordSecurityService.hashPassword(req.password().trim()));
-            }
-            newDoc.setActive(true);
-            profile = doctorRepo.save(newDoc);
-
-            if (profile.getEmail() != null && !profile.getEmail().isBlank()) {
-                emailService.sendDoctorWelcomeEmail(profile.getEmail(), profile.getName(), profile.getSpecialty());
-            }
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "No registered doctor account found matching '" + req.identifier() + "'. Please check your credentials or create a new account."));
         } else {
             // If legacy account has no password set yet, set it on first successful login
             if ((profile.getPasswordHash() == null || profile.getPasswordHash().isBlank())
@@ -217,30 +193,32 @@ public class AuthController {
         }
 
         String doctorName = req.name().trim();
-        if (!doctorName.startsWith("Dr.")) {
+        if (!doctorName.startsWith("Dr.") && !doctorName.startsWith("Dr ")) {
             doctorName = "Dr. " + doctorName;
         }
 
-        DoctorProfile newDoctor = new DoctorProfile(
-                doctorName,
-                req.specialty() != null ? req.specialty() : "Veterinary Medicine",
-                "BVSc & AH (Verified VCI)",
-                "Clinical Practice",
-                req.city() != null && !req.city().isBlank() ? req.city() : "Bengaluru",
-                req.state() != null && !req.state().isBlank() ? req.state() : "Karnataka",
-                "",
-                true,
-                1,
-                0,
-                req.vciNumber() != null && !req.vciNumber().isBlank()
-                        ? "Registered veterinary practitioner under VCI: " + req.vciNumber().trim()
-                        : "Registered veterinary practitioner");
-        newDoctor.setEmail(req.email() != null ? req.email().trim() : null);
-        newDoctor.setPhone(req.phone() != null ? req.phone().trim() : null);
+        DoctorProfile newDoctor = new DoctorProfile();
+        newDoctor.setName(doctorName);
+        newDoctor.setEmail(req.email() != null && !req.email().isBlank() ? req.email().trim() : null);
+        newDoctor.setPhone(req.phone() != null && !req.phone().isBlank() ? req.phone().trim() : null);
+        newDoctor.setSpecialty(req.specialty() != null && !req.specialty().isBlank() ? req.specialty().trim() : "");
+        newDoctor.setCity(req.city() != null && !req.city().isBlank() ? req.city().trim() : "");
+        newDoctor.setState(req.state() != null && !req.state().isBlank() ? req.state().trim() : "");
+        newDoctor.setQualification("");
+        newDoctor.setClinic("");
+        newDoctor.setAvatar("");
+        newDoctor.setCoverImage("");
+        newDoctor.setBio("");
+        newDoctor.setHeadline("");
+        newDoctor.setLicenseNumber(req.vciNumber() != null && !req.vciNumber().isBlank() ? req.vciNumber().trim() : "");
+        newDoctor.setExperienceYears(0);
+        newDoctor.setCasesCount(0);
+        newDoctor.setConnectionsCount(0);
+        newDoctor.setVerified(false);
+        newDoctor.setActive(true);
         if (req.password() != null && !req.password().isBlank()) {
             newDoctor.setPasswordHash(passwordSecurityService.hashPassword(req.password().trim()));
         }
-        newDoctor.setActive(true);
         DoctorProfile saved = doctorRepo.save(newDoctor);
 
         if (saved.getEmail() != null && !saved.getEmail().isBlank()) {
@@ -733,11 +711,11 @@ public class AuthController {
                 p.getId(),
                 p.getName(),
                 p.getEmail() != null ? p.getEmail() : "",
-                p.getSpecialty() != null ? p.getSpecialty() : "Veterinary Medicine",
-                p.getQualification() != null ? p.getQualification() : "BVSc & AH (Verified VCI)",
-                p.getClinic() != null ? p.getClinic() : "Clinical Practice",
-                p.getCity() != null ? p.getCity() : "Bengaluru",
-                p.getState() != null ? p.getState() : "Karnataka",
+                p.getSpecialty() != null ? p.getSpecialty() : "",
+                p.getQualification() != null ? p.getQualification() : "",
+                p.getClinic() != null ? p.getClinic() : "",
+                p.getCity() != null ? p.getCity() : "",
+                p.getState() != null ? p.getState() : "",
                 p.getAvatar() != null ? p.getAvatar() : "",
                 p.getCoverImage() != null ? p.getCoverImage() : "",
                 p.getBio() != null ? p.getBio() : "",
