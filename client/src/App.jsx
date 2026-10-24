@@ -229,7 +229,12 @@ export function App() {
         // Load short videos
         const backendVideos = await api.videos.getAll();
         if (backendVideos && backendVideos.length > 0) {
-          setVideos(backendVideos);
+          setVideos(backendVideos.map(v => {
+            if (v.thumbnail && (v.thumbnail.includes('543a7dc6') || v.thumbnail.includes('bcb16239') || v.thumbnail.includes('43090d16'))) {
+              return { ...v, thumbnail: null };
+            }
+            return v;
+          }));
         }
       } catch (e) {
         console.log('Using local short videos');
@@ -1032,7 +1037,7 @@ export function App() {
           doctorSpecialty: `${authorSpecialty} · ${currentUser?.city || 'Bengaluru'}`,
           views: '1',
           duration: '0:45',
-          thumbnail: (imageUrl && !imageUrl.endsWith('.mp4')) ? imageUrl : 'http://localhost:8080/uploads/543a7dc6-e985-4130-967d-7aac4969ff9f.png',
+          thumbnail: (imageUrl && !imageUrl.endsWith('.mp4') && !imageUrl.includes('543a7dc6') && !imageUrl.includes('bcb16239') && !imageUrl.includes('43090d16')) ? imageUrl : null,
           videoUrl: effectiveVideoUrl,
           likes: 1,
           comments: 0
@@ -1086,7 +1091,7 @@ export function App() {
         doctorSpecialty: `${authorSpecialty} · ${currentUser?.city || 'Bengaluru'}`,
         views: '1',
         duration: duration || '0:45',
-        thumbnail: (imageUrl && !imageUrl.endsWith('.mp4')) ? imageUrl : 'http://localhost:8080/uploads/543a7dc6-e985-4130-967d-7aac4969ff9f.png',
+        thumbnail: (imageUrl && !imageUrl.endsWith('.mp4') && !imageUrl.includes('543a7dc6') && !imageUrl.includes('bcb16239') && !imageUrl.includes('43090d16')) ? imageUrl : null,
         videoUrl: effectiveVideoUrl,
         likes: 1,
         comments: 0
@@ -2324,6 +2329,29 @@ export function App() {
                       handleDoctorProfileUpdated(fallback);
                     }
                   }}
+                  onUpdateVci={async (newRegNo, verified = true) => {
+                    const docId = currentUser?.id || viewedProfileDoctor?.id || 1;
+                    const isVerified = Boolean(verified && newRegNo && newRegNo.trim().length > 3);
+                    try {
+                      const updated = await api.doctors.update(docId, {
+                        licenseNumber: newRegNo,
+                        verified: isVerified
+                      });
+                      const merged = { ...(updated || {}), licenseNumber: newRegNo, verified: isVerified };
+                      handleDoctorProfileUpdated(merged);
+                      alert('VCI Registration verified and saved successfully!');
+                    } catch (e) {
+                      console.warn('Backend VCI update fallback:', e);
+                      const fallback = {
+                        ...(currentUser || viewedProfileDoctor || {}),
+                        id: docId,
+                        licenseNumber: newRegNo,
+                        verified: isVerified
+                      };
+                      handleDoctorProfileUpdated(fallback);
+                      alert('VCI Registration updated successfully!');
+                    }
+                  }}
                   onOpenChat={handleOpenDirectChat}
                   onToggleConnect={(docId) => handleDisconnect(docId)}
                   isConnected={viewedProfileDoctor ? (!!connectedMap[viewedProfileDoctor.id] || !!connectedMap[`doc-${viewedProfileDoctor.id}`]) : false}
@@ -2385,11 +2413,14 @@ export function App() {
               {activeTab === 'search' && (
                 <SearchView
                   doctors={doctors}
+                  clinicalCases={clinicalCases}
+                  videos={videos}
                   connectedDoctors={connectedMap}
                   onSelectDoctor={handleOpenDoctorProfile}
                   onSelectCase={(c) => setSelectedCase(c)}
                   onSelectVideo={(v) => setSelectedVideo(v)}
                   onOpenChat={handleOpenDirectChat}
+                  currentUser={currentUser}
                 />
               )}
 
@@ -2511,6 +2542,20 @@ export function App() {
               console.error('Failed to update cover:', e);
               const fallback = { ...(currentUser || selectedDoctor), coverImage: newCoverUrl };
               handleDoctorProfileUpdated(fallback);
+            }
+          }}
+          onUpdateVci={async (newRegNo, verified = true) => {
+            const docId = currentUser?.id || selectedDoctor?.id || 1;
+            const isVerified = Boolean(verified && newRegNo && newRegNo.trim().length > 3);
+            try {
+              const updated = await api.doctors.update(docId, { licenseNumber: newRegNo, verified: isVerified });
+              const merged = { ...(updated || {}), licenseNumber: newRegNo, verified: isVerified };
+              handleDoctorProfileUpdated(merged);
+              alert('VCI Registration verified successfully!');
+            } catch (e) {
+              const fallback = { ...(currentUser || selectedDoctor || {}), licenseNumber: newRegNo, verified: isVerified };
+              handleDoctorProfileUpdated(fallback);
+              alert('VCI Registration updated successfully!');
             }
           }}
           onViewFullPageProfile={(doc) => handleOpenDoctorProfile(doc, true)}

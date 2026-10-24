@@ -42,6 +42,7 @@ export function ProfileView({
   onUpdateCover,
   onUpdatePhone,
   onUpdateEmail,
+  onUpdateVci,
   onOpenChat,
   onToggleConnect,
   isConnected,
@@ -142,7 +143,6 @@ export function ProfileView({
     ? activeDoc.experienceYears
     : (activeDoc.experience && activeDoc.experience > 0 ? activeDoc.experience : 0);
   const displayExperienceText = displayExperienceYears > 0 ? `${displayExperienceYears} ${Number(displayExperienceYears) === 1 ? 'yr' : 'yrs'}` : '0 yrs';
-  const displayVciStatus = activeDoc.verified ? 'Verified' : 'Pending';
 
   const displayAvatar = (activeDoc.avatar && !activeDoc.avatar.includes('unsplash.com'))
     ? activeDoc.avatar
@@ -492,11 +492,6 @@ export function ProfileView({
               <h1 className="profile-name-text" style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: '800', color: '#111827', margin: 0 }}>
                 {activeDoc.name || 'Veterinary Practitioner'}
               </h1>
-              {activeDoc.verified && (
-                <span style={{ fontSize: '11.5px', color: '#065F46', backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', padding: '3px 10px', borderRadius: '6px', fontWeight: 700 }}>
-                  Verified VCI Member
-                </span>
-              )}
               {activeDoc.active ? (
                 <span style={{ fontSize: '11.5px', color: '#065F46', backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', padding: '3px 10px', borderRadius: '9999px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                   <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10B981' }} />
@@ -600,12 +595,6 @@ export function ProfileView({
                 </span>
                 <span style={{ fontSize: '11.5px', color: '#6B7280', fontWeight: 500 }}>Clinical Practice</span>
               </div>
-              <div style={{ borderLeft: '1px solid #E5E7EB', paddingLeft: '24px' }}>
-                <span style={{ display: 'block', fontSize: '18px', fontWeight: 800, color: activeDoc.verified !== false ? '#059669' : '#D97706' }}>
-                  {displayVciStatus}
-                </span>
-                <span style={{ fontSize: '11.5px', color: '#6B7280', fontWeight: 500 }}>VCI Verified</span>
-              </div>
             </div>
           </div>
 
@@ -659,7 +648,7 @@ export function ProfileView({
                     <span>Degrees & Qualifications</span>
                   </div>
                   <strong style={{ fontSize: '14px', color: '#111827', display: 'block' }}>{activeDoc.qualification || (isOwnProfile ? 'Not added yet (Edit Profile)' : 'Not specified')}</strong>
-                  <span style={{ fontSize: '12px', color: '#6B7280' }}>State Veterinary Council & VCI Registry</span>
+                  <span style={{ fontSize: '12px', color: '#6B7280' }}>Veterinary Medical Qualifications</span>
                 </div>
 
                 <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '10px', border: '1px solid #F3F4F6' }}>
@@ -669,15 +658,6 @@ export function ProfileView({
                   </div>
                   <strong style={{ fontSize: '14px', color: '#111827', display: 'block' }}>{activeDoc.clinic || (isOwnProfile ? 'Not added yet (Edit Profile)' : 'Not specified')}</strong>
                   <span style={{ fontSize: '12px', color: '#6B7280' }}>{[activeDoc.city, activeDoc.state].filter(Boolean).join(', ') || 'Location not specified'}</span>
-                </div>
-
-                <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '10px', border: '1px solid #F3F4F6' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#059669', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
-                    <ShieldCheck size={17} />
-                    <span>VCI License Status</span>
-                  </div>
-                  <strong style={{ fontSize: '14px', color: '#111827', display: 'block' }}>{activeDoc.licenseNumber || (isOwnProfile ? 'Not registered (Edit Profile)' : 'Not registered')}</strong>
-                  <span style={{ fontSize: '12px', color: activeDoc.verified ? '#059669' : '#D97706', fontWeight: 600 }}>{activeDoc.verified ? 'Active & Verified in Good Standing' : 'Pending Verification'}</span>
                 </div>
 
                 <div style={{ padding: '16px', backgroundColor: '#F9FAFB', borderRadius: '10px', border: '1px solid #F3F4F6' }}>

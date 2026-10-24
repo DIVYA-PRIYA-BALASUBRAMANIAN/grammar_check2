@@ -41,6 +41,7 @@ export function DoctorModal({
   onEditProfile,
   onUpdateAvatar,
   onUpdateCover,
+  onUpdateVci,
   onViewFullPageProfile,
   onDeleteCase,
   onDeletePost
@@ -195,7 +196,6 @@ export function DoctorModal({
     ? activeDoc.experienceYears
     : (activeDoc?.experience && activeDoc.experience > 0 ? activeDoc.experience : 0);
   const displayExperienceText = displayExperienceYears > 0 ? `${displayExperienceYears} ${Number(displayExperienceYears) === 1 ? 'yr' : 'yrs'}` : '0 yrs';
-  const displayVciStatus = activeDoc?.verified ? 'Verified' : 'Pending';
 
   const displayAvatar = (activeDoc?.avatar && !activeDoc.avatar.includes('unsplash.com'))
     ? activeDoc.avatar
@@ -535,12 +535,6 @@ export function DoctorModal({
                 </span>
                 <span className="doctor-modal-stat-label">Practice</span>
               </div>
-              <div className="doctor-modal-stat-card">
-                <span className="doctor-modal-stat-num" style={{ color: activeDoc?.verified !== false ? '#059669' : '#D97706' }}>
-                  {displayVciStatus}
-                </span>
-                <span className="doctor-modal-stat-label">VCI Verified</span>
-              </div>
             </div>
           </div>
 
@@ -584,7 +578,7 @@ export function DoctorModal({
                     <span>Qualifications</span>
                   </div>
                   <strong style={{ fontSize: '13px', color: '#111827', display: 'block' }}>{activeDoc?.qualification || (isOwnProfile ? 'Not added yet (Edit Profile)' : 'Not specified')}</strong>
-                  <span style={{ fontSize: '11px', color: '#6B7280' }}>State Veterinary Council & VCI</span>
+                  <span style={{ fontSize: '11px', color: '#6B7280' }}>Veterinary Medical Qualifications</span>
                 </div>
 
                 <div className="doctor-modal-cred-card">
@@ -594,15 +588,6 @@ export function DoctorModal({
                   </div>
                   <strong style={{ fontSize: '13px', color: '#111827', display: 'block' }}>{activeDoc?.clinic || (isOwnProfile ? 'Not added yet (Edit Profile)' : 'Not specified')}</strong>
                   <span style={{ fontSize: '11px', color: '#6B7280' }}>{[activeDoc?.city, activeDoc?.state].filter(Boolean).join(', ') || 'Location not specified'}</span>
-                </div>
-
-                <div className="doctor-modal-cred-card">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#059669', fontSize: '12px', fontWeight: 600, marginBottom: '2px' }}>
-                    <ShieldCheck size={15} />
-                    <span>VCI Registration License</span>
-                  </div>
-                  <strong style={{ fontSize: '13px', color: '#111827', display: 'block' }}>{activeDoc?.licenseNumber || (isOwnProfile ? 'Not registered (Edit Profile)' : 'Not registered')}</strong>
-                  <span style={{ fontSize: '11px', color: activeDoc?.verified ? '#059669' : '#D97706', fontWeight: 600 }}>{activeDoc?.verified ? 'Active & Verified in Good Standing' : 'Pending Verification'}</span>
                 </div>
 
                 <div className="doctor-modal-cred-card">

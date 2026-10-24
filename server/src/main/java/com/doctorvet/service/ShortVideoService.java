@@ -21,7 +21,14 @@ public class ShortVideoService {
     }
 
     public List<ShortVideo> getAllVideos() {
-        return videoRepo.findAll();
+        List<ShortVideo> list = videoRepo.findAll();
+        for (ShortVideo v : list) {
+            if (v.getThumbnail() != null && (v.getThumbnail().contains("543a7dc6") || v.getThumbnail().contains("bcb16239") || v.getThumbnail().contains("43090d16"))) {
+                v.setThumbnail(null);
+                videoRepo.save(v);
+            }
+        }
+        return list;
     }
 
     @Transactional

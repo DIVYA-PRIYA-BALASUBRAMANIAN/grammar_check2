@@ -132,6 +132,12 @@ public class DoctorProfileService {
             } catch (Exception ignored) {
             }
         }
+        if (updates.containsKey("verified")) {
+            try {
+                d.setVerified(Boolean.parseBoolean(updates.get("verified").toString()));
+            } catch (Exception ignored) {
+            }
+        }
         if (updates.containsKey("passwordHash") && updates.get("passwordHash") != null) {
             d.setPassword(updates.get("passwordHash").toString().trim());
         } else if (updates.containsKey("password") && updates.get("password") != null) {
