@@ -199,4 +199,21 @@ public class StoryService {
     public List<StoryView> getStoryViewers(Long storyId) {
         return storyViewRepo.findByStoryIdOrderByViewedAtDesc(storyId);
     }
+
+    @Transactional
+    public boolean deleteStory(Long storyId) {
+        if (!storyRepo.existsById(storyId)) {
+            return false;
+        }
+        List<StoryLike> likes = storyLikeRepo.findByStoryId(storyId);
+        if (!likes.isEmpty()) {
+            storyLikeRepo.deleteAll(likes);
+        }
+        List<StoryView> views = storyViewRepo.findByStoryIdOrderByViewedAtDesc(storyId);
+        if (!views.isEmpty()) {
+            storyViewRepo.deleteAll(views);
+        }
+        storyRepo.deleteById(storyId);
+        return true;
+    }
 }

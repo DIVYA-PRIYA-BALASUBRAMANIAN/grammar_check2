@@ -241,8 +241,8 @@ export function SearchView({
   const sortedVideos = [...filteredVideos].sort((a, b) => {
     let diff = 0;
     if (sortBy === 'Rating' || sortBy === 'Experience') {
-      const valA = Number(v.viewsCount || v.views || v.likes || 0);
-      const valB = Number(v.viewsCount || v.views || v.likes || 0);
+      const valA = Number(a.viewsCount || a.views || a.likes || 0);
+      const valB = Number(b.viewsCount || b.views || b.likes || 0);
       diff = valB - valA;
     } else if (sortBy === 'Name') {
       diff = (a.title || '').localeCompare(b.title || '');
@@ -319,7 +319,7 @@ export function SearchView({
 
       {/* 2. Filter Pills & Layout Controls Bar */}
       <div className="search-filter-controls-row">
-        {/* Filter Pills Group */}
+        {/* Filter Pills Group (Left) */}
         <div className="search-pills-group">
           {[
             { id: 'ALL', label: `ALL (${totalResultsCount})` },
@@ -337,7 +337,7 @@ export function SearchView({
           ))}
         </div>
 
-        {/* View Mode & Sort Group */}
+        {/* View Mode & Sort Group (Right) */}
         <div className="search-view-mode-group">
           {/* List / Grid Symbol Controls */}
           <div className="view-mode-toggle-box">
@@ -360,8 +360,8 @@ export function SearchView({
           </div>
 
           {/* Sort Dropdown & Sort Symbol Button */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '12px', color: '#6b7280' }}>Sort by</span>
+          <div className="search-sort-wrapper">
+            <span className="search-sort-label">Sort by</span>
             <select
               className="search-sort-dropdown"
               value={sortBy}
@@ -449,7 +449,7 @@ export function SearchView({
                       title={isSaved ? 'Remove from saved' : 'Save doctor'}
                       type="button"
                     >
-                      <Heart size={16} fill={isSaved ? '#ef4444' : 'none'} color={isSaved ? '#ef4444' : '#9ca3af'} />
+                      <Heart size={14} fill={isSaved ? '#ef4444' : 'none'} color={isSaved ? '#ef4444' : '#9ca3af'} />
                     </button>
 
                     {/* Card Top Info Row */}
@@ -457,8 +457,8 @@ export function SearchView({
                       <Avatar
                         src={doctor.avatar}
                         name={doctor.name}
-                        size={58}
-                        fontSize={22}
+                        size={44}
+                        fontSize={16}
                         className="doctor-dir-avatar-img"
                       />
 
@@ -467,29 +467,29 @@ export function SearchView({
                         <div className="doctor-dir-status-row">
                           {doctor.verified ? (
                             <div className="doctor-dir-verified-tag">
-                              <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#10b981' }} />
+                              <span style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: '#10b981' }} />
                               <span>Verified</span>
                             </div>
                           ) : (
                             <div className="doctor-dir-verified-tag" style={{ backgroundColor: '#f0fdf4', color: '#047857' }}>
-                              <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#10b981' }} />
+                              <span style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: '#10b981' }} />
                               <span>Registered</span>
                             </div>
                           )}
                           <span style={{
-                            fontSize: '11px',
+                            fontSize: '10px',
                             fontWeight: 700,
-                            padding: '2px 7px',
+                            padding: '1.5px 6px',
                             borderRadius: '9999px',
                             backgroundColor: doctor.active ? '#ECFDF5' : '#F3F4F6',
                             color: doctor.active ? '#065F46' : '#6B7280',
                             border: doctor.active ? '1px solid #A7F3D0' : '1px solid #E5E7EB',
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '4px',
+                            gap: '3.5px',
                             lineHeight: 1
                           }}>
-                            <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: doctor.active ? '#10B981' : '#9CA3AF' }} />
+                            <span style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: doctor.active ? '#10B981' : '#9CA3AF' }} />
                             {doctor.active ? 'Active' : 'Inactive'}
                           </span>
                         </div>
@@ -505,22 +505,22 @@ export function SearchView({
 
                         {/* Location */}
                         <div className="doctor-dir-location-text">
-                          <MapPin size={12} color="#6b7280" />
+                          <MapPin size={11} color="#6b7280" />
                           <span>{[doctor.city, doctor.state].filter(Boolean).join(', ') || 'India'}</span>
                         </div>
 
                         {/* Meta Stats Row (Experience & Rating) */}
                         <div className="doctor-dir-meta-stats">
                           <div className="doctor-dir-stat-badge">
-                            <Briefcase size={12} color="#6b7280" />
-                            <span>{doctor.experienceYears ? `${doctor.experienceYears}+ yrs exp` : 'Registered Doctor'}</span>
+                            <Briefcase size={11} color="#6b7280" />
+                            <span>{doctor.experienceYears ? `${doctor.experienceYears}+ yrs exp` : 'Registered'}</span>
                           </div>
 
                           <div className="doctor-dir-rating-badge">
-                            <Star size={12} fill="#eab308" color="#eab308" />
+                            <Star size={11} fill="#eab308" color="#eab308" />
                             <span>4.9</span>
-                            <span style={{ color: '#9ca3af', fontWeight: '500', fontSize: '11px' }}>
-                              ({doctor.connectionsCount != null ? doctor.connectionsCount : 0} connections)
+                            <span style={{ color: '#9ca3af', fontWeight: '500', fontSize: '10.5px' }}>
+                              ({doctor.connectionsCount != null ? doctor.connectionsCount : 0} conn)
                             </span>
                           </div>
                         </div>
@@ -535,7 +535,7 @@ export function SearchView({
                         type="button"
                       >
                         <span>View Profile</span>
-                        <ArrowRight size={14} />
+                        <ArrowRight size={13} />
                       </button>
 
                       {isConnected && (
@@ -545,7 +545,7 @@ export function SearchView({
                           title="Message Doctor"
                           type="button"
                         >
-                          <MessageSquare size={16} />
+                          <MessageSquare size={14} />
                         </button>
                       )}
                     </div>
@@ -616,22 +616,22 @@ export function SearchView({
                             </span>
                           </div>
 
-                          <h4 style={{ fontSize: '15.5px', fontWeight: '800', color: '#003822', margin: '0 0 4px 0', lineHeight: 1.3 }}>
+                          <h4 style={{ fontSize: '14.5px', fontWeight: '800', color: '#003822', margin: '0 0 3px 0', lineHeight: 1.3 }}>
                             {c.title}
                           </h4>
-                          <p style={{ fontSize: '13px', color: '#4b5563', margin: 0, lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          <p style={{ fontSize: '12.5px', color: '#4b5563', margin: 0, lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                             {c.presentingComplaint || c.diagnosis || 'Clinical case presentation and diagnosis.'}
                           </p>
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', flexShrink: 0 }}>
-                        <span style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <Eye size={13} /> {c.views || 1} views
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
+                        <span style={{ fontSize: '11.5px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Eye size={12} /> {c.views || 1} views
                         </span>
-                        <button className="btn-view-profile-dark" style={{ padding: '8px 14px' }} type="button">
+                        <button className="btn-view-profile-dark" style={{ padding: '6px 12px', fontSize: '12px' }} type="button">
                           <span>Review Case</span>
-                          <ArrowRight size={13} />
+                          <ArrowRight size={12} />
                         </button>
                       </div>
                     </div>
@@ -645,17 +645,17 @@ export function SearchView({
                     className="case-dir-card"
                     onClick={() => onSelectCase && onSelectCase(c)}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: '700', padding: '3px 8px', borderRadius: '6px', backgroundColor: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '10.5px', fontWeight: '700', padding: '2px 7px', borderRadius: '5px', backgroundColor: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0' }}>
                         🐾 {c.species || 'Veterinary'}
                       </span>
-                      <span style={{ fontSize: '11.5px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Eye size={12} /> {c.views || 1} views
+                      <span style={{ fontSize: '11px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <Eye size={11} /> {c.views || 1}
                       </span>
                     </div>
 
                     {(c.mediaUrl || c.images?.[0]) && (
-                      <div style={{ width: '100%', height: '140px', borderRadius: '10px', overflow: 'hidden', marginBottom: '10px', backgroundColor: '#f3f4f6' }}>
+                      <div style={{ width: '100%', height: '110px', borderRadius: '8px', overflow: 'hidden', marginBottom: '8px', backgroundColor: '#f3f4f6' }}>
                         <img
                           src={c.mediaUrl || c.images?.[0]}
                           alt={c.title}
@@ -665,27 +665,27 @@ export function SearchView({
                       </div>
                     )}
 
-                    <h4 style={{ fontSize: '15px', fontWeight: '800', color: '#003822', marginBottom: '6px', lineHeight: 1.35 }}>
+                    <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#003822', marginBottom: '4px', lineHeight: 1.3 }}>
                       {c.title}
                     </h4>
-                    <p style={{ fontSize: '13px', color: '#4b5563', lineHeight: 1.5, marginBottom: '12px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    <p style={{ fontSize: '12px', color: '#4b5563', lineHeight: 1.45, marginBottom: '8px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                       {c.presentingComplaint || c.diagnosis || 'Clinical case presentation and evaluation.'}
                     </p>
 
-                    <div style={{ marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                    <div style={{ marginTop: 'auto', paddingTop: '8px', borderTop: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0 }}>
                         <Avatar
                           src={c.authorAvatar}
                           name={c.authorName || 'Dr. Practitioner'}
-                          size={24}
-                          fontSize={10}
+                          size={20}
+                          fontSize={9}
                         />
-                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <span style={{ fontSize: '11.5px', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {c.authorName || 'Dr. Practitioner'}
                         </span>
                       </div>
-                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#059669', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                        Read Case <ArrowRight size={12} />
+                      <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#059669', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                        Read <ArrowRight size={11} />
                       </span>
                     </div>
                   </div>
@@ -731,8 +731,8 @@ export function SearchView({
                       className="video-dir-card list-mode"
                       onClick={() => onSelectVideo && onSelectVideo(v)}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: 0 }}>
-                        <div className="video-dir-thumb-wrap" style={{ width: '130px', height: '80px', borderRadius: '10px', flexShrink: 0, backgroundColor: '#07180F', overflow: 'hidden' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: 0 }}>
+                        <div className="video-dir-thumb-wrap" style={{ width: '110px', height: '70px', borderRadius: '8px', flexShrink: 0, backgroundColor: '#07180F', overflow: 'hidden' }}>
                           {v.videoUrl ? (
                             <video
                               src={`${v.videoUrl}#t=0.001`}
@@ -750,7 +750,7 @@ export function SearchView({
                             />
                           ) : (
                             <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#07180f', color: '#10b981' }}>
-                              <Play size={24} />
+                              <Play size={20} />
                             </div>
                           )}
                           <div style={{
@@ -763,8 +763,8 @@ export function SearchView({
                             pointerEvents: 'none'
                           }}>
                             <div style={{
-                              width: '28px',
-                              height: '28px',
+                              width: '24px',
+                              height: '24px',
                               borderRadius: '50%',
                               backgroundColor: 'rgba(255, 255, 255, 0.9)',
                               color: '#003822',
@@ -773,7 +773,7 @@ export function SearchView({
                               justifyContent: 'center',
                               paddingLeft: '2px'
                             }}>
-                              <Play size={12} fill="#003822" />
+                              <Play size={10} fill="#003822" />
                             </div>
                           </div>
                           {v.duration && (
@@ -783,7 +783,7 @@ export function SearchView({
                               right: '4px',
                               backgroundColor: 'rgba(0, 0, 0, 0.75)',
                               color: '#ffffff',
-                              fontSize: '10px',
+                              fontSize: '9.5px',
                               fontWeight: '700',
                               padding: '1px 4px',
                               borderRadius: '3px'
@@ -794,23 +794,23 @@ export function SearchView({
                         </div>
 
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <h4 style={{ fontSize: '15px', fontWeight: '700', color: '#111827', margin: '0 0 4px 0', lineHeight: 1.3 }}>
+                          <h4 style={{ fontSize: '13.5px', fontWeight: '700', color: '#111827', margin: '0 0 3px 0', lineHeight: 1.3 }}>
                             {v.title}
                           </h4>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#6b7280', flexWrap: 'wrap' }}>
-                            <span style={{ color: '#059669', fontWeight: 600 }}>By {v.doctorName || 'Veterinary Practitioner'}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: '#6b7280', flexWrap: 'wrap' }}>
+                            <span style={{ color: '#059669', fontWeight: 600 }}>By {v.doctorName || 'Doctor Reel'}</span>
                             {v.doctorSpecialty && <span>· {v.doctorSpecialty}</span>}
                           </div>
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', flexShrink: 0 }}>
-                        <span style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <Eye size={13} /> {v.viewsCount || v.views || 1} views
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
+                        <span style={{ fontSize: '11px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <Eye size={12} /> {v.viewsCount || v.views || 1}
                         </span>
-                        <button className="btn-view-profile-dark" style={{ padding: '8px 14px' }} type="button">
-                          <span>Watch Video</span>
-                          <Play size={12} fill="currentColor" />
+                        <button className="btn-view-profile-dark" style={{ padding: '6px 12px', fontSize: '11.5px' }} type="button">
+                          <span>Watch</span>
+                          <Play size={10} fill="currentColor" />
                         </button>
                       </div>
                     </div>
@@ -851,7 +851,7 @@ export function SearchView({
                         />
                       ) : (
                         <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#07180f', color: '#10b981' }}>
-                          <Play size={36} />
+                          <Play size={28} />
                         </div>
                       )}
                       <div style={{
@@ -865,45 +865,45 @@ export function SearchView({
                         pointerEvents: 'none'
                       }}>
                         <div style={{
-                          width: '42px',
-                          height: '42px',
+                          width: '32px',
+                          height: '32px',
                           borderRadius: '50%',
                           backgroundColor: 'rgba(255, 255, 255, 0.9)',
                           color: '#003822',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          paddingLeft: '3px',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                          paddingLeft: '2px',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
                         }}>
-                          <Play size={18} fill="#003822" />
+                          <Play size={14} fill="#003822" />
                         </div>
                       </div>
                       {v.duration && (
                         <span style={{
                           position: 'absolute',
-                          bottom: '8px',
-                          right: '8px',
+                          bottom: '6px',
+                          right: '6px',
                           backgroundColor: 'rgba(0, 0, 0, 0.75)',
                           color: '#ffffff',
-                          fontSize: '11px',
+                          fontSize: '10px',
                           fontWeight: '700',
-                          padding: '2px 6px',
-                          borderRadius: '4px'
+                          padding: '1.5px 5px',
+                          borderRadius: '3px'
                         }}>
                           {v.duration}
                         </span>
                       )}
                     </div>
 
-                    <div style={{ padding: '14px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                      <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#111827', margin: '0 0 6px 0', lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                      <h4 style={{ fontSize: '13px', fontWeight: '700', color: '#111827', margin: '0 0 4px 0', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {v.title}
                       </h4>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', fontSize: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', fontSize: '11.5px' }}>
                         <span style={{ color: '#059669', fontWeight: 600 }}>{v.doctorName || 'Doctor Reel'}</span>
                         <span style={{ color: '#6b7280', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                          <Eye size={12} /> {v.viewsCount || v.views || 1}
+                          <Eye size={11} /> {v.viewsCount || v.views || 1}
                         </span>
                       </div>
                     </div>

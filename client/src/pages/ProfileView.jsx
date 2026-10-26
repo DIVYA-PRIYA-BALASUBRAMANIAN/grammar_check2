@@ -269,12 +269,12 @@ export function ProfileView({
       }}>
         {/* Cover Banner */}
         <div className="profile-cover-banner" style={{
-          height: '200px',
+          height: '140px',
           background: displayCover
             ? `url(${displayCover}) center/cover no-repeat`
             : 'linear-gradient(135deg, #003822 0%, #05633C 50%, #0D472B 100%)',
           position: 'relative',
-          padding: '16px 20px',
+          padding: '12px 16px',
           display: 'flex',
           justifyContent: isOwnProfile ? 'flex-end' : 'flex-end',
           alignItems: 'flex-start'
@@ -295,13 +295,13 @@ export function ProfileView({
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
+                  gap: '5px',
                   backgroundColor: 'rgba(0,0,0,0.55)',
                   color: '#FFFFFF',
                   border: '1px solid rgba(255,255,255,0.4)',
                   borderRadius: '20px',
-                  padding: '6px 14px',
-                  fontSize: '12px',
+                  padding: '5px 12px',
+                  fontSize: '11px',
                   fontWeight: 600,
                   cursor: 'pointer',
                   backdropFilter: 'blur(6px)',
@@ -309,7 +309,7 @@ export function ProfileView({
                 }}
                 title="Change Cover Banner Photo"
               >
-                <Camera size={14} />
+                <Camera size={13} />
                 <span>{isUploadingCover ? 'Uploading...' : 'Change Cover Photo'}</span>
               </button>
             </>
@@ -317,17 +317,17 @@ export function ProfileView({
         </div>
 
         {/* Doctor Identity Header */}
-        <div className="profile-identity-header" style={{ padding: '0 28px 24px 28px' }}>
-          <div className="profile-avatar-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '-55px', marginBottom: '18px' }}>
+        <div className="profile-identity-header" style={{ padding: '0 20px 18px 20px' }}>
+          <div className="profile-avatar-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '-42px', marginBottom: '14px' }}>
             <div style={{ position: 'relative' }}>
               <Avatar
                 src={displayAvatar}
                 name={activeDoc.name || 'Doctor'}
-                size={110}
-                fontSize={44}
+                size={80}
+                fontSize={30}
                 style={{
-                  border: '4.5px solid #FFFFFF',
-                  boxShadow: '0 6px 18px rgba(0,0,0,0.15)'
+                  border: '3.5px solid #FFFFFF',
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.12)'
                 }}
               />
               {isOwnProfile ? (
@@ -345,51 +345,51 @@ export function ProfileView({
                     disabled={isUploadingPhoto}
                     style={{
                       position: 'absolute',
-                      bottom: '4px',
-                      right: '4px',
+                      bottom: '2px',
+                      right: '2px',
                       backgroundColor: '#003822',
                       color: '#FFFFFF',
-                      border: '3px solid #FFFFFF',
+                      border: '2px solid #FFFFFF',
                       borderRadius: '50%',
-                      width: '36px',
-                      height: '36px',
+                      width: '28px',
+                      height: '28px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: 'pointer',
-                      boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
                       transition: 'all 0.15s ease'
                     }}
                     title="Upload / Change Doctor Profile Photo"
                   >
-                    <Camera size={16} />
+                    <Camera size={13} />
                   </button>
                 </>
               ) : activeDoc.verified ? (
                 <CheckCircle2
-                  size={26}
+                  size={20}
                   color="#00a86b"
                   fill="#FFFFFF"
-                  style={{ position: 'absolute', bottom: '6px', right: '6px' }}
+                  style={{ position: 'absolute', bottom: '4px', right: '4px' }}
                 />
               ) : null}
             </div>
 
             {/* Profile Action Buttons */}
-            <div className="profile-actions-wrap" style={{ display: 'flex', gap: '10px' }}>
+            <div className="profile-actions-wrap" style={{ display: 'flex', gap: '8px' }}>
               {isOwnProfile ? (
                 <button
                   onClick={onEditProfile}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px',
+                    gap: '6px',
                     backgroundColor: '#003822',
                     color: '#FFFFFF',
                     border: 'none',
                     borderRadius: '9999px',
-                    padding: '9px 24px',
-                    fontSize: '13.5px',
+                    padding: '7px 18px',
+                    fontSize: '12.5px',
                     fontWeight: 700,
                     cursor: 'pointer',
                     boxShadow: '0 2px 8px rgba(0, 56, 34, 0.25)',
@@ -398,7 +398,7 @@ export function ProfileView({
                   onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#05633C'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#003822'; }}
                 >
-                  <UserPen size={15} />
+                  <UserPen size={13} />
                   <span>Edit Profile</span>
                 </button>
               ) : (
@@ -409,18 +409,18 @@ export function ProfileView({
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '7px',
+                        gap: '6px',
                         backgroundColor: '#003822',
                         color: '#FFFFFF',
                         border: 'none',
                         borderRadius: '9999px',
-                        padding: '9px 20px',
-                        fontSize: '13.5px',
+                        padding: '7px 16px',
+                        fontSize: '12.5px',
                         fontWeight: 700,
                         cursor: 'pointer'
                       }}
                     >
-                      <MessageSquare size={15} />
+                      <MessageSquare size={13} />
                       <span>Message</span>
                     </button>
                   )}
@@ -431,18 +431,18 @@ export function ProfileView({
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '7px',
+                        gap: '6px',
                         backgroundColor: '#ECFDF5',
                         color: '#065F46',
                         border: '1px solid #A7F3D0',
                         borderRadius: '9999px',
-                        padding: '9px 18px',
-                        fontSize: '13.5px',
+                        padding: '7px 15px',
+                        fontSize: '12.5px',
                         fontWeight: 700,
                         cursor: 'pointer'
                       }}
                     >
-                      <Check size={15} color="#059669" />
+                      <Check size={13} color="#059669" />
                       <span>Connected</span>
                     </button>
                   ) : isPending ? (
@@ -452,8 +452,8 @@ export function ProfileView({
                         color: '#6B7280',
                         border: '1px solid #E5E7EB',
                         borderRadius: '9999px',
-                        padding: '9px 18px',
-                        fontSize: '13.5px',
+                        padding: '7px 15px',
+                        fontSize: '12.5px',
                         fontWeight: 600,
                         cursor: 'default'
                       }}
@@ -466,18 +466,18 @@ export function ProfileView({
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '7px',
+                        gap: '6px',
                         backgroundColor: '#FFFFFF',
                         color: '#003822',
                         border: '1.5px solid #003822',
                         borderRadius: '9999px',
-                        padding: '9px 20px',
-                        fontSize: '13.5px',
+                        padding: '7px 16px',
+                        fontSize: '12.5px',
                         fontWeight: 700,
                         cursor: 'pointer'
                       }}
                     >
-                      <UserPlus size={15} />
+                      <UserPlus size={13} />
                       <span>Connect</span>
                     </button>
                   )}
@@ -488,8 +488,8 @@ export function ProfileView({
 
           {/* Title & Headline */}
           <div>
-            <div className="profile-name-row" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <h1 className="profile-name-text" style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: '800', color: '#111827', margin: 0 }}>
+            <div className="profile-name-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <h1 className="profile-name-text" style={{ fontFamily: 'var(--font-display)', fontSize: '21px', fontWeight: '800', color: '#111827', margin: 0 }}>
                 {activeDoc.name || 'Veterinary Practitioner'}
               </h1>
               {activeDoc.active ? (
@@ -748,7 +748,7 @@ export function ProfileView({
                         <span style={{ fontSize: '11px', color: '#059669', backgroundColor: '#ECFDF5', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
                           {c.species || 'Canine'}
                         </span>
-                        {isOwnProfile && onDeleteCase && (
+                        {isOwnProfile && isDocItem(c.authorId, c.authorName) && onDeleteCase && (
                           <button
                             type="button"
                             onClick={(e) => {

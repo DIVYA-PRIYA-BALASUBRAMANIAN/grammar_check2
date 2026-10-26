@@ -52,8 +52,10 @@ public class WebConfig implements WebMvcConfigurer {
                         "/api/v1/doctors/**",
                         "/api/v1/cases/**",
                         "/api/v1/videos/**",
+                        "/api/v1/notifications/broadcast",
                         "/uploads/**",
-                        "/ws/**"
+                        "/ws/**",
+                        "/ws-chat/**"
                 );
     }
 }

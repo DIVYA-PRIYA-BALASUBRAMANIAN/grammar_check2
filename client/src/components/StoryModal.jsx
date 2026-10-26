@@ -17,10 +17,21 @@ import {
   Eye,
   Search,
   Users,
-  Smile
+  Smile,
+  Trash2
 } from 'lucide-react';
 import { Avatar } from './Avatar';
 import { api } from '../services/api';
+
+const resolveMediaUrl = (url) => {
+  if (!url) return '';
+  const str = String(url).trim();
+  if (str.startsWith('data:') || str.startsWith('blob:')) return str;
+  if (str.startsWith('http://') || str.startsWith('https://')) return str;
+  if (str.startsWith('/uploads/')) return `http://localhost:8080${str}`;
+  if (str.startsWith('uploads/')) return `http://localhost:8080/${str}`;
+  return str;
+};
 
 const QUICK_REACTIONS = ['❤️', '🔥', '👏', '😮', '😂', '🩺', '🐾'];
 
@@ -32,19 +43,39 @@ export function StoryModal({
   currentUser,
   doctors = [],
   onSendMessage,
-  onUpdateStory
+  onUpdateStory,
+  onDeleteStory
 }) {
   // Active story index in the stories list
   const activeStories = (stories && stories.length > 0) ? stories : (story ? [story] : []);
   const activeIndex = story ? activeStories.findIndex(s => s.id === story.id || String(s.id) === String(story.id)) : -1;
   const currentStory = (activeIndex !== -1 ? activeStories[activeIndex] : story) || {};
 
-  // Check if current user is the owner of this story
-  const isStoryOwner = currentUser && currentStory.doctorId && (
-    currentStory.doctorId === currentUser.id ||
-    String(currentStory.doctorId).replace('doc-', '') === String(currentUser.id).replace('doc-', '') ||
-    (currentStory.doctorName && currentUser.name && currentStory.doctorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
+  const isVideo = Boolean(
+    currentStory.videoUrl ||
+    currentStory.mediaType === 'VIDEO' ||
+    (currentStory.image && (
+      /\.(mp4|webm|mov|m4v|ogg)(\?.*)?$/i.test(currentStory.image) ||
+      currentStory.image.startsWith('data:video')
+    )) ||
+    (currentStory.mediaUrl && (
+      /\.(mp4|webm|mov|m4v|ogg)(\?.*)?$/i.test(currentStory.mediaUrl) ||
+      currentStory.mediaUrl.startsWith('data:video')
+    ))
   );
+
+  // Check if current user is the owner of this story
+  const isStoryOwner = Boolean(currentUser && (
+    (currentStory.doctorId != null && (
+      currentStory.doctorId === currentUser.id ||
+      String(currentStory.doctorId).replace('doc-', '') === String(currentUser.id).replace('doc-', '')
+    )) ||
+    (currentStory.doctorName && currentUser.name && (
+      currentStory.doctorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim()
+    )) ||
+    (currentStory.doctorName && currentStory.doctorName.toLowerCase().includes('you')) ||
+    currentStory.doctorId === 'doc-me'
+  ));
 
   // Story playback states
   const [progress, setProgress] = useState(0);
@@ -67,7 +98,7 @@ export function StoryModal({
   const [copiedLink, setCopiedLink] = useState(false);
   const [sentDoctors, setSentDoctors] = useState({});
 
-  // Viewers states ("user view how many people view story like instagram")
+  // Viewers states (Story viewer count and list)
   const [viewsCount, setViewsCount] = useState(0);
   const [isViewersOpen, setIsViewersOpen] = useState(false);
   const [viewersList, setViewersList] = useState([]);
@@ -255,12 +286,15 @@ export function StoryModal({
     setShowReactionsBar(false);
 
     const receiverId = currentStory.doctorId ? Number(String(currentStory.doctorId).replace('doc-', '')) : null;
+    const rawMedia = currentStory.videoUrl || currentStory.image || currentStory.mediaUrl || '';
+    const media = resolveMediaUrl(rawMedia);
+    const isVid = Boolean(currentStory.videoUrl || currentStory.mediaType === 'VIDEO' || isVideo || (media && /\.(mp4|webm|mov|m4v|ogg)(\?.*)?$/i.test(media)));
     if (onSendMessage && receiverId) {
       onSendMessage({
         receiverId,
         text: `Reacted with ${emoji} to your story`,
-        attachmentUrl: currentStory.image || currentStory.videoUrl,
-        attachmentType: currentStory.videoUrl ? 'VIDEO' : 'IMAGE'
+        attachmentUrl: media,
+        attachmentType: isVid ? 'VIDEO' : 'IMAGE'
       });
     }
 
@@ -268,7 +302,7 @@ export function StoryModal({
     setTimeout(() => setReplyToast(''), 2500);
   };
 
-  // Story Viewers Drawer (Instagram-style)
+  // Story Viewers Drawer
   const handleOpenViewers = async () => {
     setIsViewersOpen(true);
     setIsPaused(true);
@@ -328,13 +362,16 @@ export function StoryModal({
 
     const receiverId = doc.id ? Number(String(doc.id).replace('doc-', '')) : null;
     const shareMessage = `Shared a 24h story by Dr. ${currentStory.doctorName}:\n"${currentStory.caption || 'Clinical update'}"\n${window.location.origin}/?story=${currentStory.id}`;
+    const rawMedia = currentStory.videoUrl || currentStory.image || currentStory.mediaUrl || '';
+    const media = resolveMediaUrl(rawMedia);
+    const isVid = Boolean(currentStory.videoUrl || currentStory.mediaType === 'VIDEO' || isVideo || (media && /\.(mp4|webm|mov|m4v|ogg)(\?.*)?$/i.test(media)));
 
     if (onSendMessage) {
       onSendMessage({
         receiverId,
         text: shareMessage,
-        attachmentUrl: currentStory.image || currentStory.videoUrl,
-        attachmentType: currentStory.videoUrl ? 'VIDEO' : 'IMAGE'
+        attachmentUrl: media,
+        attachmentType: isVid ? 'VIDEO' : 'IMAGE'
       });
     }
 
@@ -349,13 +386,16 @@ export function StoryModal({
     if (!text) return;
 
     const receiverId = currentStory.doctorId ? Number(String(currentStory.doctorId).replace('doc-', '')) : null;
+    const rawMedia = currentStory.videoUrl || currentStory.image || currentStory.mediaUrl || '';
+    const media = resolveMediaUrl(rawMedia);
+    const isVid = Boolean(currentStory.videoUrl || currentStory.mediaType === 'VIDEO' || isVideo || (media && /\.(mp4|webm|mov|m4v|ogg)(\?.*)?$/i.test(media)));
 
     if (onSendMessage) {
       onSendMessage({
         receiverId,
         text: `Replied to your story: "${text}"`,
-        attachmentUrl: currentStory.image || currentStory.videoUrl,
-        attachmentType: currentStory.videoUrl ? 'VIDEO' : 'IMAGE'
+        attachmentUrl: media,
+        attachmentType: isVid ? 'VIDEO' : 'IMAGE'
       });
     }
 
@@ -364,16 +404,30 @@ export function StoryModal({
     setTimeout(() => setReplyToast(''), 3000);
   };
 
-  const isVideo = !!(
-    currentStory.videoUrl ||
-    (currentStory.image && (
-      currentStory.image.endsWith('.mp4') ||
-      currentStory.image.endsWith('.mov') ||
-      currentStory.image.endsWith('.webm') ||
-      currentStory.image.startsWith('blob:') ||
-      currentStory.image.startsWith('data:video')
-    ))
-  );
+  // Delete current story
+  const handleDeleteCurrentStory = async (e) => {
+    if (e) e.stopPropagation();
+    setIsPaused(true);
+    if (!window.confirm('Are you sure you want to delete this 24h story? It will be permanently removed.')) {
+      setIsPaused(false);
+      return;
+    }
+    const storyIdToDelete = currentStory.id;
+    if (onDeleteStory) {
+      await onDeleteStory(storyIdToDelete);
+    }
+    if (activeStories.length > 1) {
+      if (activeIndex < activeStories.length - 1) {
+        handleNextStory();
+      } else if (activeIndex > 0) {
+        handlePrevStory();
+      } else {
+        if (onClose) onClose();
+      }
+    } else {
+      if (onClose) onClose();
+    }
+  };
 
   const filteredViewers = viewersList.filter(v => {
     if (!viewerSearch.trim()) return true;
@@ -645,6 +699,32 @@ export function StoryModal({
               </button>
             )}
 
+            {/* Owner Story Delete Button */}
+            {isStoryOwner && (
+              <button
+                type="button"
+                onClick={handleDeleteCurrentStory}
+                style={{
+                  color: '#FFFFFF',
+                  background: 'rgba(220, 38, 38, 0.85)',
+                  backdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(254, 202, 202, 0.45)',
+                  borderRadius: '50%',
+                  width: 32,
+                  height: 32,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(220, 38, 38, 0.45)',
+                  transition: 'all 0.15s ease'
+                }}
+                title="Delete your story"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+
             {/* Close Button */}
             <button
               onClick={(e) => { e.stopPropagation(); if (onClose) onClose(); }}
@@ -676,7 +756,7 @@ export function StoryModal({
           {isVideo ? (
             <video
               ref={videoRef}
-              src={currentStory.videoUrl || currentStory.image}
+              src={resolveMediaUrl(currentStory.videoUrl || currentStory.image || currentStory.mediaUrl)}
               autoPlay
               loop
               muted={isMuted}
@@ -685,7 +765,7 @@ export function StoryModal({
             />
           ) : (
             <img
-              src={currentStory.image}
+              src={resolveMediaUrl(currentStory.image || currentStory.mediaUrl)}
               alt={currentStory.caption || 'Clinical story'}
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
@@ -771,12 +851,16 @@ export function StoryModal({
           </div>
         )}
 
-        {/* Instagram-Style Story Viewers Bar (for Story Owner) */}
+        {/* Story Viewers Bar (for Story Owner) */}
         {isStoryOwner && (
           <div style={{
             position: 'absolute',
             bottom: 74,
             left: 14,
+            right: 14,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
             zIndex: 35
           }}>
             <button
@@ -1045,7 +1129,7 @@ export function StoryModal({
         </div>
 
         {/* ====================================================================== */}
-        {/* Instagram-Style Story Viewers Sheet Modal ("User view how many people view story") */}
+        {/* Story Viewers Sheet Modal ("User view how many people view story") */}
         {/* ====================================================================== */}
         {isViewersOpen && (
           <div

@@ -23,7 +23,8 @@ export function ShortVideosView({
   onOpenStory, 
   onOpenCreateVideo, 
   onSelectVideo,
-  onDeleteVideo 
+  onDeleteVideo,
+  onDeleteStory
 }) {
   const [activeTab, setActiveTab] = useState('for_you');
   const [selectedSpecialty, setSelectedSpecialty] = useState('All specialties');
@@ -86,6 +87,17 @@ export function ShortVideosView({
           </button>
 
           {stories.map((story) => {
+            const isOwnStory = Boolean(currentUser && (
+              (story.doctorId != null && (
+                story.doctorId === currentUser.id ||
+                String(story.doctorId).replace('doc-', '') === String(currentUser.id).replace('doc-', '')
+              )) ||
+              (story.doctorName && currentUser.name && (
+                story.doctorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim()
+              )) ||
+              (story.doctorName && story.doctorName.toLowerCase().includes('you')) ||
+              story.doctorId === 'doc-me'
+            ));
             const storyDoc = (doctors || []).find(d => 
               d.id === story.doctorId || 
               String(d.id).replace('doc-', '') === String(story.doctorId).replace('doc-', '') || 
@@ -100,8 +112,9 @@ export function ShortVideosView({
                 key={story.id} 
                 className="story-circle-item"
                 onClick={() => onOpenStory({ ...story, avatar: resolvedStoryAvatar })}
+                style={{ position: 'relative' }}
               >
-                <div className="story-ring-circle">
+                <div className="story-ring-circle" style={{ position: 'relative' }}>
                   <Avatar src={resolvedStoryAvatar} name={story.doctorName} size={48} className="story-avatar-photo" />
                 </div>
                 <span className="story-doc-label">{story.doctorName}</span>
@@ -185,14 +198,20 @@ export function ShortVideosView({
           </button>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(225px, 1fr))', gap: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(185px, 240px))', gap: '14px' }}>
           {videos.map((vid) => {
-          const isOwnVideo = currentUser && (
-            vid.doctorId === currentUser.id ||
-            String(vid.doctorId).replace('doc-', '') === String(currentUser.id).replace('doc-', '') ||
-            (vid.doctorName && currentUser.name && vid.doctorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
-          );
-          const canDelete = isOwnVideo || !vid.doctorId;
+          const isOwnVideo = Boolean(currentUser && (
+            (vid.doctorId != null && (
+              vid.doctorId === currentUser.id ||
+              String(vid.doctorId).replace('doc-', '') === String(currentUser.id).replace('doc-', '')
+            )) ||
+            (vid.doctorName && currentUser.name && (
+              vid.doctorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim()
+            )) ||
+            (vid.doctorName && vid.doctorName.toLowerCase().includes('you')) ||
+            vid.doctorId === 'doc-me'
+          ));
+          const canDelete = isOwnVideo;
 
           return (
             <div 
@@ -202,7 +221,7 @@ export function ShortVideosView({
                 backgroundColor: 'rgba(255, 255, 255, 0.92)',
                 backdropFilter: 'blur(12px)',
                 WebkitBackdropFilter: 'blur(12px)',
-                borderRadius: '16px',
+                borderRadius: '14px',
                 overflow: 'hidden',
                 border: '1px solid rgba(229, 231, 235, 0.9)',
                 cursor: 'pointer',
@@ -221,7 +240,7 @@ export function ShortVideosView({
               }}
             >
               {/* Video Cover Area with Glassy Badges */}
-              <div style={{ position: 'relative', height: '230px', backgroundColor: '#07180F', overflow: 'hidden' }}>
+              <div style={{ position: 'relative', height: '155px', backgroundColor: '#07180F', overflow: 'hidden' }}>
                 {vid.videoUrl ? (
                   <video 
                     src={`${vid.videoUrl}#t=0.001`} 
@@ -247,8 +266,8 @@ export function ShortVideosView({
                   />
                 ) : (
                   <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #062b1b 0%, #021a10 100%)', color: '#34D399' }}>
-                    <Video size={40} />
-                    <span style={{ fontSize: '11px', marginTop: '6px', fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>Clinical Reel</span>
+                    <Video size={32} />
+                    <span style={{ fontSize: '10.5px', marginTop: '4px', fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>Clinical Reel</span>
                   </div>
                 )}
                 
@@ -263,24 +282,24 @@ export function ShortVideosView({
                     }}
                     style={{
                       position: 'absolute',
-                      top: 10,
-                      left: 10,
+                      top: 8,
+                      left: 8,
                       background: 'rgba(220, 38, 38, 0.85)',
                       backdropFilter: 'blur(4px)',
                       color: '#ffffff',
                       border: 'none',
-                      borderRadius: '6px',
-                      padding: '4px 8px',
-                      fontSize: '11px',
+                      borderRadius: '5px',
+                      padding: '3px 7px',
+                      fontSize: '10px',
                       fontWeight: 700,
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px',
+                      gap: '3px',
                       zIndex: 2
                     }}
                   >
-                    <Trash2 size={12} />
+                    <Trash2 size={11} />
                     <span>Delete</span>
                   </button>
                 )}
@@ -288,15 +307,15 @@ export function ShortVideosView({
                 {/* Glassy Duration Badge */}
                 <div style={{
                   position: 'absolute',
-                  top: 10,
-                  right: 10,
+                  top: 8,
+                  right: 8,
                   background: 'rgba(0, 40, 25, 0.75)',
                   backdropFilter: 'blur(4px)',
                   color: '#ffffff',
-                  fontSize: '11px',
+                  fontSize: '10.5px',
                   fontWeight: 700,
-                  padding: '3px 8px',
-                  borderRadius: '6px'
+                  padding: '2px 7px',
+                  borderRadius: '5px'
                 }}>
                   {vid.duration}
                 </div>
@@ -307,38 +326,38 @@ export function ShortVideosView({
                 top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
-                width: '46px',
-                height: '46px',
+                width: '34px',
+                height: '34px',
                 borderRadius: '50%',
-                background: 'rgba(0, 56, 34, 0.78)',
+                background: 'rgba(0, 56, 34, 0.82)',
                 backdropFilter: 'blur(8px)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: '#ffffff',
-                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
+                boxShadow: '0 3px 12px rgba(0, 0, 0, 0.3)',
                 pointerEvents: 'none'
               }}>
-                <Play size={20} fill="#ffffff" style={{ marginLeft: '3px' }} />
+                <Play size={15} fill="#ffffff" style={{ marginLeft: '2px' }} />
               </div>
 
               {/* Glassy Views Badge */}
               <div style={{
                 position: 'absolute',
-                bottom: 10,
-                left: 10,
+                bottom: 8,
+                left: 8,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
+                gap: '3px',
                 background: 'rgba(0, 0, 0, 0.55)',
                 backdropFilter: 'blur(4px)',
                 color: '#ffffff',
-                fontSize: '11px',
+                fontSize: '10.5px',
                 fontWeight: '600',
-                padding: '3px 8px',
-                borderRadius: '6px'
+                padding: '2px 7px',
+                borderRadius: '5px'
               }}>
-                <Eye size={12} />
+                <Eye size={11} />
                 <span>{vid.views}</span>
               </div>
             </div>
@@ -353,17 +372,17 @@ export function ShortVideosView({
               const authorAvatar = vidDoc?.avatar || vid.authorAvatar;
 
               return (
-                <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                  <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#111827', lineHeight: '1.35', marginBottom: '8px' }}>
+                <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                  <h4 style={{ fontSize: '13px', fontWeight: '700', color: '#111827', lineHeight: '1.35', marginBottom: '6px' }}>
                     {vid.title}
                   </h4>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 0 4px 0' }}>
-                    <Avatar src={authorAvatar} name={vid.doctorName} size={22} />
-                    <p style={{ fontSize: '12.5px', color: '#059669', fontWeight: '600', margin: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '0 0 3px 0' }}>
+                    <Avatar src={authorAvatar} name={vid.doctorName} size={20} />
+                    <p style={{ fontSize: '12px', color: '#059669', fontWeight: '600', margin: 0 }}>
                       {vid.doctorName}
                     </p>
                   </div>
-                  <span style={{ fontSize: '11.5px', color: '#6b7280' }}>{vid.doctorSpecialty}</span>
+                  <span style={{ fontSize: '11px', color: '#6b7280' }}>{vid.doctorSpecialty}</span>
                 </div>
               );
             })()}

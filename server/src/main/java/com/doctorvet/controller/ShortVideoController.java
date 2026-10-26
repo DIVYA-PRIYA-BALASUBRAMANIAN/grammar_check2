@@ -1,5 +1,6 @@
 package com.doctorvet.controller;
 
+import com.doctorvet.model.Comment;
 import com.doctorvet.model.ShortVideo;
 import com.doctorvet.service.ShortVideoService;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,8 @@ public class ShortVideoController {
         this.videoService = videoService;
     }
 
+    public record AddCommentDto(Long authorId, String authorName, String authorAvatar, String authorSpecialty, String content) {}
+
     @GetMapping
     public List<ShortVideo> getAllVideos() {
         return videoService.getAllVideos();
@@ -30,12 +33,12 @@ public class ShortVideoController {
     }
 
     @GetMapping("/{id}/comments")
-    public List<com.doctorvet.model.Comment> getVideoComments(@PathVariable Long id) {
+    public List<Comment> getVideoComments(@PathVariable Long id) {
         return videoService.getVideoComments(id);
     }
 
     @PostMapping("/{id}/comments")
-    public com.doctorvet.model.Comment addVideoComment(@PathVariable Long id, @RequestBody FeedController.AddCommentDto dto) {
+    public Comment addVideoComment(@PathVariable Long id, @RequestBody AddCommentDto dto) {
         return videoService.addVideoComment(id, dto.authorId(), dto.authorName(), dto.authorAvatar(), dto.authorSpecialty(), dto.content());
     }
 

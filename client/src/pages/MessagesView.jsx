@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   Users,
   Search,
@@ -7,9 +7,11 @@ import {
   Check,
   CheckCheck,
   ChevronRight,
+  ChevronDown,
   User,
   ShieldCheck,
   Image as ImageIcon,
+  Video,
   X,
   Lock,
   MessageSquare,
@@ -18,9 +20,750 @@ import {
   UserCheck,
   UserPlus,
   Sparkles,
-  Shield
+  Shield,
+  Volume2,
+  VolumeX,
+  Play
 } from 'lucide-react';
 import { Avatar } from '../components/Avatar';
+import { api } from '../services/api';
+
+const resolveMediaUrl = (url) => {
+  if (!url) return '';
+  const str = String(url).trim();
+  if (str.startsWith('data:') || str.startsWith('blob:')) return str;
+  if (str.startsWith('http://') || str.startsWith('https://')) return str;
+  if (str.startsWith('/uploads/')) return `http://localhost:8080${str}`;
+  if (str.startsWith('uploads/')) return `http://localhost:8080/${str}`;
+  return str;
+};
+
+const isVideoAttachment = (url, type) => {
+  if (type && String(type).toUpperCase() === 'VIDEO') return true;
+  if (!url) return false;
+  const clean = String(url).split('?')[0].toLowerCase();
+  return clean.endsWith('.mp4') || clean.endsWith('.webm') || clean.endsWith('.mov') || clean.endsWith('.ogg') || clean.endsWith('.m4v') || clean.startsWith('data:video');
+};
+
+function ChatMessageMedia({ url, type }) {
+  const mediaUrl = resolveMediaUrl(url);
+  const detectedVideo = isVideoAttachment(mediaUrl, type);
+  const [mode, setMode] = useState(detectedVideo ? 'video' : 'image');
+  const [hasTriedVideo, setHasTriedVideo] = useState(detectedVideo);
+
+  useEffect(() => {
+    const isVid = isVideoAttachment(mediaUrl, type);
+    setMode(isVid ? 'video' : 'image');
+    setHasTriedVideo(isVid);
+  }, [mediaUrl, type]);
+
+  if (!mediaUrl) return null;
+
+  return (
+    <div style={{
+      borderRadius: '12px',
+      overflow: 'hidden',
+      marginBottom: '8px',
+      backgroundColor: '#07180F',
+      position: 'relative',
+      maxWidth: '100%',
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)'
+    }}>
+      {mode === 'video' ? (
+        <video
+          src={mediaUrl}
+          controls
+          playsInline
+          preload="metadata"
+          onError={() => {
+            if (!hasTriedVideo) {
+              setHasTriedVideo(true);
+              setMode('image');
+            } else {
+              setMode('fallback');
+            }
+          }}
+          style={{
+            width: '100%',
+            maxHeight: '260px',
+            display: 'block',
+            backgroundColor: '#000000',
+            borderRadius: '12px'
+          }}
+        />
+      ) : mode === 'image' ? (
+        <img
+          src={mediaUrl}
+          alt=""
+          loading="lazy"
+          onError={() => {
+            if (!hasTriedVideo) {
+              setHasTriedVideo(true);
+              setMode('video');
+            } else {
+              setMode('fallback');
+            }
+          }}
+          style={{
+            width: '100%',
+            maxHeight: '260px',
+            objectFit: 'cover',
+            display: 'block',
+            borderRadius: '12px',
+            cursor: 'pointer'
+          }}
+          onClick={() => window.open(mediaUrl, '_blank', 'noopener,noreferrer')}
+          title="Click to view full image"
+        />
+      ) : (
+        <div style={{
+          padding: '10px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          backgroundColor: 'rgba(0, 0, 0, 0.35)',
+          borderRadius: '12px',
+          fontSize: '12px',
+          color: '#E5E7EB'
+        }}>
+          <Video size={18} color="#34D399" style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+            <div style={{ fontWeight: 600, fontSize: '12px', color: '#FFFFFF' }}>
+              Clinical Media Attachment
+            </div>
+            <a
+              href={mediaUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: '#6EE7B7',
+                textDecoration: 'underline',
+                fontSize: '11px',
+                display: 'inline-block',
+                maxWidth: '100%',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Open media link
+            </a>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const parseStoryMessage = (text) => {
+  if (!text) return null;
+  const str = String(text).trim();
+
+  // Pattern 1: Reaction (e.g. "Reacted with 👏 to your story" or "Reacted 👏 to your story")
+  const reactionMatch = str.match(/^Reacted with\s+([\s\S]+?)\s+to\s+(your|their)\s+story/i) ||
+                        str.match(/^Reacted\s+([\s\S]+?)\s+to\s+(your|their)\s+story/i);
+  if (reactionMatch) {
+    return {
+      type: 'STORY_REACTION',
+      emoji: reactionMatch[1].trim(),
+      target: reactionMatch[2].toLowerCase()
+    };
+  }
+
+  // Pattern 2: Reply (e.g. 'Replied to your story: "Hello doctor"' or 'Replied to your story: Hello')
+  const replyMatch = str.match(/^Replied to (your|their) story:\s*([\s\S]*)$/i);
+  if (replyMatch) {
+    let cleanReply = replyMatch[2].trim();
+    if ((cleanReply.startsWith('"') && cleanReply.endsWith('"')) || (cleanReply.startsWith('“') && cleanReply.endsWith('”'))) {
+      cleanReply = cleanReply.slice(1, -1).trim();
+    }
+    return {
+      type: 'STORY_REPLY',
+      replyText: cleanReply || 'Replied to your story',
+      target: replyMatch[1].toLowerCase()
+    };
+  }
+
+  // Pattern 3: Shared story (e.g. 'Shared a 24h story by Dr. Name...')
+  const shareMatch = str.match(/^Shared a 24h story by Dr\.\s*([^:\n]+)/i);
+  if (shareMatch) {
+    const lines = str.split('\n');
+    let caption = '';
+    for (let i = 1; i < lines.length; i++) {
+      if (!lines[i].startsWith('http')) {
+        caption += (caption ? ' ' : '') + lines[i].replace(/^["“]|["”]$/g, '').trim();
+      }
+    }
+    return {
+      type: 'STORY_SHARE',
+      doctorName: shareMatch[1].trim(),
+      caption: caption || ''
+    };
+  }
+
+  return null;
+};
+
+function StoryDirectMessage({
+  parsed,
+  attachmentUrl,
+  attachmentType,
+  isMe,
+  onOpenStory,
+  stories = [],
+  currentDoctor = null,
+  currentUser = null,
+  msg = null
+}) {
+  const mediaUrl = resolveMediaUrl(attachmentUrl);
+  const isVid = isVideoAttachment(mediaUrl, attachmentType);
+  const [videoMuted, setVideoMuted] = useState(true);
+
+  // Open the interactive story viewer in StoryModal
+  const handleOpenThisStory = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    if (!onOpenStory) {
+      if (mediaUrl) window.open(mediaUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    const targetDocId = isMe ? (currentDoctor?.id) : (msg?.senderId || currentDoctor?.id);
+    const targetDocName = isMe ? (currentDoctor?.name) : (msg?.senderName || currentDoctor?.name);
+    const rawAtt = String(attachmentUrl || mediaUrl || '').trim();
+
+    // 1. Try to find the matching story in the active stories array
+    let matchingStory = (stories || []).find(s => {
+      if (!s) return false;
+      const sImg = s.image ? String(s.image) : '';
+      const sVid = s.videoUrl ? String(s.videoUrl) : '';
+      const sMed = s.mediaUrl ? String(s.mediaUrl) : '';
+
+      if (rawAtt && (
+        (sImg && (sImg === rawAtt || sImg.includes(rawAtt) || rawAtt.includes(sImg))) ||
+        (sVid && (sVid === rawAtt || sVid.includes(rawAtt) || rawAtt.includes(sVid))) ||
+        (sMed && (sMed === rawAtt || sMed.includes(rawAtt) || rawAtt.includes(sMed)))
+      )) {
+        return true;
+      }
+
+      if (targetDocId && (s.doctorId === targetDocId || String(s.doctorId).replace('doc-', '') === String(targetDocId).replace('doc-', ''))) {
+        return true;
+      }
+      return false;
+    });
+
+    // 2. If no existing story matches or it's an ephemeral snapshot, construct a complete story model so StoryModal opens seamlessly
+    if (!matchingStory) {
+      matchingStory = {
+        id: `story-view-${msg?.id || Date.now()}`,
+        doctorId: targetDocId || currentDoctor?.id || 1,
+        doctorName: targetDocName || currentDoctor?.name || 'Veterinary Practitioner',
+        avatar: (isMe ? currentDoctor?.avatar : (currentUser?.avatar || currentDoctor?.avatar)) || '',
+        image: isVid ? null : (mediaUrl || attachmentUrl),
+        videoUrl: isVid ? (mediaUrl || attachmentUrl) : null,
+        mediaUrl: mediaUrl || attachmentUrl,
+        mediaType: isVid ? 'VIDEO' : 'IMAGE',
+        caption: parsed.caption || '24h story moment from clinical practice',
+        time: msg?.time || 'Recent',
+        likes: 1,
+        shares: 0,
+        isLiked: true
+      };
+    }
+
+    onOpenStory(matchingStory);
+  };
+
+  if (parsed.type === 'STORY_REACTION') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
+        {/* Story Reaction Header - Clickable to open story */}
+        <div
+          onClick={handleOpenThisStory}
+          style={{
+            fontSize: '11px',
+            fontWeight: 600,
+            color: isMe ? 'rgba(255, 255, 255, 0.9)' : '#059669',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+            marginBottom: '6px',
+            cursor: 'pointer',
+            padding: '2px 6px',
+            borderRadius: '6px',
+            transition: 'all 0.15s ease'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = isMe ? 'rgba(255, 255, 255, 0.15)' : 'rgba(5, 150, 105, 0.1)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+          title="Click to view story"
+        >
+          <Sparkles size={12} color={isMe ? '#86EFAC' : '#059669'} />
+          <span>{isMe ? 'Reacted to their story' : 'Reacted to your story'}</span>
+          <span style={{ fontSize: '10px', opacity: 0.8, textDecoration: 'underline', marginLeft: '2px' }}>· View story</span>
+        </div>
+
+        {/* Vertical Story Preview Thumbnail Card with Reaction Badge */}
+        {mediaUrl ? (
+          <div
+            style={{
+              position: 'relative',
+              width: '175px',
+              height: '240px',
+              borderRadius: '16px',
+              overflow: 'hidden',
+              backgroundColor: '#05130B',
+              boxShadow: '0 6px 16px rgba(0, 0, 0, 0.22)',
+              border: isMe ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid #E5E7EB',
+              cursor: 'pointer',
+              marginBottom: '4px',
+              transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+            }}
+            onClick={handleOpenThisStory}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.02)';
+              e.currentTarget.style.boxShadow = '0 8px 22px rgba(0, 0, 0, 0.3)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.22)';
+            }}
+            title="Click to view story"
+          >
+            {isVid ? (
+              <video
+                src={mediaUrl}
+                autoPlay
+                loop
+                muted={videoMuted}
+                playsInline
+                preload="metadata"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
+                  backgroundColor: '#000000'
+                }}
+              />
+            ) : (
+              <img
+                src={mediaUrl}
+                alt=""
+                loading="lazy"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block'
+                }}
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  const next = e.currentTarget.nextElementSibling;
+                  if (next) next.style.display = 'block';
+                }}
+              />
+            )}
+            {!isVid && (
+              <video
+                src={mediaUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                style={{
+                  display: 'none',
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover'
+                }}
+              />
+            )}
+
+            {/* Top pill badge */}
+            <div style={{
+              position: 'absolute',
+              top: '8px',
+              left: '8px',
+              background: 'rgba(0, 0, 0, 0.55)',
+              backdropFilter: 'blur(6px)',
+              borderRadius: '9999px',
+              padding: '2px 8px',
+              fontSize: '10px',
+              fontWeight: 700,
+              color: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              letterSpacing: '0.3px',
+              zIndex: 3
+            }}>
+              {isVid ? <Video size={10} color="#34D399" /> : <ImageIcon size={10} color="#34D399" />}
+              <span>Story</span>
+            </div>
+
+            {/* Video Mute Toggle */}
+            {isVid && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setVideoMuted(prev => !prev);
+                }}
+                style={{
+                  position: 'absolute',
+                  bottom: '8px',
+                  left: '8px',
+                  background: 'rgba(0, 0, 0, 0.6)',
+                  backdropFilter: 'blur(4px)',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '24px',
+                  height: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#FFFFFF',
+                  cursor: 'pointer',
+                  zIndex: 5
+                }}
+                title={videoMuted ? "Unmute video" : "Mute video"}
+              >
+                {videoMuted ? <VolumeX size={12} /> : <Volume2 size={12} />}
+              </button>
+            )}
+
+            {/* Floating Reaction Emoji Badge on Story Corner */}
+            <div
+              onClick={handleOpenThisStory}
+              style={{
+                position: 'absolute',
+                bottom: '8px',
+                right: '8px',
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                backgroundColor: isMe ? 'rgba(5, 46, 26, 0.85)' : 'rgba(255, 255, 255, 0.95)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                border: isMe ? '1.5px solid rgba(255, 255, 255, 0.4)' : '1px solid rgba(0, 0, 0, 0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '15px',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                userSelect: 'none',
+                zIndex: 6,
+                lineHeight: 1,
+                cursor: 'pointer'
+              }}
+              title="Click to view story"
+            >
+              {parsed.emoji}
+            </div>
+          </div>
+        ) : (
+          /* Text-only fallback reaction pill */
+          <div
+            onClick={handleOpenThisStory}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '12px',
+              backgroundColor: isMe ? 'rgba(255,255,255,0.1)' : '#F3F4F6',
+              cursor: 'pointer'
+            }}
+            title="Click to view story"
+          >
+            <span style={{ fontSize: '20px' }}>{parsed.emoji}</span>
+            <span style={{ fontSize: '11px', fontWeight: 600, color: isMe ? '#A7F3D0' : '#059669' }}>View story</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (parsed.type === 'STORY_REPLY') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
+        {/* Story Reply Header - Clickable to open story */}
+        <div
+          onClick={handleOpenThisStory}
+          style={{
+            fontSize: '11px',
+            fontWeight: 600,
+            color: isMe ? 'rgba(255, 255, 255, 0.9)' : '#059669',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+            marginBottom: '6px',
+            cursor: 'pointer',
+            padding: '2px 6px',
+            borderRadius: '6px',
+            transition: 'all 0.15s ease'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = isMe ? 'rgba(255, 255, 255, 0.15)' : 'rgba(5, 150, 105, 0.1)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+          title="Click to view story"
+        >
+          <Sparkles size={12} color={isMe ? '#86EFAC' : '#059669'} />
+          <span>{isMe ? 'Replied to their story' : 'Replied to your story'}</span>
+          <span style={{ fontSize: '10px', opacity: 0.8, textDecoration: 'underline', marginLeft: '2px' }}>· View story</span>
+        </div>
+
+        {/* Embedded Story Thumbnail Preview */}
+        {mediaUrl && (
+          <div
+            style={{
+              position: 'relative',
+              width: '165px',
+              height: '210px',
+              borderRadius: '14px',
+              overflow: 'hidden',
+              backgroundColor: '#05130B',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.18)',
+              border: isMe ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid #E5E7EB',
+              cursor: 'pointer',
+              marginBottom: '8px',
+              transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+            }}
+            onClick={handleOpenThisStory}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.02)';
+              e.currentTarget.style.boxShadow = '0 6px 18px rgba(0, 0, 0, 0.25)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.18)';
+            }}
+            title="Click to view story"
+          >
+            {isVid ? (
+              <video
+                src={mediaUrl}
+                autoPlay
+                loop
+                muted={videoMuted}
+                playsInline
+                preload="metadata"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
+                  backgroundColor: '#000000'
+                }}
+              />
+            ) : (
+              <img
+                src={mediaUrl}
+                alt=""
+                loading="lazy"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block'
+                }}
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  const next = e.currentTarget.nextElementSibling;
+                  if (next) next.style.display = 'block';
+                }}
+              />
+            )}
+            {!isVid && (
+              <video
+                src={mediaUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                style={{
+                  display: 'none',
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover'
+                }}
+              />
+            )}
+
+            <div style={{
+              position: 'absolute',
+              top: '7px',
+              left: '7px',
+              background: 'rgba(0, 0, 0, 0.55)',
+              backdropFilter: 'blur(6px)',
+              borderRadius: '9999px',
+              padding: '2px 8px',
+              fontSize: '9.5px',
+              fontWeight: 700,
+              color: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              zIndex: 3
+            }}>
+              {isVid ? <Video size={10} color="#34D399" /> : <ImageIcon size={10} color="#34D399" />}
+              <span>Story</span>
+            </div>
+
+            {isVid && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setVideoMuted(prev => !prev);
+                }}
+                style={{
+                  position: 'absolute',
+                  bottom: '8px',
+                  left: '8px',
+                  background: 'rgba(0, 0, 0, 0.6)',
+                  backdropFilter: 'blur(4px)',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '24px',
+                  height: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#FFFFFF',
+                  cursor: 'pointer',
+                  zIndex: 5
+                }}
+                title={videoMuted ? "Unmute video" : "Mute video"}
+              >
+                {videoMuted ? <VolumeX size={12} /> : <Volume2 size={12} />}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* User's typed Reply text */}
+        <p style={{
+          margin: 0,
+          fontSize: '14px',
+          lineHeight: 1.45,
+          fontWeight: 500,
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          color: isMe ? '#FFFFFF' : '#1F2937'
+        }}>
+          {parsed.replyText}
+        </p>
+      </div>
+    );
+  }
+
+  if (parsed.type === 'STORY_SHARE') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
+        <div
+          onClick={handleOpenThisStory}
+          style={{
+            fontSize: '11px',
+            fontWeight: 600,
+            color: isMe ? 'rgba(255, 255, 255, 0.9)' : '#059669',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+            marginBottom: '6px',
+            cursor: 'pointer',
+            padding: '2px 6px',
+            borderRadius: '6px',
+            transition: 'all 0.15s ease'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = isMe ? 'rgba(255, 255, 255, 0.15)' : 'rgba(5, 150, 105, 0.1)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+          title="Click to view story"
+        >
+          <Sparkles size={12} color={isMe ? '#86EFAC' : '#059669'} />
+          <span>Shared Dr. {parsed.doctorName}'s 24h story</span>
+          <span style={{ fontSize: '10px', opacity: 0.8, textDecoration: 'underline', marginLeft: '2px' }}>· View story</span>
+        </div>
+
+        {mediaUrl && (
+          <div
+            style={{
+              position: 'relative',
+              width: '175px',
+              height: '230px',
+              borderRadius: '14px',
+              overflow: 'hidden',
+              backgroundColor: '#05130B',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.18)',
+              border: isMe ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid #E5E7EB',
+              cursor: 'pointer',
+              marginBottom: parsed.caption ? '6px' : '0',
+              transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+            }}
+            onClick={handleOpenThisStory}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.02)';
+              e.currentTarget.style.boxShadow = '0 6px 18px rgba(0, 0, 0, 0.25)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.18)';
+            }}
+            title="Click to view story"
+          >
+            {isVid ? (
+              <video
+                src={mediaUrl}
+                autoPlay
+                loop
+                muted={videoMuted}
+                playsInline
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              <img
+                src={mediaUrl}
+                alt=""
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            )}
+            <div style={{
+              position: 'absolute',
+              top: '7px',
+              left: '7px',
+              background: 'rgba(0, 0, 0, 0.55)',
+              backdropFilter: 'blur(6px)',
+              borderRadius: '9999px',
+              padding: '2px 8px',
+              fontSize: '9.5px',
+              fontWeight: 700,
+              color: '#FFFFFF'
+            }}>
+              Story
+            </div>
+          </div>
+        )}
+
+        {parsed.caption && (
+          <p style={{
+            margin: '4px 0 0 0',
+            fontSize: '13px',
+            lineHeight: 1.4,
+            fontStyle: 'italic',
+            opacity: 0.95
+          }}>
+            "{parsed.caption}"
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return null;
+}
 
 export function MessagesView({
   conversations = [],
@@ -35,14 +778,61 @@ export function MessagesView({
   onNavigateTab,
   onOpenCreateProfile,
   onSendRequest,
-  onMarkAsRead
+  onMarkAsRead,
+  onOpenStory,
+  stories = []
 }) {
   const [messageText, setMessageText] = useState('');
   const [attachmentUrl, setAttachmentUrl] = useState('');
+  const [attachmentType, setAttachmentType] = useState('IMAGE');
   const [searchPersonQuery, setSearchPersonQuery] = useState('');
 
+  const messagesContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const isAtBottomRef = useRef(true);
+  const prevChatDoctorIdRef = useRef(null);
+  const prevMessagesCountRef = useRef(0);
+  const userJustSentRef = useRef(false);
+  const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
+  const [newMessagesWhileScrolled, setNewMessagesWhileScrolled] = useState(0);
+
+  // Helper to scroll smoothly or immediately to bottom of messages container
+  const scrollToBottom = useCallback((behavior = 'smooth') => {
+    const el = messagesContainerRef.current;
+    if (el) {
+      if (behavior === 'auto') {
+        el.scrollTop = el.scrollHeight;
+      } else {
+        el.scrollTo({
+          top: el.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+      isAtBottomRef.current = true;
+      setShowScrollBottomBtn(false);
+      setNewMessagesWhileScrolled(0);
+    } else if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior });
+    }
+  }, []);
+
+  // Monitor user scroll position: if within 100px of bottom, consider user "at bottom"
+  const handleScroll = useCallback(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const threshold = 100;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const atBottom = distanceFromBottom <= threshold;
+    isAtBottomRef.current = atBottom;
+
+    if (atBottom) {
+      setShowScrollBottomBtn(false);
+      setNewMessagesWhileScrolled(0);
+    } else {
+      setShowScrollBottomBtn(true);
+    }
+  }, []);
 
   // Mobile view state: toggle between chat and contacts list on mobile
   const [mobileShowChat, setMobileShowChat] = useState(!!activeChatDoctor);
@@ -52,11 +842,6 @@ export function MessagesView({
       setMobileShowChat(true);
     }
   }, [activeChatDoctor]);
-
-  // Auto-scroll to bottom of chat
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [conversations, activeChatDoctor]);
 
   // =========================================================================
   // 1. SIGNED-OUT STATE: SECURE GATE
@@ -323,7 +1108,7 @@ export function MessagesView({
     });
   }, [connectedDoctors, doctors]);
 
-  // Merge conversations and connected doctors, prioritizing unread chats first like Instagram
+  // Merge conversations and connected doctors, prioritizing unread chats first
   const allContacts = useMemo(() => {
     const map = new Map();
 
@@ -476,6 +1261,52 @@ export function MessagesView({
     return result;
   }, [selectedConv?.messages]);
 
+  // 1. Initial chat load / Switch conversation: instant scroll to bottom without sluggish gliding
+  useEffect(() => {
+    const doctorKey = activeChatDoctor?.id || selectedConv?.id || null;
+    if (doctorKey && doctorKey !== prevChatDoctorIdRef.current) {
+      prevChatDoctorIdRef.current = doctorKey;
+      prevMessagesCountRef.current = chatMessages.length;
+      isAtBottomRef.current = true;
+      setShowScrollBottomBtn(false);
+      setNewMessagesWhileScrolled(0);
+      requestAnimationFrame(() => {
+        scrollToBottom('auto');
+      });
+    }
+  }, [activeChatDoctor?.id, selectedConv?.id, scrollToBottom, chatMessages.length]);
+
+  // 2. Controlled auto-scroll for new messages:
+  // - NEVER scroll automatically if user is scrolled up reading earlier messages!
+  // - Scroll down ONLY if user just sent a message OR was already at the bottom.
+  useEffect(() => {
+    const prevCount = prevMessagesCountRef.current;
+    const currentCount = chatMessages.length;
+
+    if (currentCount > prevCount) {
+      const latestMsg = chatMessages[currentCount - 1];
+      const isSentByMe = latestMsg && (
+        latestMsg.sender === 'user' ||
+        latestMsg.sender === 'me' ||
+        latestMsg.senderId === currentUser?.id ||
+        (latestMsg.id && String(latestMsg.id).startsWith('temp-'))
+      );
+
+      if (userJustSentRef.current || isSentByMe) {
+        userJustSentRef.current = false;
+        requestAnimationFrame(() => scrollToBottom('smooth'));
+      } else if (isAtBottomRef.current) {
+        requestAnimationFrame(() => scrollToBottom('smooth'));
+      } else {
+        // User has scrolled up to read history -> DO NOT AUTO-SCROLL DOWN!
+        setNewMessagesWhileScrolled(prev => prev + 1);
+        setShowScrollBottomBtn(true);
+      }
+    }
+
+    prevMessagesCountRef.current = currentCount;
+  }, [chatMessages, currentUser?.id, scrollToBottom]);
+
   // Check if current doctor is connected to allow messaging
   const isPeerConnected = useMemo(() => {
     if (!currentDoctor) return false;
@@ -494,33 +1325,53 @@ export function MessagesView({
     return isConn || hasConvWithMessages;
   }, [currentDoctor, connectedDoctors, conversations]);
 
-  // Handle Send
+  // Handle Send: instant UI dispatch and smooth bottom scroll
   const handleSend = (e) => {
     e?.preventDefault();
     if (!isPeerConnected) {
       alert(`You must connect with ${currentDoctor?.name || 'this doctor'} first before messaging.`);
       return;
     }
-    if (!messageText.trim() && !attachmentUrl) return;
+    const trimmed = messageText.trim();
+    if (!trimmed && !attachmentUrl) return;
+
+    userJustSentRef.current = true;
+    setMessageText('');
+    const currentAttUrl = attachmentUrl;
+    const currentAttType = attachmentType;
+    setAttachmentUrl('');
+    setAttachmentType('IMAGE');
 
     if (onSendMessage) {
       onSendMessage({
         conversationId: selectedConv?.id || `chat-${currentDoctor?.id || Date.now()}`,
         receiverId: currentDoctor?.id || 1,
-        text: messageText.trim(),
-        attachmentUrl: attachmentUrl || null,
-        attachmentType: attachmentUrl ? 'image' : null
+        text: trimmed,
+        attachmentUrl: currentAttUrl || null,
+        attachmentType: currentAttUrl ? (currentAttType || 'IMAGE') : null
       });
     }
 
-    setMessageText('');
-    setAttachmentUrl('');
+    requestAnimationFrame(() => {
+      scrollToBottom('smooth');
+    });
   };
 
-  // Handle File Change
-  const handleFileChange = (e) => {
+  // Handle File Change (Image or Video)
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
+      const isVid = file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v|ogg)$/i.test(file.name);
+      setAttachmentType(isVid ? 'VIDEO' : 'IMAGE');
+      try {
+        const uploadRes = await api.media.upload(file);
+        if (uploadRes && uploadRes.url) {
+          setAttachmentUrl(uploadRes.url);
+          return;
+        }
+      } catch (err) {
+        console.warn('Backend file upload fallback to DataURL', err);
+      }
       const reader = new FileReader();
       reader.onload = (ev) => {
         setAttachmentUrl(ev.target.result);
@@ -684,16 +1535,21 @@ export function MessagesView({
               </button>
             </div>
 
-            {/* Chat Messages Stream */}
-            <div style={{
-              flex: 1,
-              padding: '16px 28px',
-              overflowY: 'auto',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px',
-              backgroundColor: '#FFFFFF'
-            }}>
+            {/* Chat Messages Stream Area with Scroll Anchor and Controlled Scrolling */}
+            <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+              <div
+                ref={messagesContainerRef}
+                onScroll={handleScroll}
+                style={{
+                  flex: 1,
+                  padding: '16px 28px',
+                  overflowY: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '16px',
+                  backgroundColor: '#FFFFFF'
+                }}
+              >
               {/* Verified Peer Consultation Pill Badge */}
               <div style={{
                 textAlign: 'center',
@@ -766,78 +1622,96 @@ export function MessagesView({
                       )}
 
                       {/* Message Bubble */}
-                      <div style={{
-                        maxWidth: isMe ? '68%' : '72%',
-                        backgroundColor: isMe ? '#0D4B2D' : '#F8FAF9',
-                        color: isMe ? '#FFFFFF' : '#1F2937',
-                        borderRadius: isMe ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
-                        padding: '13px 20px',
-                        border: isMe ? 'none' : '1px solid #ECEFEF',
-                        boxShadow: isMe ? '0 2px 8px rgba(13, 75, 45, 0.12)' : '0 1px 3px rgba(0,0,0,0.02)'
-                      }}>
-                        {/* Attached Image if any */}
-                        {msg.attachmentUrl && (
-                          <div style={{ borderRadius: '12px', overflow: 'hidden', marginBottom: '8px' }}>
-                            <img
-                              src={msg.attachmentUrl}
-                              alt="Clinical Radiograph / Photo"
-                              style={{ width: '100%', maxHeight: '220px', objectFit: 'cover', display: 'block' }}
-                            />
-                          </div>
-                        )}
+                      {(() => {
+                        const storyParsed = parseStoryMessage(msg.text);
 
-                        <p style={{
-                          margin: 0,
-                          fontSize: '13.5px',
-                          lineHeight: 1.5,
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-word'
-                        }}>
-                          {msg.text}
-                        </p>
+                        return (
+                          <div style={{
+                            maxWidth: isMe ? '72%' : '76%',
+                            backgroundColor: isMe ? '#0D4B2D' : '#F8FAF9',
+                            color: isMe ? '#FFFFFF' : '#1F2937',
+                            borderRadius: isMe ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
+                            padding: storyParsed ? '12px 14px 10px 14px' : '13px 20px',
+                            border: isMe ? 'none' : '1px solid #ECEFEF',
+                            boxShadow: isMe ? '0 2px 8px rgba(13, 75, 45, 0.12)' : '0 1px 3px rgba(0,0,0,0.02)'
+                          }}>
+                            {storyParsed ? (
+                              <StoryDirectMessage
+                                parsed={storyParsed}
+                                attachmentUrl={msg.attachmentUrl}
+                                attachmentType={msg.attachmentType}
+                                isMe={isMe}
+                                onOpenStory={onOpenStory}
+                                stories={stories}
+                                currentDoctor={currentDoctor}
+                                currentUser={currentUser}
+                                msg={msg}
+                              />
+                            ) : (
+                              <>
+                                {/* Attached Media (Image or Video) */}
+                                {msg.attachmentUrl && (
+                                  <ChatMessageMedia url={msg.attachmentUrl} type={msg.attachmentType} />
+                                )}
 
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'flex-end',
-                          gap: '4px',
-                          marginTop: '5px',
-                          fontSize: '10.5px',
-                          color: isMe ? 'rgba(255, 255, 255, 0.75)' : '#9CA3AF'
-                        }}>
-                          <span>{formatTime(msg.time)}</span>
-                          {isMe && (
-                            <span
-                              title={statusTooltip}
-                              style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '2px' }}
-                            >
-                              {isSeen ? (
-                                <CheckCheck
-                                  size={14}
-                                  color="#38BDF8"
-                                  strokeWidth={2.5}
-                                  style={{ filter: 'drop-shadow(0 0 1px rgba(56, 189, 248, 0.5))' }}
-                                />
-                              ) : isDelivered ? (
-                                <CheckCheck
-                                  size={13}
-                                  color="rgba(255, 255, 255, 0.85)"
-                                  strokeWidth={2}
-                                />
-                              ) : (
-                                <Check
-                                  size={13}
-                                  color="rgba(255, 255, 255, 0.65)"
-                                  strokeWidth={2}
-                                />
+                                {msg.text && (
+                                  <p style={{
+                                    margin: 0,
+                                    fontSize: '13.5px',
+                                    lineHeight: 1.5,
+                                    whiteSpace: 'pre-wrap',
+                                    wordBreak: 'break-word'
+                                  }}>
+                                    {msg.text}
+                                  </p>
+                                )}
+                              </>
+                            )}
+
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'flex-end',
+                              gap: '4px',
+                              marginTop: '5px',
+                              fontSize: '10.5px',
+                              color: isMe ? 'rgba(255, 255, 255, 0.75)' : '#9CA3AF'
+                            }}>
+                              <span>{formatTime(msg.time)}</span>
+                              {isMe && (
+                                <span
+                                  title={statusTooltip}
+                                  style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '2px' }}
+                                >
+                                  {isSeen ? (
+                                    <CheckCheck
+                                      size={14}
+                                      color="#38BDF8"
+                                      strokeWidth={2.5}
+                                      style={{ filter: 'drop-shadow(0 0 1px rgba(56, 189, 248, 0.5))' }}
+                                    />
+                                  ) : isDelivered ? (
+                                    <CheckCheck
+                                      size={13}
+                                      color="rgba(255, 255, 255, 0.85)"
+                                      strokeWidth={2}
+                                    />
+                                  ) : (
+                                    <Check
+                                      size={13}
+                                      color="rgba(255, 255, 255, 0.65)"
+                                      strokeWidth={2}
+                                    />
+                                  )}
+                                </span>
                               )}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
 
-                    {/* Instagram/WhatsApp-style Seen / Delivered status beneath the last sent message */}
+                    {/* Seen / Delivered status beneath the last sent message */}
                     {isLastSentByMe && (
                       <div style={{
                         display: 'flex',
@@ -870,7 +1744,48 @@ export function MessagesView({
                   </div>
                 );
               })}
-              <div ref={messagesEndRef} />
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Floating Jump-to-Bottom / New Message Badge */}
+              {showScrollBottomBtn && (
+                <button
+                  type="button"
+                  onClick={() => scrollToBottom('smooth')}
+                  style={{
+                    position: 'absolute',
+                    bottom: '16px',
+                    right: '24px',
+                    zIndex: 20,
+                    backgroundColor: '#003822',
+                    color: '#FFFFFF',
+                    border: '1.5px solid #2EE59D',
+                    borderRadius: '9999px',
+                    padding: newMessagesWhileScrolled > 0 ? '7px 16px' : '8px 12px',
+                    boxShadow: '0 6px 18px rgba(0, 56, 34, 0.35)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    backdropFilter: 'blur(8px)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.backgroundColor = '#064e3b';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.backgroundColor = '#003822';
+                  }}
+                  title="Scroll to latest messages"
+                >
+                  <ChevronDown size={15} color="#2EE59D" />
+                  <span>{newMessagesWhileScrolled > 0 ? `${newMessagesWhileScrolled} new message${newMessagesWhileScrolled > 1 ? 's' : ''}` : 'Latest messages'}</span>
+                </button>
+              )}
             </div>
 
             {/* Bottom Controls: Gated strictly by connection */}
@@ -919,7 +1834,7 @@ export function MessagesView({
                   ))}
                 </div>
 
-                {/* Attachment preview if image chosen */}
+                {/* Attachment preview if image or video chosen */}
                 {attachmentUrl && (
                   <div style={{
                     margin: '4px 24px',
@@ -932,13 +1847,18 @@ export function MessagesView({
                     justifyContent: 'space-between'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <ImageIcon size={16} color="#059669" />
+                      {attachmentType === 'VIDEO' ? (
+                        <Video size={16} color="#059669" />
+                      ) : (
+                        <ImageIcon size={16} color="#059669" />
+                      )}
                       <span style={{ fontSize: '12px', fontWeight: 600, color: '#065F46' }}>
-                        Clinical image attached
+                        {attachmentType === 'VIDEO' ? 'Clinical video clip attached' : 'Clinical image attached'}
                       </span>
                     </div>
                     <button
-                      onClick={() => setAttachmentUrl('')}
+                      type="button"
+                      onClick={() => { setAttachmentUrl(''); setAttachmentType('IMAGE'); }}
                       style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer' }}
                     >
                       <X size={15} />
@@ -959,7 +1879,7 @@ export function MessagesView({
                     type="file"
                     ref={fileInputRef}
                     onChange={handleFileChange}
-                    accept="image/*"
+                    accept="image/*,video/*"
                     style={{ display: 'none' }}
                   />
 
@@ -967,7 +1887,7 @@ export function MessagesView({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    title="Attach Radiograph, Scan or Case Photo"
+                    title="Attach Radiograph, Scan, Photo or Video Clip"
                     style={{
                       width: '42px',
                       height: '42px',
@@ -1367,7 +2287,7 @@ export function MessagesView({
                     </div>
                   </div>
 
-                  {/* Unread Badge / Instagram Dot */}
+                  {/* Unread Badge / Activity Dot */}
                   {isUnread ? (
                     <span style={{
                       backgroundColor: '#059669',

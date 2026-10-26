@@ -253,7 +253,7 @@ export function CreatePostModal({
       >
         {/* Modal Header */}
         <div className="modal-header" style={{ flexShrink: 0 }}>
-          <h3 className="modal-title">Share to Zenve Vet Community</h3>
+          <h3 className="modal-title">Share to Zenve Vet</h3>
           <button className="btn-close-modal" onClick={handleClose} type="button">
             <X size={20} />
           </button>

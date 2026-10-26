@@ -749,7 +749,7 @@ export function CommunityView({
             </div>
           )}
 
-          {/* 2. FACEBOOK-STYLE GROUP COVER & HEADER BLOCK */}
+          {/* 2. COMMUNITY GROUP COVER & HEADER BLOCK */}
           <div className="fb-group-header-card">
             {/* Panoramic Cover Photo */}
             <div
@@ -1036,7 +1036,7 @@ export function CommunityView({
               </div>
             </div>
 
-            {/* Navigation Tabs (Facebook Group Tab Bar) */}
+            {/* Navigation Tabs (Group Tab Bar) */}
             <div className="fb-group-tabs-bar">
               <button
                 type="button"
@@ -1098,12 +1098,12 @@ export function CommunityView({
             </div>
           </div>
 
-          {/* 3. MAIN BODY: FACEBOOK-STYLE 2-COLUMN LAYOUT */}
+          {/* 3. MAIN BODY: 2-COLUMN LAYOUT */}
           {activeTab === 'feed' && (
             <div className="fb-two-column-wall">
               {/* Left Column: Discussion Wall (~68%) */}
               <div className="fb-feed-main-wall">
-                {/* Facebook Post Composer */}
+                {/* Group Post Composer */}
                 {isMember ? (
                   <div className="fb-post-composer-card">
                     <div className="fb-composer-top-row">
@@ -1463,11 +1463,11 @@ export function CommunityView({
                   </div>
                 </div>
 
-                {/* Stream of Facebook Group Post Cards */}
+                {/* Stream of Group Post Cards */}
                 <div className="fb-posts-stream">
                   {(activeCommunity.posts || []).length > 0 ? (
                     activeCommunity.posts.map((post) => (
-                      <FacebookGroupPostCard
+                      <CommunityGroupPostCard
                         key={post.id}
                         post={post}
                         communityId={activeCommunity.id}
@@ -2133,7 +2133,7 @@ export function CommunityView({
               <div className="fb-invite-link-banner">
                 <label className="fb-modal-field-label">Shareable Community Link</label>
                 <p className="fb-modal-hint-text">
-                  Share this link with veterinarians on WhatsApp, Email, or SMS to let them join this group instantly:
+                  Share this link with veterinarians via direct link, Email, or SMS to let them join this group instantly:
                 </p>
                 <div className="fb-link-copy-container">
                   <input
@@ -3140,8 +3140,8 @@ export function CommunityView({
   );
 }
 
-// Subcomponent: Facebook Group Post Card with Authentic Reactions & Threading
-function FacebookGroupPostCard({
+// Subcomponent: Community Group Post Card with Authentic Reactions & Threading
+function CommunityGroupPostCard({
   post,
   communityId,
   onToggleLike,
@@ -3303,7 +3303,7 @@ function FacebookGroupPostCard({
         </div>
       </div>
 
-      {/* Facebook Interaction Action Buttons */}
+      {/* Community Interaction Action Buttons */}
       <div className="fb-post-actions-row">
         <button
           type="button"

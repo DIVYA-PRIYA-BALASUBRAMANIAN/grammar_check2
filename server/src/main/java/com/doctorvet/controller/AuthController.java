@@ -745,12 +745,6 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "Successfully signed out"));
     }
 
-    private String capitalize(String str) {
-        if (str == null || str.isEmpty())
-            return str;
-        return str.substring(0, 1).toUpperCase() + str.substring(1);
-    }
-
     private String maskEmail(String email) {
         if (email == null || !email.contains("@")) return email;
         String[] parts = email.split("@");

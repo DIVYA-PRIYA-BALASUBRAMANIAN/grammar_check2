@@ -43,7 +43,6 @@ export function ClinicalCasesView({
       <div className="cases-hero-banner-light">
         <div className="hero-banner-inner">
           <div className="hero-text-content">
-            <span className="hero-tag-kicker">The Zenve Vet Community</span>
             <h1 className="hero-headline">Every case. A new perspective.</h1>
             <p className="hero-subtext">
               Explore the knowledge and experiences of your community.
@@ -96,6 +95,17 @@ export function ClinicalCasesView({
 
           {/* Doctor Community Stories */}
           {stories.map((story) => {
+            const isOwnStory = Boolean(currentUser && (
+              (story.doctorId != null && (
+                story.doctorId === currentUser.id ||
+                String(story.doctorId).replace('doc-', '') === String(currentUser.id).replace('doc-', '')
+              )) ||
+              (story.doctorName && currentUser.name && (
+                story.doctorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim()
+              )) ||
+              (story.doctorName && story.doctorName.toLowerCase().includes('you')) ||
+              story.doctorId === 'doc-me'
+            ));
             const storyDoc = (doctors || []).find(d =>
               d.id === story.doctorId ||
               String(d.id).replace('doc-', '') === String(story.doctorId).replace('doc-', '') ||
@@ -110,8 +120,9 @@ export function ClinicalCasesView({
                 key={story.id}
                 className="story-circle-item"
                 onClick={() => onOpenStory({ ...story, avatar: resolvedStoryAvatar })}
+                style={{ position: 'relative' }}
               >
-                <div className="story-ring-circle">
+                <div className="story-ring-circle" style={{ position: 'relative' }}>
                   <Avatar src={resolvedStoryAvatar} name={story.doctorName} size={48} className="story-avatar-photo" />
                 </div>
                 <span className="story-doc-label">{story.doctorName}</span>
@@ -141,11 +152,17 @@ export function ClinicalCasesView({
           </div>
         ) : (
           clinicalCases.map(c => {
-            const isOwnCase = currentUser && (
-              c.authorId === currentUser.id ||
-              c.authorName === currentUser.name ||
-              (c.authorName && currentUser.name && c.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
-            );
+            const isOwnCase = Boolean(currentUser && (
+              (c.authorId != null && (
+                c.authorId === currentUser.id ||
+                String(c.authorId).replace('doc-', '') === String(currentUser.id).replace('doc-', '')
+              )) ||
+              (c.authorName && currentUser.name && (
+                c.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim()
+              )) ||
+              (c.authorName && c.authorName.toLowerCase().includes('you')) ||
+              c.authorId === 'doc-me'
+            ));
             const caseDoc = doctors?.find(d =>
               d.id === c.authorId ||
               (d.name && c.authorName && d.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === c.authorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim())
@@ -175,7 +192,7 @@ export function ClinicalCasesView({
               likes: c.views || 1,
               comments: 0,
               fullCase: c,
-              isOwnCase: isOwnCase || !c.authorId
+              isOwnCase: isOwnCase
             };
           }).map((post) => {
             const currentLikes = likedMap[post.id] !== undefined ? likedMap[post.id] : post.likes;
@@ -244,7 +261,7 @@ export function ClinicalCasesView({
                       borderRadius: '12px',
                       overflow: 'hidden',
                       border: '1px solid #e5e7eb',
-                      maxHeight: '440px',
+                      maxHeight: '260px',
                       backgroundColor: '#f8fafc',
                       marginBottom: '14px',
                       display: 'flex',
@@ -259,8 +276,8 @@ export function ClinicalCasesView({
                       className="post-image-preview"
                       style={{
                         width: '100%',
-                        maxHeight: '440px',
-                        objectFit: 'contain',
+                        maxHeight: '260px',
+                        objectFit: 'cover',
                         display: 'block'
                       }}
                       loading="lazy"

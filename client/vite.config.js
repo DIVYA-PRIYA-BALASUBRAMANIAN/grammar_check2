@@ -9,6 +9,10 @@ export default defineConfig({
   },
   server: {
     proxy: {
+      '/uploads': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
+      },
       '/apitxt-proxy': {
         target: 'https://apitxt.com',
         changeOrigin: true,

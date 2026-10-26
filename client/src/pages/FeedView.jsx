@@ -60,7 +60,8 @@ export function FeedView({
   onReportPost,
   currentUser,
   onOpenDoctorProfile,
-  onSendMessage
+  onSendMessage,
+  onDeleteStory
 }) {
   const [activeTab, setActiveTab] = useState('for_you');
   const [selectedSpecialty, setSelectedSpecialty] = useState('All specialties');
@@ -74,7 +75,7 @@ export function FeedView({
   const loggedViewsRef = useRef({});
   const [, setTimerTick] = useState(0);
 
-  // Instagram-style social interaction states
+  // Social interaction states
   const lastTapMap = useRef({});
   const [doubleTapHearts, setDoubleTapHearts] = useState({});
   const [animatingLikes, setAnimatingLikes] = useState({});
@@ -123,7 +124,7 @@ export function FeedView({
   const handleDeleteComment = async (postId, commentId) => {
     try {
       await api.feed.deleteComment(postId, commentId, currentUser?.id || 1);
-    } catch (e) {}
+    } catch (e) { }
     setFetchedCommentsMap(prev => ({
       ...prev,
       [postId]: (prev[postId] || []).filter(c => c.id !== commentId)
@@ -148,10 +149,10 @@ export function FeedView({
   const handleCopyPostLink = (post) => {
     const url = `${window.location.origin}/#post-${post.id}`;
     if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(url).catch(() => {});
+      navigator.clipboard.writeText(url).catch(() => { });
     }
     setCopiedShareLink(true);
-    api.feed.recordShare(post.id).catch(() => {});
+    api.feed.recordShare(post.id).catch(() => { });
     setFeedToast('Post link copied to clipboard!');
     setTimeout(() => {
       setCopiedShareLink(false);
@@ -168,8 +169,8 @@ export function FeedView({
           text: post.content || 'Check out this veterinary clinical case on Zenve Vet',
           url
         });
-        api.feed.recordShare(post.id).catch(() => {});
-      } catch (e) {}
+        api.feed.recordShare(post.id).catch(() => { });
+      } catch (e) { }
     } else {
       handleCopyPostLink(post);
     }
@@ -193,12 +194,12 @@ export function FeedView({
       onSendMessage({
         receiverId: doc.id ? Number(String(doc.id).replace('doc-', '')) : null,
         text: shareText,
-        attachmentUrl: post.imageUrl || post.videoUrl,
-        attachmentType: post.videoUrl ? 'VIDEO' : 'IMAGE'
+        attachmentUrl: post.videoUrl || post.imageUrl || (Array.isArray(post.mediaUrls) ? post.mediaUrls[0] : post.mediaUrl) || null,
+        attachmentType: (post.videoUrl || isVideoMedia(post.imageUrl || post.mediaUrl)) ? 'VIDEO' : 'IMAGE'
       });
     }
 
-    api.feed.recordShare(post.id).catch(() => {});
+    api.feed.recordShare(post.id).catch(() => { });
     setFeedToast(`Sent to Dr. ${doc.name.replace(/^dr\.?\s*/i, '')}!`);
     setTimeout(() => setFeedToast(''), 3000);
   };
@@ -310,7 +311,6 @@ export function FeedView({
       <div className="feed-hero-banner">
         <div className="hero-banner-inner">
           <div className="hero-text-content">
-            <span className="hero-tag-kicker">The Zenve Vet Community</span>
             <h1 className="hero-headline">
               A world of care<br />
               <span className="hero-headline-highlight">Connected</span>
@@ -367,6 +367,17 @@ export function FeedView({
           {/* Doctor Community Stories */}
           {stories.map((story, index) => {
             const hasActiveDot = index === stories.length - 1;
+            const isOwnStory = Boolean(currentUser && (
+              (story.doctorId != null && (
+                story.doctorId === currentUser.id ||
+                String(story.doctorId).replace('doc-', '') === String(currentUser.id).replace('doc-', '')
+              )) ||
+              (story.doctorName && currentUser.name && (
+                story.doctorName.toLowerCase().replace(/^dr\.?\s*/i, '').trim() === currentUser.name.toLowerCase().replace(/^dr\.?\s*/i, '').trim()
+              )) ||
+              (story.doctorName && story.doctorName.toLowerCase().includes('you')) ||
+              story.doctorId === 'doc-me'
+            ));
             const storyDoc = (doctors || []).find(d =>
               d.id === story.doctorId ||
               String(d.id).replace('doc-', '') === String(story.doctorId).replace('doc-', '') ||
@@ -381,10 +392,11 @@ export function FeedView({
                 key={story.id}
                 className="story-circle-item"
                 onClick={() => onOpenStory({ ...story, avatar: resolvedStoryAvatar })}
+                style={{ position: 'relative' }}
               >
-                <div className="story-ring-circle">
+                <div className="story-ring-circle" style={{ position: 'relative' }}>
                   <Avatar src={resolvedStoryAvatar} name={story.doctorName} size={48} className="story-avatar-photo" />
-                  {hasActiveDot && <span className="story-active-dot" />}
+                  {hasActiveDot && !isOwnStory && <span className="story-active-dot" />}
                 </div>
                 <span className="story-doc-label">{story.doctorName}</span>
               </button>
@@ -1204,7 +1216,7 @@ export function FeedView({
         </div>
       )}
 
-      {/* Instagram-Style Post Share Modal */}
+      {/* Post Share Modal */}
       {sharingPost && (
         <div className="modal-overlay" onClick={() => setSharingPost(null)} style={{ zIndex: 14000 }}>
           <div

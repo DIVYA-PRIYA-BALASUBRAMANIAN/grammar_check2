@@ -56,7 +56,7 @@ export function LeftSidebar({
           className="sidebar-doctor-bg-img"
         />
         <div className="sidebar-bg-overlay-grad" />
-        
+
         {/* Subtle background paw print watermark */}
         <div className="sidebar-watermark-paw">
           <PawPrint size={56} strokeWidth={1.5} />
@@ -77,8 +77,13 @@ export function LeftSidebar({
 
       {/* Foreground Content */}
       <div className="sidebar-content-inner">
-        {/* Brand Header with Official Zenve Golden Logo */}
-        <div className="sidebar-brand-block">
+        {/* Brand Header with Zenve Logo & Community Branding */}
+        <div
+          className="sidebar-brand-block"
+          onClick={() => onTabSelect && onTabSelect('feed')}
+          style={{ cursor: 'pointer' }}
+          title="Zenve Vet Community Home"
+        >
           <img
             src={zenveLogo}
             alt="Zenve Vet Logo"
@@ -87,8 +92,7 @@ export function LeftSidebar({
           <div className="brand-text-block">
             <span className="brand-main-name">ZENVE VET</span>
             <div className="brand-main-subtitle">
-              <span>THE PROFESSIONAL</span>
-              <span>NETWORK</span>
+              <span style={{ color: '#2EE59D', fontWeight: 800, letterSpacing: '1.2px' }}>COMMUNITY</span>
             </div>
           </div>
         </div>

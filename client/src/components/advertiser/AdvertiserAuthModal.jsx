@@ -447,8 +447,8 @@ export function AdvertiserAuthModal({ isOpen, onClose, onAuthSuccess, initialMod
           >
             {loading ? 'Please wait...' : (
               mode === 'register' ? 'Complete Registration & Open Dashboard' :
-              mode === 'login' ? 'Sign In to Dashboard' :
-              mode === 'key' ? 'Authenticate With Key' : 'Send Reset Link'
+                mode === 'login' ? 'Sign In to Dashboard' :
+                  mode === 'key' ? 'Authenticate With Key' : 'Send Reset Link'
             )}
             {!loading && <ArrowRight size={15} />}
           </button>

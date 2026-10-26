@@ -278,11 +278,11 @@ export function DoctorModal({
               <Avatar
                 src={displayAvatar}
                 name={activeDoc?.name || doctor.name}
-                size={96}
-                fontSize={38}
+                size={68}
+                fontSize={26}
                 style={{
-                  border: '4px solid #FFFFFF',
-                  boxShadow: '0 4px 14px rgba(0,0,0,0.12)'
+                  border: '3px solid #FFFFFF',
+                  boxShadow: '0 3px 10px rgba(0,0,0,0.1)'
                 }}
               />
               {isOwnProfile ? (
@@ -300,32 +300,32 @@ export function DoctorModal({
                     disabled={isUploadingPhoto}
                     style={{
                       position: 'absolute',
-                      bottom: '2px',
-                      right: '2px',
+                      bottom: '0px',
+                      right: '0px',
                       backgroundColor: '#003822',
                       color: '#FFFFFF',
-                      border: '2.5px solid #FFFFFF',
+                      border: '2px solid #FFFFFF',
                       borderRadius: '50%',
-                      width: '32px',
-                      height: '32px',
+                      width: '26px',
+                      height: '26px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: 'pointer',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
                       transition: 'all 0.15s ease'
                     }}
                     title="Upload / Change Doctor Profile Photo"
                   >
-                    <Camera size={15} />
+                    <Camera size={13} />
                   </button>
                 </>
               ) : activeDoc?.verified ? (
                 <CheckCircle2
-                  size={22}
+                  size={18}
                   color="#00a86b"
                   fill="#FFFFFF"
-                  style={{ position: 'absolute', bottom: '4px', right: '4px' }}
+                  style={{ position: 'absolute', bottom: '2px', right: '2px' }}
                 />
               ) : null}
             </div>
@@ -341,20 +341,20 @@ export function DoctorModal({
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '7px',
+                    gap: '6px',
                     backgroundColor: '#003822',
                     color: '#FFFFFF',
                     border: 'none',
                     borderRadius: '9999px',
-                    padding: '8px 20px',
-                    fontSize: '13px',
+                    padding: '6px 14px',
+                    fontSize: '12px',
                     fontWeight: 700,
                     cursor: 'pointer',
                     boxShadow: '0 2px 8px rgba(0, 56, 34, 0.25)',
                     transition: 'all 0.15s ease'
                   }}
                 >
-                  <UserPen size={14} />
+                  <UserPen size={13} />
                   <span>Edit Profile</span>
                 </button>
               ) : (
@@ -368,18 +368,18 @@ export function DoctorModal({
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '6px',
+                        gap: '5px',
                         backgroundColor: '#003822',
                         color: '#FFFFFF',
                         border: 'none',
                         borderRadius: '9999px',
-                        padding: '8px 18px',
-                        fontSize: '13px',
+                        padding: '6px 14px',
+                        fontSize: '12px',
                         fontWeight: 700,
                         cursor: 'pointer'
                       }}
                     >
-                      <MessageSquare size={14} />
+                      <MessageSquare size={13} />
                       <span>Message</span>
                     </button>
                   )}
@@ -390,18 +390,18 @@ export function DoctorModal({
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '6px',
+                        gap: '5px',
                         backgroundColor: '#ECFDF5',
                         color: '#065F46',
                         border: '1px solid #A7F3D0',
                         borderRadius: '9999px',
-                        padding: '8px 16px',
-                        fontSize: '13px',
+                        padding: '6px 13px',
+                        fontSize: '12px',
                         fontWeight: 700,
                         cursor: 'pointer'
                       }}
                     >
-                      <Check size={14} color="#059669" />
+                      <Check size={13} color="#059669" />
                       <span>Connected</span>
                     </button>
                   ) : isPending ? (
@@ -411,8 +411,8 @@ export function DoctorModal({
                         color: '#6B7280',
                         border: '1px solid #E5E7EB',
                         borderRadius: '9999px',
-                        padding: '8px 16px',
-                        fontSize: '13px',
+                        padding: '6px 13px',
+                        fontSize: '12px',
                         fontWeight: 600,
                         cursor: 'default'
                       }}
@@ -425,18 +425,18 @@ export function DoctorModal({
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '6px',
+                        gap: '5px',
                         backgroundColor: '#FFFFFF',
                         color: '#003822',
                         border: '1.5px solid #003822',
                         borderRadius: '9999px',
-                        padding: '8px 18px',
-                        fontSize: '13px',
+                        padding: '6px 14px',
+                        fontSize: '12px',
                         fontWeight: 700,
                         cursor: 'pointer'
                       }}
                     >
-                      <UserPlus size={14} />
+                      <UserPlus size={13} />
                       <span>Connect</span>
                     </button>
                   )}
@@ -626,7 +626,7 @@ export function DoctorModal({
                       <h4 style={{ margin: 0, fontSize: '13.5px', color: '#003822', fontWeight: 700 }}>
                         {c.title}
                       </h4>
-                      {isOwnProfile && onDeleteCase && (
+                      {isOwnProfile && isDocItem(c.authorId, c.authorName) && onDeleteCase && (
                         <button
                           type="button"
                           onClick={(e) => {

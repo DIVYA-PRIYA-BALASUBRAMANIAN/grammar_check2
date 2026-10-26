@@ -9,6 +9,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { api } from '../../services/api';
+import zenveLogo from '../../assets/zenve_logo.png';
 
 export function AccessKeyModal({ isOpen, onClose, accessKey, token, onKeyUpdated }) {
   const [copied, setCopied] = useState(false);
@@ -46,7 +47,19 @@ export function AccessKeyModal({ isOpen, onClose, accessKey, token, onKeyUpdated
   return (
     <div className="advertiser-modal-backdrop" onClick={onClose}>
       <div className="advertiser-modal-content" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
-        <div className="advertiser-modal-header">
+        {/* Brand Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
+          <img
+            src={zenveLogo}
+            alt="Zenve Vet"
+            style={{ height: '42px', width: 'auto', objectFit: 'contain' }}
+          />
+          <button className="advertiser-modal-close" onClick={onClose} style={{ position: 'static' }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="advertiser-modal-header" style={{ marginBottom: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#ecfdf5', color: '#003822', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Key size={18} />
@@ -56,9 +69,6 @@ export function AccessKeyModal({ isOpen, onClose, accessKey, token, onKeyUpdated
               <p style={{ fontSize: '12px', color: '#6b7280' }}>Authenticate your account across devices and API integrations.</p>
             </div>
           </div>
-          <button className="advertiser-modal-close" onClick={onClose}>
-            <X size={18} />
-          </button>
         </div>
 
         <div style={{ marginTop: '16px' }}>

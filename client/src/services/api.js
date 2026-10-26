@@ -558,7 +558,14 @@ export const api = {
         method: 'POST'
       });
     },
-    getViewers: (storyId) => fetchJson(`/stories/${storyId}/viewers`)
+    getViewers: (storyId) => fetchJson(`/stories/${storyId}/viewers`),
+    delete: (id) => {
+      const cleanId = String(id).replace(/^story-/i, '');
+      if (isNaN(Number(cleanId))) {
+        return Promise.resolve({ message: 'Deleted locally' });
+      }
+      return fetchJson(`/stories/${cleanId}`, { method: 'DELETE' });
+    }
   },
 
   // Media File Upload
@@ -630,7 +637,11 @@ export const api = {
     getNotifications: (doctorId = 1) => fetchJson(`/notifications?doctorId=${doctorId}`),
     getUnreadCount: (doctorId = 1) => fetchJson(`/notifications/unread-count?doctorId=${doctorId}`),
     markAsRead: (id) => fetchJson(`/notifications/${id}/read`, { method: 'PUT' }),
-    markAllAsRead: (doctorId = 1) => fetchJson(`/notifications/read-all?doctorId=${doctorId}`, { method: 'PUT' })
+    markAllAsRead: (doctorId = 1) => fetchJson(`/notifications/read-all?doctorId=${doctorId}`, { method: 'PUT' }),
+    broadcast: (data) => fetchJson('/notifications/broadcast', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
   },
 
   // Short Videos
@@ -674,7 +685,7 @@ export const api = {
     }
   },
 
-  // Communities (Facebook-style Dynamic Groups)
+  // Communities (Dynamic Veterinary Groups)
   communities: {
     getAll: (currentDoctorId) => {
       const qs = currentDoctorId ? `?currentDoctorId=${currentDoctorId}` : '';

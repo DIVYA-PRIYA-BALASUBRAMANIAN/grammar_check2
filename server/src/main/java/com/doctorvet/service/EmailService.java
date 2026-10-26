@@ -6,11 +6,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -205,10 +209,37 @@ public class EmailService {
       helper.setSubject(subject);
       helper.setText(plainTextAlternative != null ? plainTextAlternative : "", htmlContent);
 
+      // Attach official Zenve Vet logo as inline CID:vetLogo for header and branding
+      attachVetLogoIfAvailable(helper);
+
       mailSender.send(message);
       log.info("[Zenve Mail] Successfully dispatched automated email to: {} from: {}", toEmail, fromEmail);
     } catch (Exception e) {
       log.error("[Zenve Mail] Could not dispatch email to {} via SMTP [{}]: {}", toEmail, mailHost, e.getMessage());
+    }
+  }
+
+  private void attachVetLogoIfAvailable(MimeMessageHelper helper) {
+    try {
+      Resource logoResource = new ClassPathResource("static/zenve_logo_email.png");
+      if (!logoResource.exists()) {
+        logoResource = new ClassPathResource("static/zenve_logo.png");
+      }
+      if (!logoResource.exists()) {
+        File file = new File("server/src/main/resources/static/zenve_logo_email.png");
+        if (!file.exists()) file = new File("server/uploads/zenve_logo.png");
+        if (!file.exists()) file = new File("uploads/zenve_logo.png");
+        if (!file.exists()) file = new File("client/public/zenve_logo.png");
+        if (!file.exists()) file = new File("client/src/assets/zenve_logo.png");
+        if (file.exists()) {
+          logoResource = new FileSystemResource(file);
+        }
+      }
+      if (logoResource.exists()) {
+        helper.addInline("vetLogo", logoResource, "image/png");
+      }
+    } catch (Exception e) {
+      log.debug("[Zenve Mail] Inline vet logo attachment skipped: {}", e.getMessage());
     }
   }
 
@@ -251,6 +282,11 @@ public class EmailService {
           <div style="background-color: #F8FAFC; padding: 32px 16px;">
             <div class="wrapper">
               <div class="header">
+                <div style="text-align: center; margin-bottom: 12px;">
+                  <a href="https://zenvevet.com" target="_blank" style="text-decoration: none; display: inline-block;">
+                    <img src="cid:vetLogo" alt="Zenve Vet Logo" width="68" height="68" style="display: block; margin: 0 auto; width: 68px; height: 68px; border-radius: 16px; object-fit: contain; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22); border: 2px solid rgba(255, 255, 255, 0.4); background: #003822;" onerror="this.onerror=null;this.src='https://zenvevet.com/zenve_logo.png';" />
+                  </a>
+                </div>
                 <span class="brand-badge">Security Verification</span>
                 <h1 class="brand-title"><a href="https://zenvevet.com" target="_blank">ZENVE VET</a></h1>
                 <p class="brand-subtitle">The Professional Network for Animal Healthcare</p>
@@ -296,7 +332,10 @@ public class EmailService {
                 </div>
               </div>
               <div class="footer">
-                <p style="margin: 0 0 6px 0; font-weight: 600; color: #E2E8F0;">Zenve Pets Healthcare Pvt. Ltd.</p>
+                <p style="margin: 0 0 6px 0; font-weight: 600; color: #E2E8F0;">
+                  <img src="cid:vetLogo" width="16" height="16" style="vertical-align: middle; margin-right: 6px; border-radius: 4px; display: inline-block;" alt="Logo" onerror="this.onerror=null;this.src='https://zenvevet.com/zenve_logo.png';" />
+                  Zenve Pets Healthcare Pvt. Ltd.
+                </p>
                 <p style="margin: 0 0 10px 0;">Bengaluru, Karnataka, India • <a href="https://zenvevet.com" target="_blank">https://zenvevet.com</a></p>
                 <p style="margin: 0; font-size: 11px; color: #64748B;">
                   This automated security message was sent to %s from <strong>no-reply@zenvevet.com</strong>.
@@ -372,6 +411,11 @@ public class EmailService {
           <div style="background-color: #F8FAFC; padding: 32px 16px;">
             <div class="wrapper">
               <div class="header">
+                <div style="text-align: center; margin-bottom: 12px;">
+                  <a href="https://zenvevet.com" target="_blank" style="text-decoration: none; display: inline-block;">
+                    <img src="cid:vetLogo" alt="Zenve Vet Logo" width="68" height="68" style="display: block; margin: 0 auto; width: 68px; height: 68px; border-radius: 16px; object-fit: contain; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22); border: 2px solid rgba(255, 255, 255, 0.4); background: #003822;" onerror="this.onerror=null;this.src='https://zenvevet.com/zenve_logo.png';" />
+                  </a>
+                </div>
                 <span class="brand-badge">Security Confirmation</span>
                 <h1 class="brand-title"><a href="https://zenvevet.com" target="_blank">ZENVE VET</a></h1>
                 <p style="margin: 6px 0 0 0; font-size: 13px; opacity: 0.92;">The Professional Network for Animal Healthcare</p>
@@ -416,7 +460,10 @@ public class EmailService {
                 </div>
               </div>
               <div class="footer">
-                <p style="margin: 0 0 6px 0; font-weight: 600; color: #E2E8F0;">Zenve Pets Healthcare Pvt. Ltd.</p>
+                <p style="margin: 0 0 6px 0; font-weight: 600; color: #E2E8F0;">
+                  <img src="cid:vetLogo" width="16" height="16" style="vertical-align: middle; margin-right: 6px; border-radius: 4px; display: inline-block;" alt="Logo" onerror="this.onerror=null;this.src='https://zenvevet.com/zenve_logo.png';" />
+                  Zenve Pets Healthcare Pvt. Ltd.
+                </p>
                 <p style="margin: 0 0 10px 0;">Bengaluru, Karnataka, India • <a href="https://zenvevet.com" target="_blank">https://zenvevet.com</a></p>
                 <p style="margin: 0; font-size: 11px; color: #64748B;">
                   This automated security communication was sent to %s from <strong>no-reply@zenvevet.com</strong>.
@@ -494,6 +541,11 @@ public class EmailService {
           <div style="padding: 24px 16px;">
             <div class="wrapper">
               <div class="header">
+                <div style="text-align: center; margin-bottom: 12px;">
+                  <a href="https://zenvevet.com" target="_blank" style="text-decoration: none; display: inline-block;">
+                    <img src="cid:vetLogo" alt="Zenve Vet Logo" width="68" height="68" style="display: block; margin: 0 auto; width: 68px; height: 68px; border-radius: 16px; object-fit: contain; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22); border: 2px solid rgba(255, 255, 255, 0.4); background: #7C2D12;" onerror="this.onerror=null;this.src='https://zenvevet.com/zenve_logo.png';" />
+                  </a>
+                </div>
                 <div class="brand-badge">Zenve Vet Security</div>
                 <h1 class="brand-title"><a href="https://zenvevet.com" target="_blank">New Device Sign-In Detected</a></h1>
                 <p style="margin: 6px 0 0; font-size: 13px; opacity: 0.9;">Company Mail Notification • no-reply@zenvevet.com</p>
@@ -544,7 +596,10 @@ public class EmailService {
                 </div>
               </div>
               <div class="footer">
-                <p style="margin: 0 0 6px 0; font-weight: 600; color: #E2E8F0;">Zenve Pets Healthcare Pvt. Ltd.</p>
+                <p style="margin: 0 0 6px 0; font-weight: 600; color: #E2E8F0;">
+                  <img src="cid:vetLogo" width="16" height="16" style="vertical-align: middle; margin-right: 6px; border-radius: 4px; display: inline-block;" alt="Logo" onerror="this.onerror=null;this.src='https://zenvevet.com/zenve_logo.png';" />
+                  Zenve Pets Healthcare Pvt. Ltd.
+                </p>
                 <p style="margin: 0 0 10px 0;">Bengaluru, Karnataka, India • <a href="https://zenvevet.com" target="_blank">https://zenvevet.com</a></p>
                 <p style="margin: 0; font-size: 11px; color: #64748B;">
                   This automated security alert was dispatched to %s from <strong>no-reply@zenvevet.com</strong>.
@@ -628,6 +683,11 @@ public class EmailService {
           <div style="background-color: #F8FAFC; padding: 32px 16px;">
             <div class="wrapper">
               <div class="header">
+                <div style="text-align: center; margin-bottom: 12px;">
+                  <a href="https://zenvevet.com" target="_blank" style="text-decoration: none; display: inline-block;">
+                    <img src="cid:vetLogo" alt="Zenve Vet Logo" width="72" height="72" style="display: block; margin: 0 auto; width: 72px; height: 72px; border-radius: 16px; object-fit: contain; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.24); border: 2px solid rgba(255, 255, 255, 0.45); background: #003822;" onerror="this.onerror=null;this.src='https://zenvevet.com/zenve_logo.png';" />
+                  </a>
+                </div>
                 <span class="brand-badge">Official Welcome</span>
                 <h1 class="brand-title"><a href="https://zenvevet.com" target="_blank">Zenve Vet 🐾</a></h1>
                 <p class="brand-subtitle">India's Premier Veterinary Clinical Community & Network</p>
@@ -676,7 +736,10 @@ public class EmailService {
                 </div>
               </div>
               <div class="footer">
-                <p style="margin: 0 0 8px 0; font-weight: 600; color: #E2E8F0;">Zenve Pets Healthcare Pvt. Ltd.</p>
+                <p style="margin: 0 0 8px 0; font-weight: 600; color: #E2E8F0;">
+                  <img src="cid:vetLogo" width="16" height="16" style="vertical-align: middle; margin-right: 6px; border-radius: 4px; display: inline-block;" alt="Logo" onerror="this.onerror=null;this.src='https://zenvevet.com/zenve_logo.png';" />
+                  Zenve Pets Healthcare Pvt. Ltd.
+                </p>
                 <p style="margin: 0 0 12px 0;">Bengaluru, Karnataka, India • <a href="https://zenvevet.com" target="_blank">https://zenvevet.com</a></p>
                 <p style="margin: 0; font-size: 11px; color: #64748B;">
                   This automated welcome message was sent to %s from <strong>no-reply@zenvevet.com</strong>.
@@ -764,6 +827,11 @@ public class EmailService {
           <div style="padding: 24px 16px;">
             <div class="wrapper">
               <div class="header">
+                <div style="text-align: center; margin-bottom: 12px;">
+                  <a href="https://zenvevet.com" target="_blank" style="text-decoration: none; display: inline-block;">
+                    <img src="cid:vetLogo" alt="Zenve Vet Logo" width="68" height="68" style="display: block; margin: 0 auto; width: 68px; height: 68px; border-radius: 16px; object-fit: contain; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22); border: 2px solid rgba(255, 255, 255, 0.4); background: #003822;" onerror="this.onerror=null;this.src='https://zenvevet.com/zenve_logo.png';" />
+                  </a>
+                </div>
                 <h2 style="margin: 0;"><a href="https://zenvevet.com" target="_blank">Zenve Vet Ads & Partnerships</a></h2>
                 <p style="margin: 6px 0 0; font-size: 13px; color: #94A3B8;">Connecting animal healthcare brands with verified veterinarians</p>
               </div>
@@ -777,6 +845,7 @@ public class EmailService {
                 <p style="font-size: 13px; color: #64748B;">For partnership inquiries and enterprise billing, reach us at ads@zenvevet.com.</p>
               </div>
               <div class="footer">
+                <img src="cid:vetLogo" width="16" height="16" style="vertical-align: middle; margin-right: 6px; border-radius: 4px; display: inline-block;" alt="Logo" onerror="this.onerror=null;this.src='https://zenvevet.com/zenve_logo.png';" />
                 Sent automatically by <strong>no-reply@zenvevet.com</strong> • Zenve Pets Healthcare Pvt. Ltd. • <a href="https://zenvevet.com" target="_blank">https://zenvevet.com</a>
               </div>
             </div>

@@ -21,9 +21,16 @@ import {
   ExternalLink,
   Globe,
   UserPen,
-  FileText
+  FileText,
+  BellRing
 } from 'lucide-react';
 import { Avatar } from './Avatar';
+import zenveLogo from '../assets/zenve_logo.png';
+import {
+  requestNotificationPermission,
+  getNotificationPermission,
+  sendTestNotification
+} from '../services/notificationService';
 
 export function Header({
   searchQuery,
@@ -46,6 +53,8 @@ export function Header({
   onMarkAllNotificationsRead,
   onOpenCreatePost,
   onOpenDirectChat,
+  onSelectCase,
+  onSelectVideo,
   onAcceptCommunityInvite,
   onDeclineCommunityInvite,
   onOpenTerms
@@ -88,34 +97,71 @@ export function Header({
       <div className="header-brand-search-wrap" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <button
           onClick={() => onTabSelect && onTabSelect('feed')}
+          className="header-brand-btn"
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '12px',
             background: 'none',
             border: 'none',
             cursor: 'pointer',
-            padding: 0
+            padding: '2px 4px',
+            borderRadius: '10px',
+            transition: 'opacity 0.2s ease',
+            textDecoration: 'none'
           }}
+          onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+          onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+          title="Zenve Vet Community Home"
         >
+          {/* Logo Emblem Box (instead of paw symbol, Zenve logo is here) */}
           <div style={{
-            width: '34px',
-            height: '34px',
-            borderRadius: '8px',
-            background: 'linear-gradient(135deg, #003822 0%, #05633C 100%)',
+            width: '42px',
+            height: '42px',
+            borderRadius: '12px',
+            background: '#FFFFFF',
+            border: '1.5px solid #E5E7EB',
+            boxShadow: '0 3px 10px rgba(0, 56, 34, 0.12)',
+            overflow: 'hidden',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 2px 6px rgba(0, 56, 34, 0.25)'
+            padding: '2px',
+            flexShrink: 0
           }}>
-            <PawPrint size={18} fill="#FFFFFF" color="#FFFFFF" />
+            <img
+              src={zenveLogo}
+              alt="Zenve Vet"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                display: 'block'
+              }}
+            />
           </div>
-          <div className="header-brand-text" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.1 }}>
-            <span style={{ fontSize: '15px', fontWeight: '800', color: '#003822', letterSpacing: '-0.3px', fontFamily: 'var(--font-display, inherit)' }}>
+
+          {/* Typography: Zenve Vet + COMMUNITY */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.15 }}>
+            <span style={{
+              fontSize: '18px',
+              fontWeight: '800',
+              color: '#003822',
+              letterSpacing: '-0.4px',
+              fontFamily: 'var(--font-display, "Plus Jakarta Sans", sans-serif)'
+            }}>
               Zenve Vet
             </span>
-            <span style={{ fontSize: '9.5px', fontWeight: '700', color: '#059669', letterSpacing: '0.6px', textTransform: 'uppercase' }}>
-              Community
+            <span style={{
+              fontSize: '11px',
+              fontWeight: '800',
+              color: '#00A86B',
+              letterSpacing: '1.4px',
+              textTransform: 'uppercase',
+              fontFamily: 'var(--font-display, "Plus Jakarta Sans", sans-serif)',
+              marginTop: '1px'
+            }}>
+              COMMUNITY
             </span>
           </div>
         </button>
@@ -281,6 +327,30 @@ export function Header({
                 )}
               </div>
 
+              {/* Device Notifications Banner (Laptop, Android, iOS) */}
+              <div className="header-notif-permission-bar">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <BellRing size={15} color="#059669" />
+                  <span style={{ fontSize: '11.5px', color: '#065F46', fontWeight: 600 }}>
+                    {getNotificationPermission() === 'granted' ? 'Desktop & Mobile Alerts Active' : 'Enable Laptop & Phone Alerts'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="header-notif-permission-btn"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (getNotificationPermission() === 'granted') {
+                      sendTestNotification();
+                    } else {
+                      await requestNotificationPermission();
+                    }
+                  }}
+                >
+                  {getNotificationPermission() === 'granted' ? 'Test Alert' : 'Enable'}
+                </button>
+              </div>
+
               {/* Notification Filters */}
               <div style={{ display: 'flex', gap: '6px', padding: '8px 16px', borderBottom: '1px solid #F3F4F6' }}>
                 <button
@@ -328,13 +398,28 @@ export function Header({
                       key={n.id}
                       onClick={() => {
                         if (onMarkNotificationRead) onMarkNotificationRead(n.id);
-                        if (n.type === 'NEW_MESSAGE' || n.type === 'MESSAGE' || n.type === 'DIRECT_MESSAGE') {
-                          setIsNotificationsOpen(false);
+                        setIsNotificationsOpen(false);
+
+                        if (n.type === 'REEL_UPLOAD' || n.type === 'VIDEO_UPLOAD' || n.type === 'SHORT_VIDEO') {
+                          if (onSelectVideo && n.targetId) {
+                            onSelectVideo({ id: n.targetId, title: n.message });
+                          }
+                          if (onTabSelect) onTabSelect('videos');
+                        } else if (n.type === 'CLINICAL_CASE_SHARED' || n.type === 'CASE' || n.type === 'CLINICAL_CASE') {
+                          if (onSelectCase && n.targetId) {
+                            onSelectCase({ id: n.targetId, title: n.message });
+                          }
+                          if (onTabSelect) onTabSelect('cases');
+                        } else if (n.type === 'NEW_MESSAGE' || n.type === 'MESSAGE' || n.type === 'DIRECT_MESSAGE') {
                           if (onOpenDirectChat && (n.senderId || n.senderName)) {
                             onOpenDirectChat({ id: n.senderId, name: n.senderName, avatar: n.senderAvatar });
                           } else if (onTabSelect) {
                             onTabSelect('messages');
                           }
+                        } else if (n.type === 'CONNECTION_REQUEST' || n.type === 'CONNECTION_ACCEPTED') {
+                          if (onTabSelect) onTabSelect('network');
+                        } else {
+                          if (onTabSelect) onTabSelect('feed');
                         }
                       }}
                       style={{
@@ -500,7 +585,7 @@ export function Header({
                 padding: '12px',
                 zIndex: 100
               }}>
-                <div 
+                <div
                   onClick={() => {
                     setIsProfileMenuOpen(false);
                     if (onTabSelect) onTabSelect('profile');

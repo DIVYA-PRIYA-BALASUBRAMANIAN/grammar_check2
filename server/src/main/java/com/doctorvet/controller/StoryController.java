@@ -62,4 +62,13 @@ public class StoryController {
     public ResponseEntity<List<StoryView>> getStoryViewers(@PathVariable Long id) {
         return ResponseEntity.ok(storyService.getStoryViewers(id));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteStory(@PathVariable Long id) {
+        boolean deleted = storyService.deleteStory(id);
+        if (deleted) {
+            return ResponseEntity.ok().body(java.util.Map.of("success", true, "message", "Story deleted successfully"));
+        }
+        return ResponseEntity.notFound().build();
+    }
 }
