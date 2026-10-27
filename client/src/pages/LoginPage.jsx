@@ -301,8 +301,8 @@ export function LoginPage({ onLoginSuccess, onCancel, onOpenTerms }) {
 
           {/* Primary Headline */}
           <h1 className="portal-hero-title">
-            A World of Care<br />
-            <span className="hero-gradient-text">Connected</span>
+            A World of Care.<br />
+            <span className="hero-gradient-text">Connected.</span>
           </h1>
 
           {/* Subtitle */}
