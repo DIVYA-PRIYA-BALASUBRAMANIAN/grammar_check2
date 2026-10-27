@@ -765,6 +765,72 @@ function StoryDirectMessage({
   return null;
 }
 
+// Format real-time message timestamp (e.g. 12:20 PM)
+const formatTime = (t) => {
+  if (!t) return 'Just now';
+  if (typeof t === 'string') {
+    const s = t.trim();
+    if (s.toLowerCase() === 'just now' || s.toLowerCase() === 'active') return s;
+    if (/^\d{1,2}:\d{2}(\s*(?:am|pm))?$/i.test(s)) return s;
+  }
+  try {
+    const str = String(t).trim();
+    const d = new Date(str.includes(' ') && !str.includes('T') ? str.replace(' ', 'T') : str);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+  } catch (e) { }
+  return String(t);
+};
+
+// Format conversation list timestamp (e.g. 12:20 PM, Yesterday, 25 Oct)
+const formatConversationTime = (t) => {
+  if (!t) return 'Active';
+  if (typeof t === 'string') {
+    const s = t.trim();
+    if (s.toLowerCase() === 'just now' || s.toLowerCase() === 'active' || s.toLowerCase() === 'connected') return s;
+    if (/^\d{1,2}:\d{2}(\s*(?:am|pm))?$/i.test(s)) return s;
+  }
+  try {
+    const str = String(t).trim();
+    const d = new Date(str.includes(' ') && !str.includes('T') ? str.replace(' ', 'T') : str);
+    if (!isNaN(d.getTime())) {
+      const now = new Date();
+      if (d.toDateString() === now.toDateString()) {
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      if (d.toDateString() === yesterday.toDateString()) {
+        return 'Yesterday';
+      }
+      if (d.getFullYear() === now.getFullYear()) {
+        return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      }
+      return d.toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+  } catch (e) { }
+  return String(t);
+};
+
+// Helper to format date divider badge (e.g. "Today", "Yesterday", "October 27, 2026")
+const formatDateDivider = (t) => {
+  if (!t) return null;
+  try {
+    const str = String(t).trim();
+    const d = new Date(str.includes(' ') && !str.includes('T') ? str.replace(' ', 'T') : str);
+    if (!isNaN(d.getTime())) {
+      const now = new Date();
+      if (d.toDateString() === now.toDateString()) return 'Today';
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+      return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+    }
+  } catch (e) { }
+  return null;
+};
+
 export function MessagesView({
   conversations = [],
   activeChatDoctor = null,
@@ -1123,11 +1189,14 @@ export function MessagesView({
         const resolvedDoctor = fresh ? { ...conv.doctor, ...fresh, avatar: fresh.avatar || conv.doctor.avatar } : conv.doctor;
         const key = resolvedDoctor.id ? String(resolvedDoctor.id).replace('doc-', '') : resolvedDoctor.name;
 
+        const lastConvMsg = conv.messages && conv.messages.length > 0 ? conv.messages[conv.messages.length - 1] : null;
+        const convDisplayTime = formatConversationTime(lastConvMsg?.createdAt || lastConvMsg?.time || conv.timestamp);
+
         map.set(key, {
           doctor: resolvedDoctor,
           conv: conv,
-          lastMessage: conv.lastMessage || (conv.messages && conv.messages.length > 0 ? conv.messages[conv.messages.length - 1].text : 'Direct chat consultation'),
-          timestamp: conv.timestamp || 'Active',
+          lastMessage: conv.lastMessage || (lastConvMsg ? lastConvMsg.text : 'Direct chat consultation'),
+          timestamp: convDisplayTime,
           unread: conv.unread || 0
         });
       }
@@ -1158,18 +1227,7 @@ export function MessagesView({
     });
   }, [conversations, userConnections, doctors, currentUser]);
 
-  // Format real-time message timestamp
-  const formatTime = (t) => {
-    if (!t) return 'Just now';
-    if (typeof t === 'string' && (t.includes(':') || t.toLowerCase() === 'just now')) return t;
-    try {
-      const d = new Date(t);
-      if (!isNaN(d.getTime())) {
-        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      }
-    } catch (e) { }
-    return String(t);
-  };
+
 
   // Filter contacts by search query
   const filteredContacts = allContacts.filter(item => {
@@ -1588,8 +1646,40 @@ export function MessagesView({
                   statusTooltip = 'Sent · Unseen';
                 }
 
+                // Date divider calculation
+                const prevMsg = idx > 0 ? chatMessages[idx - 1] : null;
+                const currentRawDate = msg.createdAt ? new Date(String(msg.createdAt).replace(' ', 'T')) : null;
+                const prevRawDate = prevMsg?.createdAt ? new Date(String(prevMsg.createdAt).replace(' ', 'T')) : null;
+                const currentDateKey = currentRawDate && !isNaN(currentRawDate.getTime()) ? currentRawDate.toDateString() : null;
+                const prevDateKey = prevRawDate && !isNaN(prevRawDate.getTime()) ? prevRawDate.toDateString() : null;
+                const showDateDivider = currentDateKey && currentDateKey !== prevDateKey;
+                const dateDividerLabel = showDateDivider ? formatDateDivider(msg.createdAt) : null;
+
                 return (
-                  <div key={`chat-msg-${msg.id || msg.tempId || idx}`} style={{ display: 'flex', flexDirection: 'column' }}>
+                  <React.Fragment key={`chat-msg-wrap-${msg.id || msg.tempId || idx}`}>
+                    {showDateDivider && dateDividerLabel && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '16px 0 10px 0'
+                      }}>
+                        <span style={{
+                          backgroundColor: '#F3F4F6',
+                          color: '#4B5563',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          padding: '3px 14px',
+                          borderRadius: '12px',
+                          border: '1px solid #E5E7EB',
+                          letterSpacing: '0.03em',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                        }}>
+                          {dateDividerLabel}
+                        </span>
+                      </div>
+                    )}
+                    <div key={`chat-msg-${msg.id || msg.tempId || idx}`} style={{ display: 'flex', flexDirection: 'column' }}>
                     <div
                       style={{
                         display: 'flex',
@@ -1677,7 +1767,7 @@ export function MessagesView({
                               fontSize: '10.5px',
                               color: isMe ? 'rgba(255, 255, 255, 0.75)' : '#9CA3AF'
                             }}>
-                              <span>{formatTime(msg.time)}</span>
+                              <span>{formatTime(msg.time || msg.createdAt)}</span>
                               {isMe && (
                                 <span
                                   title={statusTooltip}
@@ -1742,6 +1832,7 @@ export function MessagesView({
                       </div>
                     )}
                   </div>
+                  </React.Fragment>
                 );
               })}
                 <div ref={messagesEndRef} />

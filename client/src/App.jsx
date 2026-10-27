@@ -392,6 +392,33 @@ export function App() {
                 const otherDocName = c.doctor1Id === docId ? c.doctor2Name : c.doctor1Name;
                 const freshDoc = loadedDocs.find(d => d.id === otherDocId || String(d.id).replace('doc-', '') === String(otherDocId).replace('doc-', '') || d.name === otherDocName);
                 const resolvedAvatar = freshDoc?.avatar || (c.doctor1Id === docId ? c.doctor2Avatar : c.doctor1Avatar) || '';
+                const mappedMessages = (() => {
+                  const seen = new Set();
+                  return (msgs || []).filter(m => {
+                    const k = String(m.id);
+                    if (seen.has(k)) return false;
+                    seen.add(k);
+                    return true;
+                  }).map(m => ({
+                    id: m.id,
+                    sender: m.senderId === docId ? 'user' : 'doctor',
+                    senderId: m.senderId,
+                    receiverId: m.receiverId,
+                    text: m.text || m.message,
+                    attachmentUrl: m.attachmentUrl,
+                    attachmentType: m.attachmentType,
+                    status: m.status || (m.isRead ? 'SEEN' : 'SENT'),
+                    isRead: m.isRead || false,
+                    createdAt: m.createdAt,
+                    deliveredAt: m.deliveredAt,
+                    readAt: m.readAt,
+                    time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'
+                  }));
+                })();
+
+                const lastMsg = mappedMessages.length > 0 ? mappedMessages[mappedMessages.length - 1] : null;
+                const convTime = lastMsg?.time || (c.updatedAt ? new Date(c.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Active');
+
                 return {
                   id: c.id,
                   doctor: {
@@ -401,32 +428,10 @@ export function App() {
                     specialty: freshDoc?.specialty || 'Veterinary Practitioner',
                     city: freshDoc?.city || 'Bengaluru'
                   },
-                  lastMessage: c.lastMessage,
-                  timestamp: 'Active',
+                  lastMessage: c.lastMessage || (lastMsg ? lastMsg.text : 'Direct chat consultation'),
+                  timestamp: convTime,
                   unread: c.doctor1Id === docId ? c.unreadCountDoctor1 : c.unreadCountDoctor2,
-                  messages: (() => {
-                    const seen = new Set();
-                    return (msgs || []).filter(m => {
-                      const k = String(m.id);
-                      if (seen.has(k)) return false;
-                      seen.add(k);
-                      return true;
-                    }).map(m => ({
-                      id: m.id,
-                      sender: m.senderId === docId ? 'user' : 'doctor',
-                      senderId: m.senderId,
-                      receiverId: m.receiverId,
-                      text: m.text || m.message,
-                      attachmentUrl: m.attachmentUrl,
-                      attachmentType: m.attachmentType,
-                      status: m.status || (m.isRead ? 'SEEN' : 'SENT'),
-                      isRead: m.isRead || false,
-                      createdAt: m.createdAt,
-                      deliveredAt: m.deliveredAt,
-                      readAt: m.readAt,
-                      time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Active'
-                    }));
-                  })()
+                  messages: mappedMessages
                 };
               }));
               setConversations(fullConvs);
