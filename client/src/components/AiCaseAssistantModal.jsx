@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { X, Sparkles, AlertCircle, FileText, CheckCircle2, Loader2, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Sparkles, AlertCircle, FileText, CheckCircle2, Loader2, ArrowRight, Wand2, Check, RotateCcw, Zap } from 'lucide-react';
 import { api } from '../services/api';
+import { executeAutoCorrectionPipeline, runTier1Correction } from '../services/clinicalAutoCorrect';
 
 export function AiCaseAssistantModal({ isOpen, onClose, onInsertCase }) {
   const [species, setSpecies] = useState('Canine');
@@ -9,7 +10,97 @@ export function AiCaseAssistantModal({ isOpen, onClose, onInsertCase }) {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState(null);
 
+  // Auto-Correction Architecture State (Tier 1 & Tier 2)
+  const [correctionResult, setCorrectionResult] = useState(null);
+  const [isCorrecting, setIsCorrecting] = useState(false);
+  const [previousSymptoms, setPreviousSymptoms] = useState(null);
+  const [hasAppliedCorrection, setHasAppliedCorrection] = useState(false);
+  const debounceTimerRef = useRef(null);
+
+  // Debounced auto-correction listener as user types
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const trimmed = symptoms.trim();
+    if (!trimmed || trimmed.length < 5) {
+      setCorrectionResult(null);
+      return;
+    }
+
+    // Clear any previous debounce
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Debounce 350ms to allow smooth typing before firing Tier 1/2 pipeline
+    debounceTimerRef.current = setTimeout(async () => {
+      // Step 1: Immediate Tier 1 Check (< 5ms)
+      const t1 = runTier1Correction(trimmed);
+      if (t1.isHighConfidenceMatch && t1.correctedText !== trimmed) {
+        setCorrectionResult(t1);
+        return;
+      }
+
+      // Step 2: If Tier 1 needs Tier 2 Deep Semantic Layer
+      setIsCorrecting(true);
+      try {
+        const fullPipelineResult = await executeAutoCorrectionPipeline(trimmed);
+        if (fullPipelineResult && fullPipelineResult.correctedText !== trimmed) {
+          setCorrectionResult(fullPipelineResult);
+        } else {
+          setCorrectionResult(null);
+        }
+      } catch (err) {
+        console.warn('Auto-correction pipeline error:', err);
+      } finally {
+        setIsCorrecting(false);
+      }
+    }, 380);
+
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, [symptoms, isOpen]);
+
   if (!isOpen) return null;
+
+  // Manual Trigger for Auto-Correct
+  const handleManualAutoCorrect = async () => {
+    if (!symptoms.trim()) return;
+    setIsCorrecting(true);
+    try {
+      const res = await executeAutoCorrectionPipeline(symptoms);
+      if (res && res.correctedText) {
+        setCorrectionResult(res);
+        setPreviousSymptoms(symptoms);
+        setSymptoms(res.correctedText);
+        setHasAppliedCorrection(true);
+      }
+    } catch (err) {
+      console.error('Manual auto-correction failed:', err);
+    } finally {
+      setIsCorrecting(false);
+    }
+  };
+
+  // Accept Suggested Correction
+  const handleApplyCorrection = () => {
+    if (correctionResult && correctionResult.correctedText) {
+      setPreviousSymptoms(symptoms);
+      setSymptoms(correctionResult.correctedText);
+      setHasAppliedCorrection(true);
+      setCorrectionResult(null);
+    }
+  };
+
+  // Undo / Revert back to original input
+  const handleUndoCorrection = () => {
+    if (previousSymptoms !== null) {
+      setSymptoms(previousSymptoms);
+      setPreviousSymptoms(null);
+      setHasAppliedCorrection(false);
+    }
+  };
 
   const handleAnalyze = async () => {
     if (!symptoms.trim()) {
@@ -96,18 +187,190 @@ export function AiCaseAssistantModal({ isOpen, onClose, onInsertCase }) {
                 </div>
               </div>
 
+              {/* Chief Complaint & Clinical Signs with 2-Tier Auto-Correction */}
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#121A15' }}>
-                  Chief Complaint & Clinical Signs *
-                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#121A15', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>Chief Complaint & Clinical Signs *</span>
+                    {isCorrecting && (
+                      <span style={{ fontSize: '11px', fontWeight: '500', color: '#C5A059', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Loader2 size={12} className="animate-spin" />
+                        <span>Semantic auto-checking...</span>
+                      </span>
+                    )}
+                  </label>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {hasAppliedCorrection && previousSymptoms !== null && (
+                      <button
+                        type="button"
+                        onClick={handleUndoCorrection}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '3px 8px',
+                          fontSize: '11.5px',
+                          fontWeight: '600',
+                          borderRadius: '4px',
+                          border: '1px solid #E5E9E5',
+                          background: '#FFFFFF',
+                          color: '#64726A',
+                          cursor: 'pointer'
+                        }}
+                        title="Revert to original input"
+                      >
+                        <RotateCcw size={12} />
+                        <span>Undo Auto-Correct</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={handleManualAutoCorrect}
+                      disabled={isCorrecting || !symptoms.trim()}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '3px 10px',
+                        fontSize: '11.5px',
+                        fontWeight: '600',
+                        borderRadius: '4px',
+                        border: '1px solid #0D472B',
+                        background: '#E8F3ED',
+                        color: '#0D472B',
+                        cursor: symptoms.trim() ? 'pointer' : 'default',
+                        opacity: symptoms.trim() ? 1 : 0.6
+                      }}
+                      title="Run Tier 1 & Tier 2 Auto-Correction Engine"
+                    >
+                      <Wand2 size={12} />
+                      <span>Auto-Correct</span>
+                    </button>
+                  </div>
+                </div>
+
                 <textarea
                   rows="3"
                   className="custom-filter-select"
                   style={{ width: '100%', resize: 'vertical' }}
-                  placeholder="e.g. 5-year-old German Shepherd, acute abdominal distension, unproductive retching for 3 hours, restlessness, hypersalivation..."
+                  placeholder="e.g. 5yo gsd acute abdominal distention unproductive retching for 3 hours..."
                   value={symptoms}
-                  onChange={(e) => setSymptoms(e.target.value)}
+                  onChange={(e) => {
+                    setSymptoms(e.target.value);
+                    setHasAppliedCorrection(false);
+                  }}
                 />
+
+                {/* Live Auto-Correction Suggestion Card (Architecture UI) */}
+                {correctionResult && correctionResult.correctedText && (
+                  <div
+                    style={{
+                      marginTop: '8px',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid',
+                      borderColor: correctionResult.isHighConfidenceMatch ? '#A7D7BC' : '#E0D0A5',
+                      background: correctionResult.isHighConfidenceMatch ? '#F4F9F6' : '#FCFBF6',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {correctionResult.isHighConfidenceMatch ? (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              padding: '2px 7px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: '700',
+                              background: '#0D472B',
+                              color: '#FFFFFF'
+                            }}
+                          >
+                            <Zap size={11} />
+                            Tier 1: Instant Client Match ({correctionResult.latencyMs}ms)
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              padding: '2px 7px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: '700',
+                              background: '#8A6D1C',
+                              color: '#FFFFFF'
+                            }}
+                          >
+                            <Sparkles size={11} />
+                            Tier 2: Deep Semantic Layer ({correctionResult.latencyMs}ms)
+                          </span>
+                        )}
+
+                        <span style={{ fontSize: '11px', color: '#64726A', fontWeight: '500' }}>
+                          Confidence: {correctionResult.confidence}% • Context-Preserved Clinical English
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setCorrectionResult(null)}
+                          style={{
+                            padding: '3px 8px',
+                            fontSize: '11px',
+                            color: '#88958D',
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Dismiss
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleApplyCorrection}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '4px 10px',
+                            borderRadius: '5px',
+                            fontSize: '11.5px',
+                            fontWeight: '600',
+                            background: '#0D472B',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Check size={12} />
+                          <span>Apply Correction</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style={{ fontSize: '13px', color: '#121A15', background: '#FFFFFF', padding: '8px 10px', borderRadius: '6px', border: '1px solid #E5E9E5' }}>
+                      <strong style={{ color: '#0D472B', fontSize: '11.5px', display: 'block', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                        {correctionResult.isHighConfidenceMatch ? 'Verified Standard:' : 'Grammar & Spell Correction:'}
+                      </strong>
+                      <span>{correctionResult.correctedText}</span>
+                    </div>
+
+                    <p style={{ margin: 0, fontSize: '11px', color: '#64726A', fontStyle: 'italic' }}>
+                      Direct grammar and spelling correction — no extra words or boilerplate added.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div>

@@ -594,6 +594,10 @@ export const api = {
     diagnose: (data) => fetchJson('/ai-assist/diagnose', {
       method: 'POST',
       body: JSON.stringify(data)
+    }),
+    autoCorrect: (text) => fetchJson('/ai-assist/auto-correct', {
+      method: 'POST',
+      body: JSON.stringify({ text })
     })
   },
 

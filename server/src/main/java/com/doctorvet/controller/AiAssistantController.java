@@ -25,4 +25,13 @@ public class AiAssistantController {
 
         return ResponseEntity.ok(aiService.generateDifferential(species, symptoms, vitals));
     }
+
+    public record AutoCorrectRequest(String text) {}
+
+    @PostMapping("/auto-correct")
+    public ResponseEntity<AiAssistantService.AutoCorrectResponse> autoCorrect(@RequestBody AutoCorrectRequest request) {
+        String text = request != null ? request.text() : "";
+        return ResponseEntity.ok(aiService.autoCorrectClinicalEnglish(text));
+    }
+
 }

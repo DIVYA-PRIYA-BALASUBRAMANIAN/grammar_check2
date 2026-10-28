@@ -1,0 +1,585 @@
+{
+  "modelName": "Zenve-Vet-ClinicalNLP-Generalizer",
+  "version": "2.1.0-trained",
+  "trainedAt": "2026-10-28T11:01:23.121Z",
+  "corpusSize": 60,
+  "vocabularySize": 643,
+  "trainingPairs": [
+    {
+      "id": 1,
+      "input": "5yo gsd acute abdominal distension unproductive retching for 3 hours",
+      "verified": "5-year-old German Shepherd, acute abdominal distension, non-productive retching for 3 hours, restlessness, hypersalivation",
+      "species": "Canine",
+      "category": "Gastrointestinal"
+    },
+    {
+      "id": 2,
+      "input": "5 year old german shepherd acute abdominal distention non productive retching",
+      "verified": "5-year-old German Shepherd, acute abdominal distension, non-productive retching for 3 hours, restlessness, hypersalivation",
+      "species": "Canine",
+      "category": "Gastrointestinal"
+    },
+    {
+      "id": 3,
+      "input": "cat straining in litter box crying hematuria small drops of urine",
+      "verified": "Feline presenting with stranguria, vocalization, and hematuria with frequent unproductive posturing in litter box",
+      "species": "Feline",
+      "category": "Urinary"
+    },
+    {
+      "id": 4,
+      "input": "male cat blocked cant pee crying in litter box",
+      "verified": "Male feline presenting with severe stranguria, dysuria, vocalization in litter box, suspected acute urethral obstruction",
+      "species": "Feline",
+      "category": "Urinary"
+    },
+    {
+      "id": 5,
+      "input": "dog lethargic not eating vomitting diarhea for 2 days",
+      "verified": "Canine presenting with 2-day history of lethargy, anorexia, acute vomiting, and diarrhea",
+      "species": "Canine",
+      "category": "Gastrointestinal"
+    },
+    {
+      "id": 6,
+      "input": "dog vomiting and diarrhea lethargic anorexic 48h",
+      "verified": "Canine presenting with acute vomiting, diarrhea, lethargy, and anorexia for 48 hours",
+      "species": "Canine",
+      "category": "Gastrointestinal"
+    },
+    {
+      "id": 7,
+      "input": "coughing gagging after exercise murmur heard on exam",
+      "verified": "Canine presenting with exercise-induced paroxysmal coughing, retching/gagging, and systolic heart murmur",
+      "species": "Canine",
+      "category": "Cardiovascular"
+    },
+    {
+      "id": 8,
+      "input": "dog dry hacking cough worse at night heart murmur",
+      "verified": "Canine presenting with dry hacking nocturnal cough and audible cardiac murmur",
+      "species": "Canine",
+      "category": "Cardiovascular"
+    },
+    {
+      "id": 9,
+      "input": "horse pawing ground rolling sweating reflux through nostril",
+      "verified": "Equine presenting with acute severe colic, persistent ground-pawing, rolling, diaphoresis, and spontaneous nasogastric reflux",
+      "species": "Equine",
+      "category": "Gastrointestinal"
+    },
+    {
+      "id": 10,
+      "input": "horse violent colic rolling kicking at abdomen no gut sounds",
+      "verified": "Equine presenting with violent colic, rolling, flank kicking, and absent borborygmi on abdominal auscultation",
+      "species": "Equine",
+      "category": "Gastrointestinal"
+    },
+    {
+      "id": 11,
+      "input": "cat open mouth breathing wheezing cyanotic tongue respiratory distress",
+      "verified": "Feline presenting with acute respiratory distress, open-mouth tachypnea, expiratory wheezes, and cyanotic mucous membranes",
+      "species": "Feline",
+      "category": "Respiratory"
+    },
+    {
+      "id": 12,
+      "input": "feline acute dyspnea open mouth panting extended neck",
+      "verified": "Feline presenting with acute severe dyspnea, orthopneic posture, open-mouth breathing, and extended neck",
+      "species": "Feline",
+      "category": "Respiratory"
+    },
+    {
+      "id": 13,
+      "input": "dog limping right forelimb non weight bearing after jumping off couch",
+      "verified": "Canine presenting with acute non-weight-bearing right forelimb lameness following jump trauma",
+      "species": "Canine",
+      "category": "Musculoskeletal"
+    },
+    {
+      "id": 14,
+      "input": "acute right hind limb lameness toe touching only positive drawer",
+      "verified": "Canine presenting with acute non-weight-bearing right hindlimb lameness, toe-touching only, suspected cranial cruciate ligament rupture",
+      "species": "Canine",
+      "category": "Musculoskeletal"
+    },
+    {
+      "id": 15,
+      "input": "intense pruritis scratching ears hair loss erythema foul smell",
+      "verified": "Canine presenting with severe bilateral aural pruritus, head shaking, erythema, alopecia, and malodorous discharge",
+      "species": "Canine",
+      "category": "Dermatology"
+    },
+    {
+      "id": 16,
+      "input": "dog scratching ears shaking head red swollen pinna bad odor",
+      "verified": "Canine presenting with severe bilateral otic pruritus, persistent head shaking, pinnal erythema, and malodorous otic exudate",
+      "species": "Canine",
+      "category": "Dermatology"
+    },
+    {
+      "id": 17,
+      "input": "puppy severe bloody diarrhea projectile vomiting dehydrated depressed",
+      "verified": "Canine juvenile presenting with acute severe hematochezia, projectile vomiting, profound lethargy, and dehydration",
+      "species": "Canine",
+      "category": "Infectious"
+    },
+    {
+      "id": 18,
+      "input": "pup parvo signs bloody diarrhea vomiting lethargy anorexia",
+      "verified": "Canine juvenile presenting with suspected viral enteritis: hemorrhagic diarrhea, vomiting, marked lethargy, and anorexia",
+      "species": "Canine",
+      "category": "Infectious"
+    },
+    {
+      "id": 19,
+      "input": "cat drinking lots of water urinating frequently weight loss increased appetite",
+      "verified": "Feline presenting with polydipsia, polyuria, polyphagia, and progressive weight loss",
+      "species": "Feline",
+      "category": "Endocrine"
+    },
+    {
+      "id": 20,
+      "input": "senior cat pu pd weight loss ravenous appetite vomiting",
+      "verified": "Senior feline presenting with polyuria, polydipsia, weight loss despite polyphagia, and intermittent vomiting",
+      "species": "Feline",
+      "category": "Endocrine"
+    },
+    {
+      "id": 21,
+      "input": "rabbit not eating no droppings for 24 hours lethargic hunched",
+      "verified": "Lagomorph presenting with complete anorexia, absence of fecal output for 24 hours, lethargy, and hunched painful posture",
+      "species": "Exotic",
+      "category": "Gastrointestinal"
+    },
+    {
+      "id": 22,
+      "input": "sudden collapse pale gums rapid breathing weak pulses",
+      "verified": "Canine presenting with acute syncopal episode, pale mucous membranes, tachypnea, and weak peripheral femoral pulses",
+      "species": "Canine",
+      "category": "Emergency"
+    },
+    {
+      "id": 23,
+      "input": "dog cluster seizures lasting 2 minutes each salivating involuntary urination",
+      "verified": "Canine presenting with acute cluster seizures (duration ~2 minutes each), post-ictal hypersalivation, and urinary incontinence",
+      "species": "Canine",
+      "category": "Neurology"
+    },
+    {
+      "id": 24,
+      "input": "hit by car tachypneic laceration on left flank abdominal guarding",
+      "verified": "Canine presenting following vehicular trauma: tachypnea, left flank laceration, and cranial abdominal guarding",
+      "species": "Canine",
+      "category": "Trauma"
+    },
+    {
+      "id": 25,
+      "input": "yellow eyes and gums not eating vomiting lethargy dark urine",
+      "verified": "Canine presenting with marked icterus/jaundice of sclera and mucous membranes, anorexia, vomiting, lethargy, and bilirubinuria",
+      "species": "Canine",
+      "category": "Hepatic"
+    },
+    {
+      "id": 26,
+      "input": "dog swallowed sock 2 days ago vomiting water tense abdomen",
+      "verified": "Canine presenting with known linear/cloth foreign body ingestion 48 hours prior, intractable vomiting, and painful abdomen",
+      "species": "Canine",
+      "category": "Gastrointestinal"
+    },
+    {
+      "id": 27,
+      "input": "cat painful eye squinting cloudy cornea greenish discharge",
+      "verified": "Feline presenting with unilateral blepharospasm, corneal edema/cloudiness, and mucopurulent ocular discharge",
+      "species": "Feline",
+      "category": "Ophthalmology"
+    },
+    {
+      "id": 28,
+      "input": "ferret weakness hind leg collapse lethargy low blood sugar suspected",
+      "verified": "Mustelid presenting with episodic hindlimb paresis, generalized weakness, and lethargy (suspected insulinoma / hypoglycemia)",
+      "species": "Exotic",
+      "category": "Endocrine"
+    },
+    {
+      "id": 29,
+      "input": "bovine off feed drop in milk production right displaced abomasum ping",
+      "verified": "Bovine presenting with abrupt anorexia, sharp reduction in milk yield, and positive right-sided auscultatory percussion (ping)",
+      "species": "Bovine",
+      "category": "Gastrointestinal"
+    },
+    {
+      "id": 30,
+      "input": "dog stung by bee facial swelling hives swollen muzzle dyspneic",
+      "verified": "Canine presenting with acute anaphylactoid reaction: severe facial angioedema, urticaria, and mild inspiratory stridor following insect sting",
+      "species": "Canine",
+      "category": "Emergency"
+    },
+    {
+      "id": 31,
+      "input": "8yo lab coughing hacking at night w/ shortness of breath for 4 days",
+      "verified": "8-year-old Labrador Retriever presenting with 4-day history of nocturnal paroxysmal cough, dyspnea, and exercise intolerance",
+      "species": "Canine",
+      "category": "Cardiopulmonary"
+    },
+    {
+      "id": 32,
+      "input": "kitten not eating watery stools letargic since yesterday",
+      "verified": "Feline juvenile presenting with acute anorexia, watery diarrhea, and lethargy since yesterday",
+      "species": "Feline",
+      "category": "Pediatric"
+    },
+    {
+      "id": 33,
+      "input": "golden retriever drinking excessively peeing inside house losing hair on flanks",
+      "verified": "Golden Retriever presenting with marked polydipsia, polyuria, inappropriate indoor urination, and symmetrical bilateral flank alopecia",
+      "species": "Canine",
+      "category": "Endocrine"
+    },
+    {
+      "id": 34,
+      "input": "cat twitching hypersalivating tremors after topical flea medication applied",
+      "verified": "Feline presenting with acute neurotoxicity, severe tremors, hypersalivation, and twitching secondary to permethrin flea product exposure",
+      "species": "Feline",
+      "category": "Toxicology"
+    },
+    {
+      "id": 35,
+      "input": "dog ate dark chocolate bar 1 hour ago panting hyperactive vomiting",
+      "verified": "Canine presenting with acute theobromine toxicity: hyperactivity, panting, and vomiting 1 hour following dark chocolate ingestion",
+      "species": "Canine",
+      "category": "Toxicology"
+    },
+    {
+      "id": 36,
+      "input": "cat dragging rear legs crying in pain cold paw pads absent femoral pulse",
+      "verified": "Feline presenting with acute bilateral hindlimb paresis, vocalization, hypothermic extremities, and absent femoral pulses (suspected feline aortic thromboembolism)",
+      "species": "Feline",
+      "category": "Cardiovascular"
+    },
+    {
+      "id": 37,
+      "input": "beagle acute neck pain holding head low crying when touched",
+      "verified": "Beagle presenting with severe cervical hyperesthesia, low head carriage, and vocalization upon palpation (suspected intervertebral disc disease)",
+      "species": "Canine",
+      "category": "Neurology"
+    },
+    {
+      "id": 38,
+      "input": "mare retained placenta 6 hours post foaling foul discharge fever",
+      "verified": "Equine postpartum mare presenting with retained fetal membranes greater than 6 hours post-parturition, fetid lochia, and pyrexia",
+      "species": "Equine",
+      "category": "Reproductive"
+    },
+    {
+      "id": 39,
+      "input": "cow swollen left front quarter hard hot clotted milk off feed",
+      "verified": "Bovine presenting with acute left cranial mammary mastitis: localized heat, induration, clotted milk secretion, and systemic anorexia",
+      "species": "Bovine",
+      "category": "Production"
+    },
+    {
+      "id": 40,
+      "input": "parrot plucking chest feathers lethargic sneezing tail bobbing",
+      "verified": "Avian presenting with severe pectoral feather-destructive behavior, lethargy, sternal tail bobbing, and respiratory sneezing",
+      "species": "Avian",
+      "category": "Respiratory"
+    },
+    {
+      "id": 41,
+      "input": "guinea pig squeaking in pain hunched posture stopped eating pellets for 24h",
+      "verified": "Cavy presenting with acute abdominal distress, vocalization, hunched posture, and anorexia for 24 hours (suspected GI stasis / urolithiasis)",
+      "species": "Exotic",
+      "category": "Gastrointestinal"
+    },
+    {
+      "id": 42,
+      "input": "french bulldog snoring loudly heat exhaustion panting blue tongue collapsed",
+      "verified": "French Bulldog presenting with acute brachycephalic obstructive airway syndrome (BOAS) and hyperthermic heat distress: severe stertor, cyanosis, and collapse",
+      "species": "Canine",
+      "category": "Emergency"
+    },
+    {
+      "id": 43,
+      "input": "dachshund sudden back leg paralysis no deep pain perception",
+      "verified": "Dachshund presenting with acute paraplegia, loss of motor function in hindlimbs, and absent deep pain perception (suspected IVDD Hansen Type I)",
+      "species": "Canine",
+      "category": "Neurology"
+    },
+    {
+      "id": 44,
+      "input": "cat repeated head shaking foul brown discharge both ears scratching",
+      "verified": "Feline presenting with persistent head shaking, bilateral malodorous ceruminous otic discharge, and intense aural pruritus",
+      "species": "Feline",
+      "category": "Dermatology"
+    },
+    {
+      "id": 45,
+      "input": "puppy coughing hacking like something caught in throat honking sound",
+      "verified": "Canine juvenile presenting with paroxysmal dry honking cough and retching (suspected infectious tracheobronchitis / kennel cough)",
+      "species": "Canine",
+      "category": "Respiratory"
+    },
+    {
+      "id": 46,
+      "input": "dog swollen soft fluid lump on ear flap shaking head",
+      "verified": "Canine presenting with acute fluctuant unilateral pinnal swelling consistent with aural hematoma secondary to vigorous head shaking",
+      "species": "Canine",
+      "category": "Dermatology"
+    },
+    {
+      "id": 47,
+      "input": "dog unable to close mouth jaw dropped drooling unable to eat",
+      "verified": "Canine presenting with acute dropped jaw, inability to close mouth, ptosis, and ptyalism consistent with idiopathic trigeminal neuropathy",
+      "species": "Canine",
+      "category": "Neurology"
+    },
+    {
+      "id": 48,
+      "input": "cat severe bad breath red inflamed gums drooling refusing hard food",
+      "verified": "Feline presenting with severe halitosis, marked gingivitis/stomatitis, ptyalism, and reluctance to masticate dry kibble",
+      "species": "Feline",
+      "category": "Dental"
+    },
+    {
+      "id": 49,
+      "input": "horse swollen tendon left forelimb heat pain lame at trot",
+      "verified": "Equine presenting with acute localized swelling, heat, and sensitivity over left superficial digital flexor tendon with Grade 3/5 lameness",
+      "species": "Equine",
+      "category": "Musculoskeletal"
+    },
+    {
+      "id": 50,
+      "input": "goat bloat left side distended grunting teeth grinding",
+      "verified": "Caprine presenting with acute ruminal tympany, marked left paralumbar fossa distension, expiratory grunting, and bruxism",
+      "species": "Caprine",
+      "category": "Gastrointestinal"
+    },
+    {
+      "id": 51,
+      "input": "dog bleeding from nose left nostril sneezing blood clots 2 days",
+      "verified": "Canine presenting with 2-day history of unilateral left epistaxis, sneezing, and expulsion of clotted blood",
+      "species": "Canine",
+      "category": "Respiratory"
+    },
+    {
+      "id": 52,
+      "input": "female dog swollen vulva purulent discharge lethargic drinking lots of water",
+      "verified": "Intact female canine presenting with purulent vulvar discharge, lethargy, and polyuria/polydipsia (suspected open pyometra)",
+      "species": "Canine",
+      "category": "Reproductive"
+    },
+    {
+      "id": 53,
+      "input": "kitten crusted eyelids sticky yellow discharge eyes glued shut",
+      "verified": "Feline juvenile presenting with bilateral severe blepharitis, chemosis, and copious mucopurulent conjunctival exudate (feline herpesvirus / chlamydiosis)",
+      "species": "Feline",
+      "category": "Ophthalmology"
+    },
+    {
+      "id": 54,
+      "input": "dog eaten rat poison yesterday gums pale bleeding from gums",
+      "verified": "Canine presenting with suspected anticoagulant rodenticide ingestion 24 hours prior, petechiae, gingival bleeding, and pallor",
+      "species": "Canine",
+      "category": "Toxicology"
+    },
+    {
+      "id": 55,
+      "input": "cat yellow skin and eyes losing weight not eating for 5 days",
+      "verified": "Feline presenting with severe hepatic lipidosis signs: generalized icterus, profound anorexia for 5 days, and rapid muscle wasting",
+      "species": "Feline",
+      "category": "Hepatic"
+    },
+    {
+      "id": 56,
+      "input": "dog sudden blindness dilated pupils bumping into walls lethargic",
+      "verified": "Canine presenting with acute bilateral vision loss, mydriasis, negative menace response, and navigation disorientation (suspected SARDS)",
+      "species": "Canine",
+      "category": "Ophthalmology"
+    },
+    {
+      "id": 57,
+      "input": "sheep staggering circling pressing head against fence blind",
+      "verified": "Ovine presenting with ataxia, compulsive circling, head-pressing against solid objects, and central blindness (suspected polioencephalomalacia / listeriosis)",
+      "species": "Ovine",
+      "category": "Neurology"
+    },
+    {
+      "id": 58,
+      "input": "horse choking salivating feed material coming out both nostrils",
+      "verified": "Equine presenting with acute esophageal obstruction (choke): bilateral nasal discharge containing masticated feed and profuse ptyalism",
+      "species": "Equine",
+      "category": "Emergency"
+    },
+    {
+      "id": 59,
+      "input": "dog swollen face after vaccination lethargic hives around eyes",
+      "verified": "Canine presenting with acute post-vaccinal hypersensitivity: periorbital angioedema, generalized urticaria, and lethargy",
+      "species": "Canine",
+      "category": "Immunology"
+    },
+    {
+      "id": 60,
+      "input": "old dog disoriented pacing waking up crying at 3am circling",
+      "verified": "Geriatric canine presenting with nocturnal pacing, vocalization, disorientation, and aimless circling consistent with canine cognitive dysfunction",
+      "species": "Canine",
+      "category": "Neurology"
+    }
+  ],
+  "phraseTransformations": {
+    "vomitting": "vomiting",
+    "vommiting": "vomiting",
+    "diarhea": "diarrhea",
+    "diahrrea": "diarrhea",
+    "diarrheoa": "diarrhea",
+    "letargic": "lethargic",
+    "letargy": "lethargy",
+    "anorexik": "anorexic",
+    "distention": "distension",
+    "pruritis": "pruritus",
+    "tachypnoea": "tachypnea",
+    "dyspnoea": "dyspnea",
+    "haematuria": "hematuria",
+    "haemorrhagic": "hemorrhagic",
+    "jaundis": "jaundice",
+    "iterus": "icterus",
+    "seisure": "seizure",
+    "seisures": "seizures",
+    "tachycardea": "tachycardia",
+    "bradycardea": "bradycardia",
+    "pupd": "polyuria and polydipsia",
+    "pu/pd": "polyuria and polydipsia",
+    "pu pd": "polyuria and polydipsia",
+    "cant pee": "stranguria / inability to urinate",
+    "straining in litter box": "stranguria with repeated unproductive posturing in litter box",
+    "crying in litter box": "stranguria and vocalization in litter box",
+    "watery stools": "watery diarrhea",
+    "bloody diarrhea": "hemorrhagic diarrhea",
+    "projectile vomiting": "projectile vomiting",
+    "not eating": "anorexia",
+    "stopped eating": "anorexia",
+    "off feed": "anorexia",
+    "refusing food": "anorexia",
+    "drinking lots of water": "polydipsia",
+    "drinking excessively": "polydipsia",
+    "urinating frequently": "polyuria",
+    "peeing frequently": "polyuria",
+    "peeing inside house": "inappropriate indoor urination",
+    "weight loss": "progressive weight loss",
+    "ravenous appetite": "polyphagia",
+    "shortness of breath": "dyspnea",
+    "difficulty breathing": "dyspnea",
+    "rapid breathing": "tachypnea",
+    "coughing gagging": "paroxysmal coughing and retching",
+    "coughing hacking": "paroxysmal hacking cough",
+    "dry hacking cough": "dry hacking cough",
+    "worse at night": "nocturnal exacerbation",
+    "at night": "nocturnal",
+    "open mouth breathing": "open-mouth tachypnea",
+    "open mouth panting": "open-mouth tachypnea",
+    "cyanotic tongue": "cyanotic mucous membranes",
+    "blue tongue": "cyanotic mucous membranes",
+    "pale gums": "pale mucous membranes",
+    "yellow gums": "icteric mucous membranes",
+    "yellow eyes": "scleral icterus",
+    "foul smell": "malodorous discharge",
+    "bad odor": "malodorous exudate",
+    "foul odor": "malodorous discharge",
+    "hair loss": "alopecia",
+    "losing hair": "alopecia",
+    "scratching ears": "aural pruritus",
+    "shaking head": "persistent head shaking",
+    "swollen face": "facial angioedema",
+    "swollen muzzle": "facial and muzzle angioedema",
+    "hives": "urticaria",
+    "limping right forelimb": "right forelimb lameness",
+    "limping left forelimb": "left forelimb lameness",
+    "limping right hind": "right hindlimb lameness",
+    "limping left hind": "left hindlimb lameness",
+    "non weight bearing": "non-weight-bearing",
+    "dragging rear legs": "bilateral hindlimb paresis",
+    "cold paw pads": "hypothermic extremities",
+    "absent pulses": "absent peripheral femoral pulses",
+    "weak pulses": "weak peripheral pulses",
+    "sudden collapse": "acute syncopal episode / collapse",
+    "pawing ground": "persistent ground pawing",
+    "rolling sweating": "rolling and diaphoresis",
+    "kicking at abdomen": "flank kicking and abdominal guarding",
+    "kicking belly": "flank kicking and abdominal guarding",
+    "no gut sounds": "absent borborygmi on abdominal auscultation",
+    "tense abdomen": "tense painful abdomen",
+    "abdominal guarding": "cranial abdominal guarding",
+    "neck pain": "cervical hyperesthesia",
+    "holding head low": "low head carriage",
+    "cloudy cornea": "corneal edema / cloudiness",
+    "greenish discharge": "mucopurulent discharge",
+    "yellow discharge": "mucopurulent exudate",
+    "sticky discharge": "mucopurulent exudate",
+    "eyes glued shut": "blepharospasm with eyelid adherence",
+    "squinting": "blepharospasm",
+    "drooling": "ptyalism / hypersalivation",
+    "salivating": "ptyalism / hypersalivation",
+    "bad breath": "severe halitosis",
+    "red inflamed gums": "gingivitis / stomatitis",
+    "bleeding from nose": "epistaxis",
+    "sneezing blood": "epistaxis with sneezing",
+    "blindness": "acute vision loss",
+    "bumping into walls": "navigational disorientation",
+    "dilated pupils": "bilateral mydriasis",
+    "staggering": "ataxia",
+    "circling": "compulsive circling",
+    "head pressing": "head pressing against objects",
+    "heat exhaustion": "hyperthermic heat distress",
+    "bloat": "ruminal / gastric tympany",
+    "teeth grinding": "bruxism",
+    "reflux through nostril": "spontaneous nasogastric reflux",
+    "swollen tendon": "tendonitis / localized tendinous swelling",
+    "retained placenta": "retained fetal membranes",
+    "purulent discharge": "purulent discharge",
+    "clotted milk": "clotted mastitic milk secretion"
+  },
+  "breedSignalmentMap": {
+    "gsd": "German Shepherd",
+    "german shepherd": "German Shepherd",
+    "lab": "Labrador Retriever",
+    "labrador": "Labrador Retriever",
+    "golden": "Golden Retriever",
+    "golden retriever": "Golden Retriever",
+    "frenchie": "French Bulldog",
+    "french bulldog": "French Bulldog",
+    "dachshund": "Dachshund",
+    "beagle": "Beagle",
+    "dsh": "Domestic Shorthair",
+    "dlh": "Domestic Longhair",
+    "kitten": "Feline juvenile",
+    "pup": "Canine juvenile",
+    "puppy": "Canine juvenile",
+    "rabbit": "Lagomorph",
+    "bunny": "Lagomorph",
+    "guinea pig": "Cavy",
+    "cavy": "Cavy",
+    "ferret": "Mustelid",
+    "horse": "Equine",
+    "mare": "Equine mare",
+    "stallion": "Equine stallion",
+    "gelding": "Equine gelding",
+    "cow": "Bovine",
+    "bovine": "Bovine",
+    "calf": "Bovine juvenile",
+    "sheep": "Ovine",
+    "ewe": "Ovine",
+    "ram": "Ovine",
+    "lamb": "Ovine juvenile",
+    "goat": "Caprine",
+    "doe": "Caprine",
+    "buck": "Caprine",
+    "kid": "Caprine juvenile",
+    "parrot": "Avian",
+    "bird": "Avian"
+  },
+  "config": {
+    "highConfidenceFuzzyThreshold": 0.92,
+    "maxSymSpellEditDistance": 2,
+    "enableZeroAdditionGuarantee": true
+  }
+}
